@@ -20,7 +20,7 @@ export async function execute(message, args, client) {
   }
 
   // Find user or create
-  let user = await User.findOne({ where: { userId } });
+  let user = await User.findOne({ userId });
   if (!user) return message.reply('Do `op start` first!');
 
   // Filter cards unlocked by saga

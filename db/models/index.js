@@ -5,9 +5,6 @@ dotenv.config();
 const mongoUri = process.env.MONGO_URI || 'mongodb://localhost/opb';
 
 export async function connectDB() {
-  await mongoose.connect(mongoUri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  });
+  await mongoose.connect(mongoUri);
   console.log('MongoDB connected!');
 }

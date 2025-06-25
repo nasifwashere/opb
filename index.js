@@ -2,11 +2,11 @@ import { Client, GatewayIntentBits, Collection } from 'discord.js';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
-import { connectDB } from './db/models/index.js'; // Import DB connection
+import { connectDB } from './db/models/index.js';
 
 dotenv.config();
 
-await connectDB(); // Connect to MongoDB before anything else
+await connectDB(); // Connect to MongoDB before starting the bot
 
 const client = new Client({
   intents: [
