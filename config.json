@@ -1,0 +1,7 @@
+{
+  "prefix": "op",
+  "cooldowns": {
+    "pull": 28800
+  },
+  "defaultSaga": "East Blue"
+}

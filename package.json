@@ -1,0 +1,26 @@
+{
+  "name": "pirate-quest-bot",
+  "version": "1.0.0",
+  "description": "🏴‍☠️ One Piece Gacha Discord Bot – Card RPG, PvE/PvP, Collection, Economy, Evolution, and More!",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "gacha",
+    "one piece",
+    "rpg"
+  ],
+  "author": "nasif-cloud",
+  "license": "MIT",
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "sqlite3": "^5.1.6",
+    "sequelize": "^6.37.1",
+    "lowdb": "^6.0.1",
+    "dotenv": "^16.4.5"
+  }
+}
