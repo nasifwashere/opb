@@ -18,9 +18,10 @@
   "license": "MIT",
   "dependencies": {
     "discord.js": "^14.14.1",
-    "sqlite3": "^5.1.6",
-    "sequelize": "^6.37.1",
+    "dotenv": "^16.4.5",
     "lowdb": "^6.0.1",
-    "dotenv": "^16.4.5"
+    "mongoose": "^8.16.0",
+    "sequelize": "^6.37.1",
+    "sqlite3": "^5.1.6"
   }
 }

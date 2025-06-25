@@ -1,11 +1,11 @@
-import { Sequelize, DataTypes } from 'sequelize';
-import { sequelize } from './User.js';
+import mongoose from 'mongoose';
 
-const MarketListing = sequelize.define('MarketListing', {
-  sellerId: DataTypes.STRING,
-  cardName: DataTypes.STRING,
-  price: DataTypes.INTEGER,
-  isActive: { type: DataTypes.BOOLEAN, defaultValue: true }
-});
+const marketListingSchema = new mongoose.Schema({
+  sellerId: { type: String, required: true },
+  cardName: { type: String, required: true },
+  price: { type: Number, required: true },
+  isActive: { type: Boolean, default: true }
+}, { timestamps: true });
 
+const MarketListing = mongoose.model('MarketListing', marketListingSchema);
 export default MarketListing;
