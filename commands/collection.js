@@ -139,7 +139,57 @@ async function execute(message, args) {
     } else if (interaction.customId === 'collection_next' && cardIndex < total - 1) {
       cardIndex++;
     } else if (interaction.customId === 'collection_info') {
-      await interaction.followUp({ content: 'Info command coming soon!', ephemeral: true });
+      const currentCard = cardInstances[cardIndex];
+      const currentCardDef = getCardByUserInstance(currentCard);
+      
+      if (!currentCardDef) {
+        await interaction.followUp({ content: 'Card information not found!', ephemeral: true });
+        return;
+      }
+      
+      const level = currentCard.level || currentCard.timesUpgraded + 1 || 1;
+      let [power, health, speed] = currentCardDef.phs.split('/').map(x => Number(x.trim()));
+      
+      // Apply equipment boosts
+      let normCard = normalize(currentCardDef.name);
+      let equippedItem = user && user.equipped && user.equipped[normCard];
+      let boostText = '';
+      
+      if (equippedItem === 'strawhat') {
+        power = Math.round(power * 1.3);
+        health = Math.round(health * 1.3);
+        speed = Math.round(speed * 1.3);
+        boostText = '\n**Equipment**: Strawhat (+30% all stats)';
+      }
+      
+      // Calculate damage multipliers based on rank
+      const rankMultipliers = {
+        'C': 0.08,
+        'B': 0.10,
+        'A': 0.14,
+        'S': 0.17,
+        'UR': 0.20
+      };
+      
+      const multiplier = rankMultipliers[currentCardDef.rank] || 0.10;
+      const baseDamage = power * multiplier;
+      const minDamage = Math.floor(baseDamage * 1.0);
+      const maxDamage = Math.floor(baseDamage * 1.5);
+      
+      const infoText = `**${currentCardDef.name}** (${currentCardDef.rank})\n` +
+        `${currentCardDef.shortDesc}\n\n` +
+        `**Stats (Level ${level})**\n` +
+        `Power: ${power}\n` +
+        `Health: ${health}\n` +
+        `Speed: ${speed}\n\n` +
+        `**Combat**\n` +
+        `Damage Range: ${minDamage} - ${maxDamage}\n` +
+        `Damage Multiplier: ${multiplier}x\n` +
+        `Lock Status: ${currentCard.locked ? '🔒 Locked' : '🔓 Unlocked'}${boostText}\n\n` +
+        `**Evolution**\n` +
+        `${currentCardDef.evolution ? `Next: ${currentCardDef.evolution.nextId} (Level ${currentCardDef.evolution.requiredLevel})` : 'Max evolution reached'}`;
+      
+      await interaction.followUp({ content: infoText, ephemeral: true });
       return;
     }
     const updatedCardInstance = cardInstances[cardIndex];

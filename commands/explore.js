@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const User = require('../db/models/User.js');
 
 // Updated: Use "strawhat" (no spaces) as the item name!
@@ -21,7 +21,7 @@ const ROMANCE_DAWN_STAGES = [
     ],
   },
   { type: "card", title: "Recruit: Coby", desc: "You meet and recruit **Coby**! He's now part of your crew.", card: { name: "Coby", rank: "C" } },
-  { type: "boss", title: "Boss Battle: Pirate Captain Alvida", desc: "Alvida appears! Prepare for battle.", boss: { name: "Alvida", hp: 100, atk: [10, 20], spd: 50 }, reward: { type: "beli", amount: 100, rank: "C" }, loseCooldown: 60 * 60 * 1000 },
+  { type: "boss", title: "Boss Battle: Pirate Captain Alvida", desc: "Alvida appears! Prepare for battle.", boss: { name: "Alvida", hp: 180, atk: [18, 32], spd: 70, rank: "B" }, reward: { type: "beli", amount: 150, xp: 75 }, loseCooldown: 60 * 60 * 1000 },
   { type: "narrative", title: "Sail to Shell Town", desc: "Your crew sails to Shell Town. On the way you experience random events.", pool: [
       "A friendly dolphin follows your ship.",
       "You find a floating bottle with an unreadable message.",
@@ -30,7 +30,7 @@ const ROMANCE_DAWN_STAGES = [
     ],
   },
   { type: "card", title: "Recruit: Zoro", desc: "The swordsman **Zoro** joins your team! His presence inspires confidence.", card: { name: "Zoro", rank: "C" } },
-  { type: "battle", title: "Duel: Helmeppo", desc: "You challenge Helmeppo to a duel!", enemy: { name: "Helmeppo", hp: 50, atk: [5, 10], spd: 20 }, reward: { type: "beli", amount: 30 }, loseCooldown: 0 },
+  { type: "boss", title: "Boss Battle: Captain Morgan", desc: "Axe-Hand Morgan blocks your path!", boss: { name: "Captain Morgan", hp: 220, atk: [22, 38], spd: 75, rank: "B" }, reward: { type: "beli", amount: 200, xp: 100 }, loseCooldown: 45 * 60 * 1000 },
   { type: "random", pool: [
       "You gain **25 XP** after a training session.",
       "You find **20 Beli** in a hidden drawer.",
@@ -44,7 +44,13 @@ const ROMANCE_DAWN_STAGES = [
       { type: "none" },
     ],
   },
-  { type: "boss", title: "Boss Battle: Axe-Hand Morgan", desc: "The final challenge of Romance Dawn! Axe-Hand Morgan blocks your path.", boss: { name: "Axe-Hand Morgan", hp: 150, atk: [12, 22], spd: 65, rank: "C" }, reward: { type: "beli", amount: 100 }, loseCooldown: 60 * 60 * 1000, unlocksSaga: "Orange Town" }
+  { type: "card", title: "Recruit: Nami", desc: "The navigator **Nami** joins your crew! Her map skills will be invaluable.", card: { name: "Nami", rank: "C" } },
+  { type: "boss", title: "Boss Battle: Captain Kuro", desc: "The cunning Captain Kuro emerges from the shadows!", boss: { name: "Captain Kuro", hp: 280, atk: [25, 42], spd: 95, rank: "A" }, reward: { type: "beli", amount: 300, xp: 150 }, loseCooldown: 90 * 60 * 1000 },
+  { type: "narrative", title: "Journey to Baratie", desc: "Your crew sets sail for the floating restaurant Baratie. The Grand Line calls!", pool: ["The sea grows rougher as you approach.", "Seagulls guide your ship forward.", "Your crew shares a meal together."] },
+  { type: "boss", title: "Boss Battle: Don Krieg", desc: "The armored pirate Don Krieg challenges your crew!", boss: { name: "Don Krieg", hp: 350, atk: [28, 48], spd: 80, rank: "A" }, reward: { type: "beli", amount: 400, xp: 200 }, loseCooldown: 120 * 60 * 1000 },
+  { type: "card", title: "Recruit: Sanji", desc: "The chef **Sanji** joins your crew! His fighting spirit burns bright.", card: { name: "Sanji", rank: "B" } },
+  { type: "narrative", title: "Arlong Park Awaits", desc: "The final challenge of East Blue saga approaches. Arlong Park looms ahead.", pool: ["The water grows darker.", "Fish-men patrol the area.", "Your resolve strengthens."] },
+  { type: "boss", title: "Boss Battle: Arlong", desc: "The fish-man Arlong stands in your way! This is the ultimate test!", boss: { name: "Arlong", hp: 450, atk: [35, 58], spd: 85, rank: "S" }, reward: { type: "beli", amount: 750, xp: 300 }, loseCooldown: 180 * 60 * 1000, unlocksSaga: "Grand Line" }
 ];
 
 // Always stores item as lowercase, no spaces
@@ -58,7 +64,13 @@ function addToInventory(user, item) {
   if (!user.inventory.map(normalizeItemName).includes(normItem)) user.inventory.push(normItem);
 }
 function addXP(user, amount) {
-  user.xp = (user.xp || 0) + amount;
+  // Check for XP boost
+  const xpBoost = user.activeBoosts?.find(boost => 
+    boost.type === 'double_xp' && boost.expiresAt > Date.now()
+  );
+  
+  const finalAmount = xpBoost ? amount * 2 : amount;
+  user.xp = (user.xp || 0) + finalAmount;
 }
 const EXPLORE_COOLDOWN = 2 * 60 * 1000;
 function prettyTime(ms) {
@@ -72,6 +84,85 @@ function prettyTime(ms) {
   if (minutes > 0) out.push(`${minutes} minute${minutes !== 1 ? "s" : ""}`);
   if (out.length === 0) out.push(`${seconds} seconds`);
   return out.join(", ");
+}
+
+function createBossBattleEmbed(boss, playerTeam, battleLog, turn) {
+  const embed = new EmbedBuilder()
+    .setTitle(`⚔️ Boss Battle: ${boss.name}`)
+    .setColor(0xe74c3c);
+
+  // Boss stats
+  const bossHpBar = createHpBar(boss.currentHp, boss.hp);
+  embed.addFields({
+    name: `${boss.name} (${boss.rank} Rank)`,
+    value: `HP: ${bossHpBar} ${boss.currentHp}/${boss.hp}\nATK: ${boss.attack[0]}-${boss.attack[1]} | SPD: ${boss.speed}`,
+    inline: false
+  });
+
+  // Player team
+  let teamText = '';
+  playerTeam.forEach(card => {
+    const hpBar = createHpBar(card.currentHp, card.hp);
+    teamText += `**${card.name}** (Lv.${card.level})\nHP: ${hpBar} ${card.currentHp}/${card.hp}\n\n`;
+  });
+  
+  embed.addFields({
+    name: '🏴‍☠️ Your Team',
+    value: teamText || 'No team members',
+    inline: false
+  });
+
+  // Battle log
+  if (battleLog.length > 0) {
+    const recentLog = battleLog.slice(-3).join('\n');
+    embed.addFields({
+      name: '⚔️ Battle Log',
+      value: recentLog,
+      inline: false
+    });
+  }
+
+  embed.setFooter({ text: `Turn ${turn} | Choose your action!` });
+  return embed;
+}
+
+function createBossBattleButtons(disabled = false) {
+  const row1 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('boss_attack')
+      .setLabel('⚔️ Attack')
+      .setStyle(ButtonStyle.Danger)
+      .setDisabled(disabled),
+    new ButtonBuilder()
+      .setCustomId('boss_skill')
+      .setLabel('💫 Special Attack')
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(disabled),
+    new ButtonBuilder()
+      .setCustomId('boss_defend')
+      .setLabel('🛡️ Defend')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(disabled)
+  );
+
+  const row2 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('boss_flee')
+      .setLabel('🏃 Flee')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(disabled)
+  );
+
+  return [row1, row2];
+}
+
+function createHpBar(current, max) {
+  const percentage = current / max;
+  const barLength = 10;
+  const filledBars = Math.round(percentage * barLength);
+  const emptyBars = barLength - filledBars;
+  
+  return '█'.repeat(filledBars) + '░'.repeat(emptyBars);
 }
 
 // Change this to your Discord user ID for immunity
@@ -199,30 +290,61 @@ async function execute(message, args, client) {
         ]
       });
     } else {
-      let boss = { ...stageData.boss, curHp: stageData.boss.hp };
-      let battleLog = `**${boss.name}**\nHP: ${boss.curHp}\nATK: ${boss.atk[0]}–${boss.atk[1]}\nSPD: ${boss.spd}\n\nYou and your team face off!`;
-      let playerWins = Math.random() > 0.35;
-      if (!playerWins) {
-        if (!immune) user.exploreLossCooldown = now + (stageData.loseCooldown || 60 * 60 * 1000);
-        await user.save();
-        await message.reply({
+      // Start interactive boss battle
+      const { calculateBattleStats } = require('../utils/battleSystem.js');
+      const playerTeam = calculateBattleStats(user);
+      
+      if (playerTeam.length === 0) {
+        blockProgress = true;
+        return message.reply({
           embeds: [new EmbedBuilder()
-            .setTitle(`Boss Battle: ${boss.name} – Defeat`)
-            .setDescription(`${battleLog}\n\nYou lost the fight! Rest and try again in 1 hour.`)
+            .setTitle("⚠️ No valid team members!")
+            .setDescription("Your team cards couldn't be loaded. Add cards to your team first.")
             .setColor(0xe74c3c)
           ]
         });
-        return;
-      } else {
-        user.beli = (user.beli || 0) + (stageData.reward?.amount || 0);
-        await message.reply({
-          embeds: [new EmbedBuilder()
-            .setTitle(`Boss Battle: ${boss.name} – Victory!`)
-            .setDescription(`${battleLog}\n\nYou won! Rewards: +${stageData.reward?.amount || 0} Beli.`)
-            .setColor(0x27ae60)
-          ]
-        });
       }
+
+      const boss = {
+        name: stageData.boss.name,
+        hp: stageData.boss.hp,
+        currentHp: stageData.boss.hp,
+        attack: stageData.boss.atk,
+        speed: stageData.boss.spd,
+        rank: stageData.boss.rank || 'B'
+      };
+
+      const battleEmbed = createBossBattleEmbed(boss, playerTeam, [], 1);
+      const battleButtons = createBossBattleButtons();
+
+      const battleMessage = await message.reply({
+        embeds: [battleEmbed],
+        components: battleButtons
+      });
+
+      // Store battle state
+      const battleData = {
+        boss,
+        playerTeam,
+        battleLog: [],
+        turn: 1,
+        userId: user.userId,
+        stageData,
+        exploreBattle: true
+      };
+
+      // Store in memory for interaction handling
+      if (!client.battles) client.battles = new Map();
+      client.battles.set(battleMessage.id, battleData);
+
+      // Auto-cleanup after 5 minutes
+      setTimeout(() => {
+        if (client.battles && client.battles.has(battleMessage.id)) {
+          client.battles.delete(battleMessage.id);
+        }
+      }, 5 * 60 * 1000);
+
+      return; // Don't continue explore progression until battle is resolved
     }
   }
   else if (stageData.type === "battle") {
@@ -251,6 +373,15 @@ async function execute(message, args, client) {
 
   // --- PROGRESSION ---
   if (!blockProgress) {
+    // Update quest progress
+    const { updateQuestProgress } = require('../utils/questSystem.js');
+    
+    if (stageData.type === "battle" || stageData.type === "boss") {
+      await updateQuestProgress(user, 'battle_win', 1);
+    }
+    
+    await updateQuestProgress(user, 'explore', 1);
+    
     user.exploreStage = Number(stage) + 1;
     user.exploreLast = immune ? 0 : now;
     user.exploreLossCooldown = 0;

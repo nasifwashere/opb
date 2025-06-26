@@ -192,7 +192,12 @@ async function execute(message, args) {
           return;
         }
 
-        await battleInteraction.deferUpdate();
+        try {
+          await battleInteraction.deferUpdate();
+        } catch (error) {
+          console.log('Interaction already acknowledged or expired');
+          return;
+        }
 
         const isPlayer1 = currentPlayer === challengerId;
         const activeTeam = isPlayer1 ? player1Team : player2Team;

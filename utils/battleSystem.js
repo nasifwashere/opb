@@ -4,7 +4,16 @@ const path = require('path');
 const cardsPath = path.resolve('data', 'cards.json');
 const allCards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
 
-// Rank multipliers for combat calculations
+// Damage multipliers for combat calculations  
+const damageMultipliers = {
+  C: 0.08,
+  B: 0.10,
+  A: 0.14,
+  S: 0.17,
+  UR: 0.20
+};
+
+// Rank multipliers for overall combat power
 const rankMultipliers = {
   C: 1.0,
   B: 1.2,
@@ -71,9 +80,11 @@ function calculateBattleStats(user, cardDatabase = allCards) {
       }
     }
 
-    // Calculate attack range
-    const attackLow = Math.floor(power * 0.8);
-    const attackHigh = Math.floor(power * 1.2);
+    // Calculate attack range using new damage multiplier system
+    const damageMultiplier = damageMultipliers[cardDef.rank] || 0.10;
+    const baseDamage = power * damageMultiplier;
+    const attackLow = Math.floor(baseDamage * 1.0);
+    const attackHigh = Math.floor(baseDamage * 1.5);
 
     battleTeam.push({
       name: cardDef.name,

@@ -56,9 +56,48 @@ async function execute(message, args) {
   // Process purchase
   user.beli -= item.price;
 
-  if (item.type === 'item' || item.type === 'boost') {
+  if (item.type === 'item') {
     if (!user.inventory) user.inventory = [];
     user.inventory.push(item.name.toLowerCase().replace(/\s+/g, ''));
+  } else if (item.type === 'boost') {
+    // Apply boost effects immediately
+    if (!user.activeBoosts) user.activeBoosts = [];
+    
+    switch (item.effect) {
+      case 'double_xp':
+        user.activeBoosts.push({
+          type: 'double_xp',
+          expiresAt: Date.now() + item.duration,
+          name: item.name
+        });
+        break;
+      case 'beli_boost':
+        user.activeBoosts.push({
+          type: 'beli_boost',
+          expiresAt: Date.now() + item.duration,
+          multiplier: 1.5,
+          name: item.name
+        });
+        break;
+      case 'reset_pull_cooldown':
+        user.pullLast = 0;
+        break;
+      case 'no_battle_cooldown':
+        user.activeBoosts.push({
+          type: 'no_battle_cooldown',
+          expiresAt: Date.now() + item.duration,
+          name: item.name
+        });
+        break;
+      case 'fast_explore':
+        user.activeBoosts.push({
+          type: 'fast_explore',
+          expiresAt: Date.now() + item.duration,
+          reduction: 0.75,
+          name: item.name
+        });
+        break;
+    }
   } else if (item.type === 'card') {
     if (!user.cards) user.cards = [];
     user.cards.push({

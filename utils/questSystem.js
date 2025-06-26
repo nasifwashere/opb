@@ -94,6 +94,7 @@ async function getAvailableQuests(user) {
  */
 async function updateQuestProgress(user, actionType, amount = 1) {
   if (!user.activeQuests) user.activeQuests = [];
+  if (!user.questProgress) user.questProgress = {};
   
   const availableQuests = await getAvailableQuests(user);
   const completedQuests = [];
@@ -104,7 +105,7 @@ async function updateQuestProgress(user, actionType, amount = 1) {
     if (!activeQuest) {
       activeQuest = {
         questId: quest.questId,
-        progress: new Map(),
+        progress: {},
         startedAt: Date.now()
       };
       user.activeQuests.push(activeQuest);
@@ -114,19 +115,19 @@ async function updateQuestProgress(user, actionType, amount = 1) {
     let questCompleted = true;
     for (const requirement of quest.requirements) {
       if (requirement.type === actionType) {
-        const currentProgress = activeQuest.progress.get(requirement.type) || 0;
-        activeQuest.progress.set(requirement.type, Math.min(currentProgress + amount, requirement.target));
+        const currentProgress = activeQuest.progress[requirement.type] || 0;
+        activeQuest.progress[requirement.type] = Math.min(currentProgress + amount, requirement.target);
       }
 
       // Check if this requirement is completed
-      const progress = activeQuest.progress.get(requirement.type) || 0;
+      const progress = activeQuest.progress[requirement.type] || 0;
       if (progress < requirement.target) {
         questCompleted = false;
       }
     }
 
     // If quest is completed, add to completed list
-    if (questCompleted) {
+    if (questCompleted && !user.questProgress[quest.questId]) {
       completedQuests.push(quest.questId);
     }
   }
@@ -155,7 +156,7 @@ async function claimQuestReward(user, questId) {
 
     // Verify all requirements are met
     for (const requirement of quest.requirements) {
-      const progress = activeQuest.progress.get(requirement.type) || 0;
+      const progress = activeQuest.progress[requirement.type] || 0;
       if (progress < requirement.target) {
         return { 
           success: false, 

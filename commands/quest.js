@@ -33,7 +33,7 @@ function createQuestEmbed(quests, activeQuests, completedToday) {
         status = '✅ Completed';
       } else if (activeQuest) {
         const requirement = quest.requirements[0]; // Assuming single requirement for simplicity
-        const current = activeQuest.progress.get(requirement.type) || 0;
+        const current = activeQuest.progress[requirement.type] || 0;
         const target = requirement.target;
         const progress = Math.min(current, target);
         
@@ -54,7 +54,7 @@ function createQuestEmbed(quests, activeQuests, completedToday) {
       }).join(', ');
       
       dailyText += `**${quest.name}** ${status}${progressText}\n`;
-      dailyText += `${quest.description}\n`;
+      dailyText += `ID: \`${quest.questId}\` | ${quest.description}\n`;
       dailyText += `🎁 Rewards: ${rewards}\n\n`;
     });
     
@@ -75,7 +75,7 @@ function createQuestEmbed(quests, activeQuests, completedToday) {
         status = '✅ Completed';
       } else if (activeQuest) {
         const requirement = quest.requirements[0];
-        const current = activeQuest.progress.get(requirement.type) || 0;
+        const current = activeQuest.progress[requirement.type] || 0;
         const target = requirement.target;
         const progress = Math.min(current, target);
         
@@ -96,7 +96,7 @@ function createQuestEmbed(quests, activeQuests, completedToday) {
       }).join(', ');
       
       weeklyText += `**${quest.name}** ${status}${progressText}\n`;
-      weeklyText += `${quest.description}\n`;
+      weeklyText += `ID: \`${quest.questId}\` | ${quest.description}\n`;
       weeklyText += `🎁 Rewards: ${rewards}\n\n`;
     });
     
@@ -117,7 +117,7 @@ function createQuestEmbed(quests, activeQuests, completedToday) {
         status = '✅ Completed';
       } else if (activeQuest) {
         const requirement = quest.requirements[0];
-        const current = activeQuest.progress.get(requirement.type) || 0;
+        const current = activeQuest.progress[requirement.type] || 0;
         const target = requirement.target;
         const progress = Math.min(current, target);
         
@@ -138,7 +138,7 @@ function createQuestEmbed(quests, activeQuests, completedToday) {
       }).join(', ');
       
       storyText += `**${quest.name}** ${status}${progressText}\n`;
-      storyText += `${quest.description}\n`;
+      storyText += `ID: \`${quest.questId}\` | ${quest.description}\n`;
       storyText += `🎁 Rewards: ${rewards}\n\n`;
     });
     

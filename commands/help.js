@@ -17,7 +17,6 @@ const commandCategories = {
   '⚔️ Battle': {
     commands: [
       { name: 'team [add/remove] [card]', desc: 'Manage your battle team' },
-      { name: 'battle', desc: 'Fight PvE boss battles' },
       { name: 'duel @user', desc: 'Challenge another player' },
       { name: 'level <card>', desc: 'Level up cards using duplicates' },
       { name: 'evolve <card>', desc: 'Evolve cards to stronger forms' }
@@ -25,10 +24,10 @@ const commandCategories = {
   },
   '🗺️ Adventure': {
     commands: [
-      { name: 'explore', desc: 'Continue your story adventure' },
+      { name: 'explore', desc: 'Continue your story adventure and fight bosses' },
       { name: 'progress', desc: 'View your current saga' },
       { name: 'map', desc: 'View unlocked islands and sagas' },
-      { name: 'quest', desc: 'View and track daily/weekly quests' }
+      { name: 'quest', desc: 'View and track daily/weekly missions' }
     ]
   },
   '💰 Economy': {
@@ -54,15 +53,27 @@ const commandCategories = {
 
 function createCategoryEmbed(category, categoryData) {
   const embed = new EmbedBuilder()
-    .setTitle(`${category} Commands`)
+    .setTitle(`📚 ${category} Commands`)
     .setDescription('Here are the available commands in this category:')
-    .setColor(0x3498db);
+    .setColor(0x2c3e50)
+    .setThumbnail('https://i.imgur.com/KqAB5Mn.png');
 
+  let commandsList = '';
   categoryData.commands.forEach(cmd => {
-    embed.addFields({ name: `op ${cmd.name}`, value: cmd.desc, inline: false });
+    commandsList += `**op ${cmd.name}** - ${cmd.desc}\n`;
   });
 
-  embed.setFooter({ text: 'Use op help to return to the main menu' });
+  embed.addFields({ 
+    name: '📋 Available Commands', 
+    value: commandsList || 'No commands available', 
+    inline: false 
+  });
+
+  embed.setFooter({
+    text: `${categoryData.commands.length} commands available | Use op help to return`,
+    iconURL: 'https://i.imgur.com/KqAB5Mn.png'
+  });
+
   return embed;
 }
 
@@ -85,6 +96,11 @@ function createMainEmbed() {
     name: '💡 Quick Start', 
     value: 'New to the bot? Start with `op start` then `op pull` to get your first cards!', 
     inline: false 
+  });
+
+  embed.setFooter({
+    text: 'Use the buttons below to navigate categories',
+    iconURL: 'https://i.imgur.com/KqAB5Mn.png'
   });
 
   return embed;
@@ -134,22 +150,8 @@ function createBackButton() {
 
 const data = { name: 'help', description: 'Display bot commands and help information.' };
 
-async function execute(message, args) {
-  const categories = Object.keys(commandCategories);
-  
-  // If specific category requested
-  const categoryArg = args.join(' ').toLowerCase();
-  const matchedCategory = categories.find(cat => 
-    cat.toLowerCase().includes(categoryArg) || 
-    cat.split(' ')[1]?.toLowerCase() === categoryArg
-  );
-
-  if (matchedCategory) {
-    const embed = createCategoryEmbed(matchedCategory, commandCategories[matchedCategory]);
-    return message.reply({ embeds: [embed], components: [createBackButton()] });
-  }
-
-  // Show main help menu
+async function execute(message, args, client) {
+  // Always show main help menu with all categories
   const embed = createMainEmbed();
   const components = createNavigationButtons();
   
@@ -172,6 +174,7 @@ async function execute(message, args) {
 
     // Handle category selection
     if (interaction.customId.startsWith('help_')) {
+      const categories = Object.keys(commandCategories);
       const categoryIndex = parseInt(interaction.customId.split('_')[1]);
       const categoryName = categories[categoryIndex];
       

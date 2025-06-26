@@ -135,6 +135,10 @@ async function execute(message) {
     timesUpgraded: 0
   });
 
+  // Update quest progress for pulling cards
+  const { updateQuestProgress } = require('../utils/questSystem.js');
+  await updateQuestProgress(user, 'pull', 1);
+
   await user.save();
 
   // Prepare evolution text
