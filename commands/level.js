@@ -1,27 +1,22 @@
-export const data = { name: 'level', description: 'Level up a card using duplicates.' };
+export const data = { name: 'level', description: 'Level up a card with duplicates.' };
 
 import CardInstance from '../db/models/CardInstance.js';
-import { levelUp } from '../utils/levelSystem.js';
 
-export async function execute(message, args, client) {
-  const [cardName, rawAmount] = args;
-  const amount = parseInt(rawAmount) || 1;
+export async function execute(message, args) {
+  const cardName = args[0];
+  const amount = parseInt(args[1]) || 1;
   const userId = message.author.id;
 
-  // Find all duplicates
-  const cards = await CardInstance.findAll({ where: { userId, cardName } });
-  if (!cards.length) return message.reply('No such card.');
-  const mainCard = cards[0];
+  // Count duplicates
+  const cards = await CardInstance.find({ userId, cardName });
+  if (cards.length < 2) return message.reply('Not enough duplicates!');
 
-  // Level up main card using other duplicates
-  const leveled = levelUp(mainCard, cards.length - 1, amount);
-  mainCard.level += leveled;
-  await mainCard.save();
-
-  // Remove used duplicates
-  for (let i = 0; i < leveled; i++) {
-    await cards[i + 1].destroy();
+  // Only keep one at new level, delete the rest
+  const card = cards[0];
+  card.level += amount;
+  await card.save();
+  for (let i = 1; i < Math.min(cards.length, amount + 1); i++) {
+    await cards[i].deleteOne();
   }
-
-  message.reply(`🔺 ${mainCard.cardName} is now level ${mainCard.level}!`);
+  message.reply(`🔼 ${cardName} leveled up!`);
 }

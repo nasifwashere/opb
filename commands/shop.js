@@ -1,5 +1,5 @@
-export const data = { name: 'shop', description: 'View shop items (coming soon).' };
-
-export async function execute(message, args, client) {
-  message.reply('🛒 Shop system coming soon!');
+export const data = { name: 'shop', description: 'Buy items (planned).' };
+// Shop system not yet implemented.
+export async function execute(message) {
+  message.reply('🛒 The shop is coming soon!');
 }

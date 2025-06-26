@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 const marketListingSchema = new mongoose.Schema({
-  sellerId: { type: String, required: true },
+  sellerId: { type: String, required: true }, // userId field for sellers
   cardName: { type: String, required: true },
   price: { type: Number, required: true },
   isActive: { type: Boolean, default: true }

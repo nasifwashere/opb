@@ -1,6 +1,5 @@
-export const data = { name: 'battle', description: 'Battle a random PvE boss!' };
-// Stubs only. Fill out PvE logic and boss AI as you develop.
-
-export async function execute(message, args, client) {
+export const data = { name: 'battle', description: 'Fight a PvE boss.' };
+// Full turn-based combat logic would be extensive. Here's a stub.
+export async function execute(message) {
   message.reply('⚔️ PvE battle system coming soon!');
 }

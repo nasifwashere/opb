@@ -1,13 +1,14 @@
-export const data = { name: 'lock', description: 'Lock a card.' };
+export const data = { name: 'lock', description: 'Lock a card to prevent accidental sell/evolve.' };
 
 import CardInstance from '../db/models/CardInstance.js';
 
-export async function execute(message, args, client) {
-  const cardName = args.join(' ');
+export async function execute(message, args) {
+  const cardName = args.join(' ').trim();
   const userId = message.author.id;
-  const cardInst = await CardInstance.findOne({ where: { userId, cardName } });
-  if (!cardInst) return message.reply('Card not found.');
-  cardInst.locked = true;
-  await cardInst.save();
-  message.reply(`🔒 Locked ${cardName}.`);
+  const card = await CardInstance.findOne({ userId, cardName });
+  if (!card) return message.reply('You do not own this card.');
+
+  card.locked = true;
+  await card.save();
+  message.reply(`🔒 Locked ${cardName}!`);
 }

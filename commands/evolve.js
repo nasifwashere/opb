@@ -1,25 +1,22 @@
-export const data = { name: 'evolve', description: 'Evolve a card.' };
+export const data = { name: 'level', description: 'Level up a card with duplicates.' };
 
 import CardInstance from '../db/models/CardInstance.js';
-import User from '../db/models/User.js';
-import { getEvolution } from '../utils/evolutionSystem.js';
 
-export async function execute(message, args, client) {
-  const cardName = args.join(' ');
+export async function execute(message, args) {
+  const cardName = args[0];
+  const amount = parseInt(args[1]) || 1;
   const userId = message.author.id;
-  const cardInst = await CardInstance.findOne({ where: { userId, cardName } });
-  if (!cardInst) return message.reply('Card not found.');
-  const user = await User.findOne({ where: { userId } });
 
-  const evo = getEvolution(cardName, cardInst.level, user.saga);
-  if (!evo) return message.reply('You do not meet the evolution requirements.');
-  if (user.beli < evo.cost) return message.reply('Not enough Beli.');
+  // Count duplicates
+  const cards = await CardInstance.find({ userId, cardName });
+  if (cards.length < 2) return message.reply('Not enough duplicates!');
 
-  // Evolve
-  cardInst.cardName = evo.nextId;
-  cardInst.level = 1;
-  await cardInst.save();
-  user.beli -= evo.cost;
-  await user.save();
-  message.reply(`✨ Evolved to **${evo.nextId}**!`);
+  // Only keep one at new level, delete the rest
+  const card = cards[0];
+  card.level += amount;
+  await card.save();
+  for (let i = 1; i < Math.min(cards.length, amount + 1); i++) {
+    await cards[i].deleteOne();
+  }
+  message.reply(`🔼 ${cardName} leveled up!`);
 }

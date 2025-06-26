@@ -1,6 +1,5 @@
-export const data = { name: 'disallow', description: 'Block bot in this channel.' };
-
-// Stub for moderation system
-export async function execute(message, args, client) {
-  message.reply('Channel disallow coming soon!');
+export const data = { name: 'disallow', description: 'Block bot commands in a channel.' };
+// Implementation depends on your channel storage setup.
+export async function execute(message, args) {
+  message.reply('Channel disallow feature coming soon!');
 }

@@ -1,13 +1,14 @@
-export const data = { name: 'market', description: 'View market listings.' };
+export const data = { name: 'market', description: 'View the card market.' };
 
 import MarketListing from '../db/models/MarketListing.js';
 
-export async function execute(message, args, client) {
-  const listings = await MarketListing.findAll({ where: { isActive: true } });
-  if (!listings.length) return message.reply('No cards in the market.');
-  let reply = '**Market Listings:**\n';
+export async function execute(message) {
+  const listings = await MarketListing.find({ isActive: true }).limit(10);
+  if (!listings.length) return message.reply('Market is empty!');
+
+  let reply = '🏪 **Market Listings:**\n';
   listings.forEach(l => {
-    reply += `• ${l.cardName} — ${l.price} Beli (ID: ${l.id})\n`;
+    reply += `ID: \`${l._id}\` – **${l.cardName}** for ${l.price} Beli (Seller: <@${l.sellerId}>)\n`;
   });
   message.reply(reply);
 }
