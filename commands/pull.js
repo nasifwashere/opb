@@ -1,7 +1,7 @@
-import User from '../db/models/User.js';
-import { EmbedBuilder } from 'discord.js';
-import path from 'path';
-import fs from 'fs';
+const User = require('../db/models/User.js');
+const { EmbedBuilder } = require('discord.js');
+const path = require('path');
+const fs = require('fs');
 
 // --- Rank settings and weights ---
 const rankSettings = {
@@ -97,9 +97,9 @@ async function getUserPullState(userId) {
 }
 
 // --- Command Export ---
-export const data = { name: "pull", description: "Pull a random card from the East Blue saga." };
+const data = { name: "pull", description: "Pull a random card from the East Blue saga." };
 
-export async function execute(message) {
+async function execute(message) {
   const userId = message.author.id;
   const user = await getUserPullState(userId);
 
@@ -162,3 +162,6 @@ export async function execute(message) {
 
   await message.reply({ embeds: [embed] });
 }
+
+
+module.exports = { data, execute };

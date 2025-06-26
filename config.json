@@ -1,7 +1,15 @@
 {
-  "prefix": "op",
-  "cooldowns": {
-    "pull": 28800
-  },
-  "defaultSaga": "East Blue"
+  "prefix": "op ",
+  "defaultSaga": "East Blue",
+  "maxTeamSize": 3,
+  "maxStorageSize": 250,
+  "pullCooldown": 28800000,
+  "pullsPerWindow": 3,
+  "exploreCooldown": 120000,
+  "battleCooldown": 300000,
+  "duelCooldown": 600000,
+  "adminRoles": ["Admin", "Moderator"],
+  "defaultCurrency": 500,
+  "marketTax": 0.05,
+  "dailyQuestResetHour": 0
 }

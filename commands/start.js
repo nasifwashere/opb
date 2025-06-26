@@ -1,13 +1,15 @@
-export const data = { name: 'start', description: 'Begin your pirate adventure!' };
+const User = require('../db/models/User.js');
+const fs = require('fs');
+const path = require('path');
 
-import User from '../db/models/User.js';
-import fs from 'fs';
-const config = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url)));
+const data = { name: 'start', description: 'Begin your pirate adventure!' };
+
+const config = JSON.parse(fs.readFileSync(path.join(__dirname, '../config.json')));
 // Load cards.json and find Monkey D. Luffy
-const cards = JSON.parse(fs.readFileSync(new URL('../data/cards.json', import.meta.url)));
+const cards = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/cards.json')));
 const luffyCard = cards.find(c => c.name === "Monkey D. Luffy");
 
-export async function execute(message) {
+async function execute(message) {
   const userId = message.author.id;
   let user = await User.findOne({ userId });
   if (user) return message.reply('You already have a pirate adventure!');
@@ -33,3 +35,5 @@ export async function execute(message) {
 
   message.reply('🏴‍☠️ Your journey begins! You received 1 Monkey D. Luffy and 500 Beli to start your adventure!');
 }
+
+module.exports = { data, execute };

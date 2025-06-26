@@ -1,8 +1,9 @@
-import fs from 'fs';
+const fs = require('fs');
+const path = require('path');
 
-const config = JSON.parse(fs.readFileSync(new URL('../config.json', import.meta.url)));
+const config = JSON.parse(fs.readFileSync(path.join(__dirname, '../config.json')));
 
-export async function handleCommand(message, client) {
+async function handleCommand(message, client) {
   if (!message.content.startsWith(config.prefix)) return;
   const args = message.content.slice(config.prefix.length).trim().split(/ +/);
   const commandName = args.shift().toLowerCase();
@@ -17,3 +18,5 @@ export async function handleCommand(message, client) {
     message.reply('❌ There was an error executing that command.');
   }
 }
+
+module.exports = { handleCommand };

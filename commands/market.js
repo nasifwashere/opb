@@ -1,14 +1,329 @@
-export const data = { name: 'market', description: 'View the card market.' };
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const User = require('../db/models/User.js');
+const MarketListing = require('../db/models/Market.js');
+const fs = require('fs');
+const path = require('path');
 
-import MarketListing from '../db/models/MarketListing.js';
+const configPath = path.resolve('config.json');
+const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
-export async function execute(message) {
-  const listings = await MarketListing.find({ isActive: true }).limit(10);
-  if (!listings.length) return message.reply('Market is empty!');
+const MARKET_TAX = config.marketTax || 0.05;
+const MAX_LISTINGS_PER_USER = 5;
 
-  let reply = '🏪 **Market Listings:**\n';
-  listings.forEach(l => {
-    reply += `ID: \`${l._id}\` – **${l.cardName}** for ${l.price} Beli (Seller: <@${l.sellerId}>)\n`;
-  });
-  message.reply(reply);
+function normalize(str) {
+  return String(str || '').replace(/\s+/g, '').toLowerCase();
 }
+
+function createMarketEmbed(listings, page, totalPages, type = 'all') {
+  const embed = new EmbedBuilder()
+    .setTitle('🏪 Player Marketplace')
+    .setDescription(`Browse and purchase items from other players\n\nShowing: ${type === 'all' ? 'All Items' : type.charAt(0).toUpperCase() + type.slice(1)}`)
+    .setColor(0x2ecc40)
+    .setFooter({ text: `Page ${page + 1}/${totalPages || 1} • Market tax: ${(MARKET_TAX * 100)}%` });
+
+  if (listings.length === 0) {
+    embed.addFields({ name: 'No Listings', value: 'No items are currently for sale in this category.', inline: false });
+    return embed;
+  }
+
+  listings.forEach((listing, index) => {
+    const itemDisplay = listing.type === 'card' 
+      ? `[${listing.itemRank}] ${listing.itemName}${listing.itemLevel ? ` (Lv.${listing.itemLevel})` : ''}`
+      : listing.itemName;
+    
+    const timeLeft = Math.max(0, Math.floor((listing.expiresAt - Date.now()) / (1000 * 60 * 60)));
+    
+    embed.addFields({
+      name: `${index + 1}. ${itemDisplay}`,
+      value: `💰 **${listing.price} Beli**\n👤 Seller: ${listing.sellerName}\n⏰ ${timeLeft}h remaining\n${listing.description ? `📝 ${listing.description}` : ''}`,
+      inline: true
+    });
+  });
+
+  return embed;
+}
+
+function createMarketButtons(page, totalPages, hasMyListings = false) {
+  const navButtons = [
+    new ButtonBuilder()
+      .setCustomId('market_prev')
+      .setLabel('◀️ Previous')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(page === 0),
+    new ButtonBuilder()
+      .setCustomId('market_next')
+      .setLabel('Next ▶️')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(page >= totalPages - 1)
+  ];
+
+  const filterButtons = [
+    new ButtonBuilder()
+      .setCustomId('market_all')
+      .setLabel('🔍 All')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId('market_cards')
+      .setLabel('🃏 Cards')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('market_items')
+      .setLabel('📦 Items')
+      .setStyle(ButtonStyle.Secondary)
+  ];
+
+  const actionButtons = [
+    new ButtonBuilder()
+      .setCustomId('market_buy')
+      .setLabel('💰 Buy Item')
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId('market_list')
+      .setLabel('📝 List Item')
+      .setStyle(ButtonStyle.Primary)
+  ];
+
+  if (hasMyListings) {
+    actionButtons.push(
+      new ButtonBuilder()
+        .setCustomId('market_mylistings')
+        .setLabel('📋 My Listings')
+        .setStyle(ButtonStyle.Secondary)
+    );
+  }
+
+  return [
+    new ActionRowBuilder().addComponents(filterButtons),
+    new ActionRowBuilder().addComponents(actionButtons),
+    new ActionRowBuilder().addComponents(navButtons)
+  ];
+}
+
+async function getMarketListings(type = 'all', page = 0, limit = 6) {
+  const skip = page * limit;
+  let filter = { active: true, expiresAt: { $gt: new Date() } };
+  
+  if (type !== 'all') {
+    filter.type = type === 'cards' ? 'card' : 'item';
+  }
+
+  const listings = await MarketListing.find(filter)
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+  const totalCount = await MarketListing.countDocuments(filter);
+  const totalPages = Math.ceil(totalCount / limit);
+
+  return { listings, totalPages };
+}
+
+const data = { name: 'market', description: 'Browse the player marketplace to buy and sell items.' };
+
+async function execute(message, args) {
+  const userId = message.author.id;
+  const user = await User.findOne({ userId });
+
+  if (!user) return message.reply('Start your journey with `op start` first!');
+
+  let currentPage = 0;
+  let currentType = 'all';
+
+  // Load initial market data
+  let { listings, totalPages } = await getMarketListings(currentType, currentPage);
+  
+  // Check if user has any listings
+  const userListings = await MarketListing.find({ sellerId: userId, active: true });
+  const hasMyListings = userListings.length > 0;
+
+  const embed = createMarketEmbed(listings, currentPage, totalPages, currentType);
+  const components = createMarketButtons(currentPage, totalPages, hasMyListings);
+
+  const marketMessage = await message.reply({ embeds: [embed], components });
+
+  // Button interaction collector
+  const filter = i => i.user.id === userId;
+  const collector = marketMessage.createMessageComponentCollector({ filter, time: 300000 });
+
+  collector.on('collect', async interaction => {
+    await interaction.deferUpdate();
+
+    if (interaction.customId === 'market_prev' && currentPage > 0) {
+      currentPage--;
+    } else if (interaction.customId === 'market_next' && currentPage < totalPages - 1) {
+      currentPage++;
+    } else if (interaction.customId.startsWith('market_') && ['all', 'cards', 'items'].includes(interaction.customId.split('_')[1])) {
+      currentType = interaction.customId.split('_')[1];
+      currentPage = 0;
+    } else if (interaction.customId === 'market_buy') {
+      await interaction.followUp({ 
+        content: 'To buy an item, use: `op market buy <item number>`\n\nExample: `op market buy 1`', 
+        ephemeral: true 
+      });
+      return;
+    } else if (interaction.customId === 'market_list') {
+      await interaction.followUp({ 
+        content: 'To list an item for sale, use: `op market list <type> <item name> <price> [description]`\n\nExamples:\n• `op market list card Luffy 1000 Great starter card!`\n• `op market list item strawhat 500`', 
+        ephemeral: true 
+      });
+      return;
+    } else if (interaction.customId === 'market_mylistings') {
+      const myListings = await MarketListing.find({ sellerId: userId, active: true });
+      if (myListings.length === 0) {
+        await interaction.followUp({ content: 'You have no active listings.', ephemeral: true });
+        return;
+      }
+      
+      let listingText = '**Your Active Listings:**\n\n';
+      myListings.forEach((listing, index) => {
+        const timeLeft = Math.max(0, Math.floor((listing.expiresAt - Date.now()) / (1000 * 60 * 60)));
+        listingText += `${index + 1}. ${listing.itemName} - ${listing.price} Beli (${timeLeft}h left)\n`;
+      });
+      
+      await interaction.followUp({ content: listingText, ephemeral: true });
+      return;
+    }
+
+    // Reload data
+    ({ listings, totalPages } = await getMarketListings(currentType, currentPage));
+    
+    const newEmbed = createMarketEmbed(listings, currentPage, totalPages, currentType);
+    const newComponents = createMarketButtons(currentPage, totalPages, hasMyListings);
+    
+    await marketMessage.edit({ embeds: [newEmbed], components: newComponents });
+  });
+
+  // Handle text commands for buy/list
+  if (args.length > 0) {
+    const subcommand = args[0].toLowerCase();
+    
+    if (subcommand === 'buy') {
+      const itemNumber = parseInt(args[1]);
+      if (!itemNumber || itemNumber < 1 || itemNumber > listings.length) {
+        return message.reply('❌ Invalid item number. Use the number shown in the market listing.');
+      }
+      
+      const listing = listings[itemNumber - 1];
+      if (listing.sellerId === userId) {
+        return message.reply('❌ You cannot buy your own listing!');
+      }
+      
+      if (user.beli < listing.price) {
+        return message.reply(`❌ You don't have enough Beli! You need ${listing.price} but only have ${user.beli}.`);
+      }
+      
+      // Process purchase
+      const seller = await User.findOne({ userId: listing.sellerId });
+      if (!seller) {
+        return message.reply('❌ Seller not found. This listing may be invalid.');
+      }
+      
+      const tax = Math.floor(listing.price * MARKET_TAX);
+      const sellerAmount = listing.price - tax;
+      
+      // Transfer funds
+      user.beli -= listing.price;
+      seller.beli += sellerAmount;
+      
+      // Transfer item
+      if (listing.type === 'card') {
+        if (!user.cards) user.cards = [];
+        user.cards.push({
+          name: listing.itemName,
+          rank: listing.itemRank,
+          level: listing.itemLevel || 1,
+          timesUpgraded: 0
+        });
+      } else {
+        if (!user.inventory) user.inventory = [];
+        user.inventory.push(normalize(listing.itemName));
+      }
+      
+      // Remove listing
+      await MarketListing.findByIdAndUpdate(listing._id, { active: false });
+      
+      await user.save();
+      await seller.save();
+      
+      await message.reply(`✅ Successfully purchased **${listing.itemName}** for ${listing.price} Beli!`);
+      
+    } else if (subcommand === 'list') {
+      const [, type, ...itemParts] = args;
+      if (!type || !['card', 'item'].includes(type)) {
+        return message.reply('Usage: `op market list <card/item> <name> <price> [description]`');
+      }
+      
+      // Parse arguments
+      const priceIndex = itemParts.findIndex(part => !isNaN(parseInt(part)));
+      if (priceIndex === -1) {
+        return message.reply('❌ Please specify a valid price.');
+      }
+      
+      const itemName = itemParts.slice(0, priceIndex).join(' ').trim();
+      const price = parseInt(itemParts[priceIndex]);
+      const description = itemParts.slice(priceIndex + 1).join(' ').trim();
+      
+      if (!itemName || price < 1) {
+        return message.reply('❌ Invalid item name or price.');
+      }
+      
+      // Check user's active listings
+      const activeListings = await MarketListing.countDocuments({ sellerId: userId, active: true });
+      if (activeListings >= MAX_LISTINGS_PER_USER) {
+        return message.reply(`❌ You can only have ${MAX_LISTINGS_PER_USER} active listings at a time.`);
+      }
+      
+      // Check if user owns the item
+      let hasItem = false;
+      let itemRank = null;
+      let itemLevel = null;
+      
+      if (type === 'card') {
+        const userCard = user.cards?.find(c => normalize(c.name) === normalize(itemName));
+        if (userCard) {
+          hasItem = true;
+          itemRank = userCard.rank;
+          itemLevel = userCard.level || 1;
+          
+          // Remove from user's collection
+          const cardIndex = user.cards.findIndex(c => normalize(c.name) === normalize(itemName));
+          user.cards.splice(cardIndex, 1);
+        }
+      } else {
+        const itemIndex = user.inventory?.findIndex(i => normalize(i) === normalize(itemName));
+        if (itemIndex !== -1) {
+          hasItem = true;
+          user.inventory.splice(itemIndex, 1);
+        }
+      }
+      
+      if (!hasItem) {
+        return message.reply(`❌ You don't own "${itemName}".`);
+      }
+      
+      // Create listing
+      const listing = new MarketListing({
+        sellerId: userId,
+        sellerName: message.author.username,
+        type: type,
+        itemName: itemName,
+        itemRank: itemRank,
+        itemLevel: itemLevel,
+        price: price,
+        description: description || undefined
+      });
+      
+      await listing.save();
+      await user.save();
+      
+      await message.reply(`✅ Listed **${itemName}** for ${price} Beli! It will expire in 7 days.`);
+    }
+  }
+
+  collector.on('end', () => {
+    marketMessage.edit({ components: [] }).catch(() => {});
+  });
+}
+
+
+module.exports = { data, execute };

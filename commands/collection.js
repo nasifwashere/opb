@@ -1,7 +1,7 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
-import fs from 'fs';
-import path from 'path';
-import User from '../db/models/User.js';
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
+const User = require('../db/models/User.js');
 
 const MAX_STORAGE = 250;
 
@@ -48,7 +48,8 @@ function cardEmbed(cardInstance, cardDef, ownerName, index, total, user) {
   const attackLow = Math.floor(power / 5);
   const attackHigh = Math.floor(power / 3);
   const rankSet = rankSettings[cardDef.rank] || {};
-  let desc = `**${cardDef.name}**\n${cardDef.shortDesc}\n\nOwner: ${ownerName}\nLevel: ${level}\nPower: ${power}\nHealth: ${health}\nSpeed: ${speed}\nAttack: ${attackLow}–${attackHigh}\nType: Combat${boostText}`;
+  const lockStatus = cardInstance.locked ? ' 🔒' : '';
+  let desc = `**${cardDef.name}**${lockStatus}\n${cardDef.shortDesc}\n\nOwner: ${ownerName}\nLevel: ${level}\nPower: ${power}\nHealth: ${health}\nSpeed: ${speed}\nAttack: ${attackLow}–${attackHigh}\nType: Combat${boostText}`;
 
   const embed = new EmbedBuilder()
     .setDescription(desc)
@@ -82,9 +83,9 @@ function buildRow(cardIndex, totalCards) {
   );
 }
 
-export const data = { name: "collection", description: "View your card collection." };
+const data = { name: "collection", description: "View your card collection." };
 
-export async function execute(message, args) {
+async function execute(message, args) {
   const userId = message.author.id;
   const user = await User.findOne({ userId });
 
@@ -151,3 +152,6 @@ export async function execute(message, args) {
     msg.edit({ components: [] });
   });
 }
+
+
+module.exports = { data, execute };

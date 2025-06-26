@@ -1,45 +1,63 @@
-import { Client, GatewayIntentBits, Collection } from 'discord.js';
-import dotenv from 'dotenv';
-import fs from 'fs';
-import path from 'path';
-import { connectDB } from './db/models/index.js';
+const { Client, Collection, GatewayIntentBits } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
+const dotenv = require('dotenv');
+const { connectDB } = require('./db/database.js');
 
 dotenv.config();
-
-await connectDB(); // Connect to MongoDB before starting the bot
 
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
-  ]
+    GatewayIntentBits.MessageContent,
+  ],
 });
 
 client.commands = new Collection();
 
-// Dynamic command loader
-const commandFiles = fs.readdirSync('./commands').filter(f => f.endsWith('.js'));
-for (const file of commandFiles) {
-  const command = await import(`./commands/${file}`);
-  client.commands.set(command.data.name, command);
-}
+// Load commands
+const commandsPath = path.join(__dirname, 'commands');
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
-// Event loader
-const eventFiles = fs.readdirSync('./events').filter(f => f.endsWith('.js'));
-for (const file of eventFiles) {
-  const event = await import(`./events/${file}`);
-  if (event.once) {
-    client.once(event.name, (...args) => event.execute(...args, client));
+for (const file of commandFiles) {
+  const filePath = path.join(commandsPath, file);
+  const command = require(filePath);
+  if ('data' in command && 'execute' in command) {
+    client.commands.set(command.data.name, command);
+    console.log(`[COMMAND] Loaded ${command.data.name}`);
   } else {
-    client.on(event.name, (...args) => event.execute(...args, client));
+    console.log(`[WARNING] The command at ${filePath} is missing required "data" or "execute" property.`);
   }
 }
 
-// Check for token
-if (!process.env.DISCORD_TOKEN) {
-  console.error('Missing DISCORD_TOKEN in .env file.');
-  process.exit(1);
+// Load events
+const eventsPath = path.join(__dirname, 'events');
+const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
+
+for (const file of eventFiles) {
+  const filePath = path.join(eventsPath, file);
+  const event = require(filePath);
+  if (event.once) {
+    client.once(event.name, (...args) => event.execute(...args));
+  } else {
+    client.on(event.name, (...args) => event.execute(...args));
+  }
+  console.log(`[EVENT] Loaded ${event.name}`);
 }
 
-client.login(process.env.DISCORD_TOKEN);
+// Initialize database and start bot
+async function startBot() {
+  try {
+    await connectDB();
+    console.log('[DATABASE] Connected successfully');
+    
+    await client.login(process.env.DISCORD_TOKEN);
+    console.log('[BOT] Discord bot logged in successfully');
+  } catch (error) {
+    console.error('[ERROR] Failed to start bot:', error);
+    process.exit(1);
+  }
+}
+
+startBot();

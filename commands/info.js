@@ -1,7 +1,7 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
-import fs from 'fs';
-import path from 'path';
-import User from '../db/models/User.js';
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
+const User = require('../db/models/User.js');
 
 // Load card data
 const cardsPath = path.resolve('data', 'cards.json');
@@ -79,7 +79,8 @@ function infoEmbed(card, ownedCount, userCard) {
   const rankSet = rankSettings[card.rank] || {};
   let level = userCard?.level || userCard?.timesUpgraded + 1 || 1;
   if (!level) level = 1;
-  let title = `**[${card.rank}] ${card.name} - Lv. ${level}**`;
+  const lockStatus = userCard?.locked ? ' 🔒' : '';
+  let title = `**[${card.rank}] ${card.name}${lockStatus} - Lv. ${level}**`;
   let desc = `${card.shortDesc}\n${attackRange(card.phs)}`;
   if (ownedCount === 0) desc += "\n\n*You do not own this card. Use `op pull` or trade to obtain it.*";
 
@@ -117,9 +118,9 @@ function buildRow(prev, canEvolve, next) {
   return new ActionRowBuilder().addComponents(buttons);
 }
 
-export const data = { name: "info", description: "View a card's detailed profile." };
+const data = { name: "info", description: "View a card's detailed profile." };
 
-export async function execute(message, args) {
+async function execute(message, args) {
   const userId = message.author.id;
   const query = args.join(' ').trim();
   if (!query) return message.reply('Usage: `op info <card name or ID>`');
@@ -181,3 +182,6 @@ export async function execute(message, args) {
     msg.edit({ components: [] }).catch(() => {});
   });
 }
+
+
+module.exports = { data, execute };

@@ -1,8 +1,8 @@
-import User from '../db/models/User.js';
+const User = require('../db/models/User.js');
 
-export const data = { name: 'inventory', description: 'View your inventory items.' };
+const data = { name: 'inventory', description: 'View your inventory items.' };
 
-export async function execute(message, args, client) {
+async function execute(message, args, client) {
   const userId = message.author.id;
   const user = await User.findOne({ userId });
 
@@ -20,3 +20,6 @@ export async function execute(message, args, client) {
   }
   message.reply(reply);
 }
+
+
+module.exports = { data, execute };

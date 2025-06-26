@@ -1,9 +1,11 @@
-import { handleCommand } from '../utils/commandHandler.js';
+const { handleCommand } = require('../utils/commandHandler.js');
 
-export const name = 'messageCreate';
-export const once = false;
+const name = 'messageCreate';
+const once = false;
 
-export async function execute(message, client) {
+async function execute(message, client) {
   if (message.author.bot) return;
   await handleCommand(message, client);
 }
+
+module.exports = { name, once, execute };

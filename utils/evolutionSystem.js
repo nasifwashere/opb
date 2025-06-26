@@ -1,7 +1,8 @@
-import fs from 'fs';
-const cards = JSON.parse(fs.readFileSync(new URL('../data/cards.json', import.meta.url)));
+const fs = require('fs');
+const path = require('path');
+const cards = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/cards.json')));
 
-export function getEvolution(cardName, level, saga) {
+function getEvolution(cardName, level, saga) {
   const card = cards.find(c => c.name === cardName);
   if (!card || !card.evolution) return null;
   const evo = card.evolution;
@@ -13,3 +14,5 @@ export function getEvolution(cardName, level, saga) {
   }
   return null;
 }
+
+module.exports = { getEvolution };

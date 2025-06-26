@@ -1,5 +1,5 @@
-import { EmbedBuilder } from 'discord.js';
-import User from '../db/models/User.js';
+const { EmbedBuilder } = require('discord.js');
+const User = require('../db/models/User.js');
 
 // Updated: Use "strawhat" (no spaces) as the item name!
 const ROMANCE_DAWN_STAGES = [
@@ -77,9 +77,9 @@ function prettyTime(ms) {
 // Change this to your Discord user ID for immunity
 const IMMUNE_USER_ID = "1257718161298690119"; // nasif-cloud
 
-export const data = { name: "explore", description: "Begin or continue your adventure in Romance Dawn Saga!" };
+const data = { name: "explore", description: "Begin or continue your adventure in Romance Dawn Saga!" };
 
-export async function execute(message, args, client) {
+async function execute(message, args, client) {
   const userId = message.author.id;
 
   // --- MOD COMMAND: op explore reset me ---
@@ -259,3 +259,6 @@ export async function execute(message, args, client) {
     await user.save();
   }
 }
+
+
+module.exports = { data, execute };

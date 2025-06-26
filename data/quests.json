@@ -1,0 +1,568 @@
+[
+  {
+    "questId": "daily_first_pull",
+    "name": "Daily Card Pull",
+    "description": "Pull your first card of the day to test your luck!",
+    "type": "daily",
+    "requirements": [
+      {
+        "type": "pull",
+        "target": 1
+      }
+    ],
+    "rewards": [
+      {
+        "type": "beli",
+        "amount": 100
+      },
+      {
+        "type": "xp",
+        "amount": 25
+      }
+    ],
+    "unlockRequirements": {},
+    "active": true
+  },
+  {
+    "questId": "daily_explore_adventure",
+    "name": "Continue Your Adventure",
+    "description": "Take 3 exploration steps to progress through your saga.",
+    "type": "daily",
+    "requirements": [
+      {
+        "type": "explore",
+        "target": 3
+      }
+    ],
+    "rewards": [
+      {
+        "type": "beli",
+        "amount": 150
+      },
+      {
+        "type": "xp",
+        "amount": 50
+      }
+    ],
+    "unlockRequirements": {},
+    "active": true
+  },
+  {
+    "questId": "daily_battle_victory",
+    "name": "Battle Training",
+    "description": "Win 2 battles to prove your strength!",
+    "type": "daily",
+    "requirements": [
+      {
+        "type": "battle_win",
+        "target": 2
+      }
+    ],
+    "rewards": [
+      {
+        "type": "beli",
+        "amount": 200
+      },
+      {
+        "type": "xp",
+        "amount": 75
+      },
+      {
+        "type": "item",
+        "itemName": "healingpotion"
+      }
+    ],
+    "unlockRequirements": {},
+    "active": true
+  },
+  {
+    "questId": "daily_team_builder",
+    "name": "Crew Assembly",
+    "description": "Add or change a card in your team to optimize your crew.",
+    "type": "daily",
+    "requirements": [
+      {
+        "type": "team_change",
+        "target": 1
+      }
+    ],
+    "rewards": [
+      {
+        "type": "beli",
+        "amount": 75
+      },
+      {
+        "type": "xp",
+        "amount": 25
+      }
+    ],
+    "unlockRequirements": {},
+    "active": true
+  },
+  {
+    "questId": "daily_level_up",
+    "name": "Power Enhancement",
+    "description": "Level up any card to increase its power.",
+    "type": "daily",
+    "requirements": [
+      {
+        "type": "level_up",
+        "target": 1
+      }
+    ],
+    "rewards": [
+      {
+        "type": "beli",
+        "amount": 250
+      },
+      {
+        "type": "xp",
+        "amount": 100
+      }
+    ],
+    "unlockRequirements": {},
+    "active": true
+  },
+  {
+    "questId": "weekly_collection_master",
+    "name": "Collection Master",
+    "description": "Pull 15 cards this week to expand your collection.",
+    "type": "weekly",
+    "requirements": [
+      {
+        "type": "pull",
+        "target": 15
+      }
+    ],
+    "rewards": [
+      {
+        "type": "beli",
+        "amount": 1000
+      },
+      {
+        "type": "xp",
+        "amount": 300
+      },
+      {
+        "type": "item",
+        "itemName": "luckycharm"
+      }
+    ],
+    "unlockRequirements": {},
+    "active": true
+  },
+  {
+    "questId": "weekly_battle_champion",
+    "name": "Battle Champion",
+    "description": "Win 10 battles this week to prove your dominance.",
+    "type": "weekly",
+    "requirements": [
+      {
+        "type": "battle_win",
+        "target": 10
+      }
+    ],
+    "rewards": [
+      {
+        "type": "beli",
+        "amount": 1500
+      },
+      {
+        "type": "xp",
+        "amount": 500
+      },
+      {
+        "type": "item",
+        "itemName": "powerboost"
+      }
+    ],
+    "unlockRequirements": {},
+    "active": true
+  },
+  {
+    "questId": "weekly_explorer",
+    "name": "Grand Line Explorer",
+    "description": "Complete 20 exploration steps this week.",
+    "type": "weekly",
+    "requirements": [
+      {
+        "type": "explore",
+        "target": 20
+      }
+    ],
+    "rewards": [
+      {
+        "type": "beli",
+        "amount": 800
+      },
+      {
+        "type": "xp",
+        "amount": 400
+      },
+      {
+        "type": "item",
+        "itemName": "treasuremapfragment"
+      }
+    ],
+    "unlockRequirements": {},
+    "active": true
+  },
+  {
+    "questId": "weekly_evolver",
+    "name": "Evolution Specialist",
+    "description": "Evolve 3 cards this week to unlock their true potential.",
+    "type": "weekly",
+    "requirements": [
+      {
+        "type": "evolve",
+        "target": 3
+      }
+    ],
+    "rewards": [
+      {
+        "type": "beli",
+        "amount": 2000
+      },
+      {
+        "type": "xp",
+        "amount": 600
+      },
+      {
+        "type": "card",
+        "itemName": "Marine Recruit",
+        "rank": "C"
+      }
+    ],
+    "unlockRequirements": {},
+    "active": true
+  },
+  {
+    "questId": "weekly_merchant",
+    "name": "Market Trader",
+    "description": "Make 5 market transactions (buying or selling) this week.",
+    "type": "weekly",
+    "requirements": [
+      {
+        "type": "market_transaction",
+        "target": 5
+      }
+    ],
+    "rewards": [
+      {
+        "type": "beli",
+        "amount": 1200
+      },
+      {
+        "type": "xp",
+        "amount": 300
+      }
+    ],
+    "unlockRequirements": {},
+    "active": true
+  },
+  {
+    "questId": "story_first_steps",
+    "name": "First Steps to Piracy",
+    "description": "Complete your first 5 exploration steps in Romance Dawn.",
+    "type": "story",
+    "requirements": [
+      {
+        "type": "explore",
+        "target": 5
+      }
+    ],
+    "rewards": [
+      {
+        "type": "beli",
+        "amount": 500
+      },
+      {
+        "type": "xp",
+        "amount": 200
+      },
+      {
+        "type": "item",
+        "itemName": "strawhat"
+      }
+    ],
+    "unlockRequirements": {
+      "saga": "East Blue"
+    },
+    "active": true
+  },
+  {
+    "questId": "story_first_crew",
+    "name": "Assembling the Crew",
+    "description": "Build your first complete team of 3 cards.",
+    "type": "story",
+    "requirements": [
+      {
+        "type": "team_full",
+        "target": 1
+      }
+    ],
+    "rewards": [
+      {
+        "type": "beli",
+        "amount": 300
+      },
+      {
+        "type": "xp",
+        "amount": 150
+      },
+      {
+        "type": "card",
+        "itemName": "Coby",
+        "rank": "C"
+      }
+    ],
+    "unlockRequirements": {
+      "saga": "East Blue"
+    },
+    "active": true
+  },
+  {
+    "questId": "story_first_victory",
+    "name": "First Taste of Victory",
+    "description": "Win your first battle against a boss.",
+    "type": "story",
+    "requirements": [
+      {
+        "type": "battle_win",
+        "target": 1
+      }
+    ],
+    "rewards": [
+      {
+        "type": "beli",
+        "amount": 400
+      },
+      {
+        "type": "xp",
+        "amount": 100
+      },
+      {
+        "type": "item",
+        "itemName": "healingpotion"
+      }
+    ],
+    "unlockRequirements": {
+      "saga": "East Blue"
+    },
+    "active": true
+  },
+  {
+    "questId": "story_card_collector",
+    "name": "Building a Collection",
+    "description": "Collect 10 different cards through pulls.",
+    "type": "story",
+    "requirements": [
+      {
+        "type": "pull",
+        "target": 10
+      }
+    ],
+    "rewards": [
+      {
+        "type": "beli",
+        "amount": 750
+      },
+      {
+        "type": "xp",
+        "amount": 250
+      },
+      {
+        "type": "item",
+        "itemName": "luckycharm"
+      }
+    ],
+    "unlockRequirements": {
+      "saga": "East Blue"
+    },
+    "active": true
+  },
+  {
+    "questId": "story_first_evolution",
+    "name": "Unlocking Potential",
+    "description": "Evolve your first card to a stronger form.",
+    "type": "story",
+    "requirements": [
+      {
+        "type": "evolve",
+        "target": 1
+      }
+    ],
+    "rewards": [
+      {
+        "type": "beli",
+        "amount": 1000
+      },
+      {
+        "type": "xp",
+        "amount": 400
+      },
+      {
+        "type": "item",
+        "itemName": "trainingmanual"
+      }
+    ],
+    "unlockRequirements": {
+      "saga": "East Blue",
+      "completedQuests": ["story_first_steps"]
+    },
+    "active": true
+  },
+  {
+    "questId": "story_romance_dawn_complete",
+    "name": "Romance Dawn Saga Complete",
+    "description": "Finish all exploration stages in Romance Dawn saga.",
+    "type": "story",
+    "requirements": [
+      {
+        "type": "saga_complete",
+        "target": 1
+      }
+    ],
+    "rewards": [
+      {
+        "type": "beli",
+        "amount": 2000
+      },
+      {
+        "type": "xp",
+        "amount": 800
+      },
+      {
+        "type": "card",
+        "itemName": "Roronoa Zoro",
+        "rank": "B"
+      }
+    ],
+    "unlockRequirements": {
+      "saga": "East Blue",
+      "completedQuests": ["story_first_evolution"]
+    },
+    "active": true
+  },
+  {
+    "questId": "story_power_training",
+    "name": "Training for Power",
+    "description": "Level up cards 5 times to increase your team's strength.",
+    "type": "story",
+    "requirements": [
+      {
+        "type": "level_up",
+        "target": 5
+      }
+    ],
+    "rewards": [
+      {
+        "type": "beli",
+        "amount": 1500
+      },
+      {
+        "type": "xp",
+        "amount": 600
+      },
+      {
+        "type": "item",
+        "itemName": "powerboost"
+      }
+    ],
+    "unlockRequirements": {
+      "saga": "East Blue",
+      "completedQuests": ["story_first_crew"]
+    },
+    "active": true
+  },
+  {
+    "questId": "story_market_introduction",
+    "name": "Introduction to Trading",
+    "description": "Make your first market transaction (buy or sell).",
+    "type": "story",
+    "requirements": [
+      {
+        "type": "market_transaction",
+        "target": 1
+      }
+    ],
+    "rewards": [
+      {
+        "type": "beli",
+        "amount": 500
+      },
+      {
+        "type": "xp",
+        "amount": 200
+      }
+    ],
+    "unlockRequirements": {
+      "saga": "East Blue",
+      "completedQuests": ["story_card_collector"]
+    },
+    "active": true
+  },
+  {
+    "questId": "story_advanced_explorer",
+    "name": "Advanced Explorer",
+    "description": "Complete 25 exploration steps across all sagas.",
+    "type": "story",
+    "requirements": [
+      {
+        "type": "explore",
+        "target": 25
+      }
+    ],
+    "rewards": [
+      {
+        "type": "beli",
+        "amount": 3000
+      },
+      {
+        "type": "xp",
+        "amount": 1000
+      },
+      {
+        "type": "item",
+        "itemName": "treasuremapfragment"
+      }
+    ],
+    "unlockRequirements": {
+      "saga": "Alabasta",
+      "completedQuests": ["story_romance_dawn_complete"]
+    },
+    "active": true
+  },
+  {
+    "questId": "story_rank_up_specialist",
+    "name": "Rank Up Specialist", 
+    "description": "Evolve cards to reach A rank or higher 3 times.",
+    "type": "story",
+    "requirements": [
+      {
+        "type": "evolve_rank_a",
+        "target": 3
+      }
+    ],
+    "rewards": [
+      {
+        "type": "beli",
+        "amount": 5000
+      },
+      {
+        "type": "xp",
+        "amount": 1500
+      },
+      {
+        "type": "card",
+        "itemName": "Nami (Climatact, Alabasta)",
+        "rank": "B"
+      }
+    ],
+    "unlockRequirements": {
+      "saga": "Water 7",
+      "completedQuests": ["story_advanced_explorer"]
+    },
+    "active": true
+  }
+]

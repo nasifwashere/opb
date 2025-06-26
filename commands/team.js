@@ -1,7 +1,7 @@
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import User from '../db/models/User.js';
-import fs from 'fs';
-import path from 'path';
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const User = require('../db/models/User.js');
+const fs = require('fs');
+const path = require('path');
 
 // Load card definitions
 const cardsPath = path.resolve('data', 'cards.json');
@@ -53,8 +53,9 @@ function buildTeamEmbed(teamCards, username, totalPower) {
   let fields = [];
   for (let i = 0; i < teamCards.length; i++) {
     const card = teamCards[i];
+    const lockStatus = card.locked ? ' 🔒' : '';
     fields.push({
-      name: `Lv. ${card.level} ${card.displayName}`,
+      name: `Lv. ${card.level} ${card.displayName}${lockStatus}`,
       value: `[Card Image](${card.image})`,
       inline: true,
     });
@@ -86,12 +87,12 @@ function buildTeamEmbed(teamCards, username, totalPower) {
   return embed;
 }
 
-export const data = {
+const data = {
   name: 'team',
   description: 'Manage and view your crew.',
 };
 
-export async function execute(message, args) {
+async function execute(message, args) {
   const userId = message.author.id;
   const username = message.author.username;
   let [sub, ...rest] = args;
@@ -164,3 +165,6 @@ export async function execute(message, args) {
   // --- Invalid subcommand ---
   return message.reply("Invalid subcommand. Use `op team`, `op team add <card>`, or `op team remove <card>`.");
 }
+
+
+module.exports = { data, execute };

@@ -1,6 +1,8 @@
-export const name = 'ready';
-export const once = true;
+const name = 'ready';
+const once = true;
 
-export function execute(client) {
+function execute(client) {
   console.log(`[READY] Logged in as ${client.user.tag}!`);
 }
+
+module.exports = { name, once, execute };

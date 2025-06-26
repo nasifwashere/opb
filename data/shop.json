@@ -1,0 +1,119 @@
+{
+  "items": [
+    {
+      "name": "Healing Potion",
+      "price": 100,
+      "description": "Restores 50 HP to a card during battle",
+      "type": "item",
+      "available": true,
+      "category": "consumable"
+    },
+    {
+      "name": "Power Boost",
+      "price": 200,
+      "description": "Temporarily increases attack damage by 25% for one battle",
+      "type": "boost",
+      "available": true,
+      "duration": 300000
+    },
+    {
+      "name": "Lucky Charm",
+      "price": 150,
+      "description": "Slightly increases rare card pull chances",
+      "type": "item",
+      "available": true,
+      "unique": false
+    },
+    {
+      "name": "Training Manual",
+      "price": 300,
+      "description": "Reduces level-up cost by 50% for next upgrade",
+      "type": "item",
+      "available": true,
+      "category": "enhancement"
+    },
+    {
+      "name": "Treasure Map Fragment",
+      "price": 500,
+      "description": "Mysterious map piece - collect all 3 for a special reward",
+      "type": "item",
+      "available": true,
+      "unique": false
+    }
+  ],
+  "cards": [
+    {
+      "name": "Training Dummy",
+      "price": 250,
+      "description": "Basic practice card for beginners",
+      "type": "card",
+      "rank": "C",
+      "available": true,
+      "saga": "East Blue"
+    },
+    {
+      "name": "Marine Recruit",
+      "price": 400,
+      "description": "Standard Navy soldier card",
+      "type": "card",
+      "rank": "C",
+      "available": true,
+      "saga": "East Blue"
+    },
+    {
+      "name": "Pirate Grunt",
+      "price": 400,
+      "description": "Common pirate crew member",
+      "type": "card",
+      "rank": "C",
+      "available": true,
+      "saga": "East Blue"
+    }
+  ],
+  "boosts": [
+    {
+      "name": "XP Booster",
+      "price": 300,
+      "description": "Doubles XP gain from all activities for 1 hour",
+      "type": "boost",
+      "available": true,
+      "duration": 3600000,
+      "effect": "double_xp"
+    },
+    {
+      "name": "Beli Multiplier",
+      "price": 400,
+      "description": "Increases Beli rewards by 50% for 1 hour",
+      "type": "boost",
+      "available": true,
+      "duration": 3600000,
+      "effect": "beli_boost"
+    },
+    {
+      "name": "Pull Refresh",
+      "price": 600,
+      "description": "Instantly refreshes your pull cooldown",
+      "type": "boost",
+      "available": true,
+      "effect": "reset_pull_cooldown"
+    },
+    {
+      "name": "Battle Energy",
+      "price": 250,
+      "description": "Removes battle cooldown for 30 minutes",
+      "type": "boost",
+      "available": true,
+      "duration": 1800000,
+      "effect": "no_battle_cooldown"
+    },
+    {
+      "name": "Explorer's Spirit",
+      "price": 200,
+      "description": "Reduces exploration cooldown by 75% for 2 hours",
+      "type": "boost",
+      "available": true,
+      "duration": 7200000,
+      "effect": "fast_explore"
+    }
+  ]
+}

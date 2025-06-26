@@ -1,4 +1,4 @@
-import User from '../db/models/User.js';
+const User = require('../db/models/User.js');
 
 // Util: Normalize name for fuzzy match (lowercase, no spaces)
 function normalize(str) {
@@ -11,10 +11,10 @@ function fuzzyFind(arr, target) {
   return arr.find(i => normalize(i) === normTarget) || null;
 }
 
-export const data = { name: 'equip', description: 'Equip an item to a card.' };
+const data = { name: 'equip', description: 'Equip an item to a card.' };
 
 // Usage: op equip strawhat money d luffy
-export async function execute(message, args, client) {
+async function execute(message, args, client) {
   const userId = message.author.id;
   const [itemName, ...cardParts] = args;
   const cardName = cardParts.join(' ');
@@ -58,3 +58,6 @@ export async function execute(message, args, client) {
   await user.save();
   return message.reply(`✅ Equipped ${ownedItem} to ${cardObj.name}!`);
 }
+
+
+module.exports = { data, execute };

@@ -1,14 +1,14 @@
-import User from '../db/models/User.js';
+const User = require('../db/models/User.js');
 
 // Util: Normalize for fuzzy matching
 function normalize(str) {
   return String(str || '').replace(/\s+/g, '').toLowerCase();
 }
 
-export const data = { name: 'unequip', description: 'Unequip an item from a card.' };
+const data = { name: 'unequip', description: 'Unequip an item from a card.' };
 
 // Usage: op unequip luffy
-export async function execute(message, args, client) {
+async function execute(message, args, client) {
   const userId = message.author.id;
   const cardName = args.join(' ');
   if (!cardName) return message.reply('Usage: op unequip [card]');
@@ -34,3 +34,6 @@ export async function execute(message, args, client) {
   await user.save();
   return message.reply(`✅ Unequipped ${unequippedItem} from ${cardName}!`);
 }
+
+
+module.exports = { data, execute };

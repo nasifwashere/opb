@@ -9,7 +9,7 @@ function findUserCard(user, cardName) {
   return user.cards?.find(c => normalize(c.name) === normalize(cardName));
 }
 
-const data = { name: 'lock', description: 'Lock a card to prevent it from being sold or traded.' };
+const data = { name: 'unlock', description: 'Unlock a card to allow selling or trading.' };
 
 async function execute(message, args) {
   const userId = message.author.id;
@@ -18,7 +18,7 @@ async function execute(message, args) {
   if (!user) return message.reply('Start your journey with `op start` first!');
 
   if (args.length === 0) {
-    return message.reply('Usage: `op lock <card name>`\n\nLocking a card prevents it from being sold, traded, or accidentally deleted.');
+    return message.reply('Usage: `op unlock <card name>`\n\nUnlocking a card allows it to be sold or traded again.');
   }
 
   const cardName = args.join(' ').trim();
@@ -29,26 +29,26 @@ async function execute(message, args) {
     return message.reply(`❌ You don't own "${cardName}".`);
   }
 
-  // Check if card is already locked
-  if (userCard.locked) {
-    return message.reply(`❌ "${userCard.name}" is already locked.`);
+  // Check if card is locked
+  if (!userCard.locked) {
+    return message.reply(`❌ "${userCard.name}" is not locked.`);
   }
 
-  // Lock the card
+  // Unlock the card
   const cardIndex = user.cards.findIndex(c => normalize(c.name) === normalize(userCard.name));
-  user.cards[cardIndex].locked = true;
+  user.cards[cardIndex].locked = false;
 
   await user.save();
 
   // Create success embed
   const embed = new EmbedBuilder()
-    .setTitle('🔒 Card Locked!')
-    .setDescription(`**${userCard.name}** has been locked and is now protected from:`)
+    .setTitle('🔓 Card Unlocked!')
+    .setDescription(`**${userCard.name}** has been unlocked.`)
     .addFields(
-      { name: 'Protection', value: '• Selling\n• Trading\n• Accidental deletion', inline: false },
-      { name: 'Note', value: 'Use `op unlock <card name>` to remove protection', inline: false }
+      { name: 'Status', value: 'This card can now be sold or traded', inline: false },
+      { name: 'Note', value: 'Use `op lock <card name>` to protect it again', inline: false }
     )
-    .setColor(0xe67e22);
+    .setColor(0x2ecc40);
 
   await message.reply({ embeds: [embed] });
 }
