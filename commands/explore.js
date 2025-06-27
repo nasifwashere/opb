@@ -18,6 +18,7 @@ const ROMANCE_DAWN_STAGES = [
       { type: "none" },
       { type: "none" },
       { type: "none" },
+      { type: "none" },
     ],
   },
   { type: "card", title: "Recruit: Coby", desc: "You meet and recruit **Coby**! He's now part of your crew.", card: { name: "Coby", rank: "C" } },
@@ -68,7 +69,7 @@ function addXP(user, amount) {
   const xpBoost = user.activeBoosts?.find(boost => 
     boost.type === 'double_xp' && boost.expiresAt > Date.now()
   );
-  
+
   const finalAmount = xpBoost ? amount * 2 : amount;
   user.xp = (user.xp || 0) + finalAmount;
 }
@@ -105,7 +106,7 @@ function createBossBattleEmbed(boss, playerTeam, battleLog, turn) {
     const hpBar = createHpBar(card.currentHp, card.hp);
     teamText += `**${card.name}** (Lv.${card.level})\nHP: ${hpBar} ${card.currentHp}/${card.hp}\n\n`;
   });
-  
+
   embed.addFields({
     name: '🏴‍☠️ Your Team',
     value: teamText || 'No team members',
@@ -161,8 +162,7 @@ function createHpBar(current, max) {
   const barLength = 10;
   const filledBars = Math.round(percentage * barLength);
   const emptyBars = barLength - filledBars;
-  
-  return '█'.repeat(filledBars) + '░'.repeat(emptyBars);
+   return '█'.repeat(filledBars) + '░'.repeat(emptyBars);
 }
 
 // Change this to your Discord user ID for immunity
@@ -293,7 +293,7 @@ async function execute(message, args, client) {
       // Start interactive boss battle
       const { calculateBattleStats } = require('../utils/battleSystem.js');
       const playerTeam = calculateBattleStats(user);
-      
+
       if (playerTeam.length === 0) {
         blockProgress = true;
         return message.reply({
@@ -375,13 +375,13 @@ async function execute(message, args, client) {
   if (!blockProgress) {
     // Update quest progress
     const { updateQuestProgress } = require('../utils/questSystem.js');
-    
+
     if (stageData.type === "battle" || stageData.type === "boss") {
       await updateQuestProgress(user, 'battle_win', 1);
     }
-    
+
     await updateQuestProgress(user, 'explore', 1);
-    
+
     user.exploreStage = Number(stage) + 1;
     user.exploreLast = immune ? 0 : now;
     user.exploreLossCooldown = 0;
@@ -390,6 +390,5 @@ async function execute(message, args, client) {
     await user.save();
   }
 }
-
 
 module.exports = { data, execute };

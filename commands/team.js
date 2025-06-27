@@ -92,6 +92,16 @@ const data = {
   description: 'Manage and view your crew.',
 };
 
+function normalize(str) {
+  return String(str || '').replace(/\s+/g, '').toLowerCase();
+}
+
+function fuzzyMatch(query, target) {
+  const normalizedQuery = normalize(query);
+  const normalizedTarget = normalize(target);
+  return normalizedTarget.includes(normalizedQuery) || normalizedQuery.includes(normalizedTarget);
+}
+
 async function execute(message, args) {
   const userId = message.author.id;
   const username = message.author.username;
@@ -137,8 +147,7 @@ async function execute(message, args) {
   // --- Add card to team ---
   if (sub === "add") {
     const cardName = rest.join(' ').trim();
-    if (!cardName) return message.reply("Usage: `op team add <card name>`");
-    const userCard = findUserCardInstance(user, cardName);
+        const userCard = user.cards?.find(c => fuzzyMatch(cardName, c.name || c.cardName));
     if (!userCard) return message.reply("You do not own that card.");
     if (user.team?.some(n => n.toLowerCase() === userCard.name.toLowerCase()))
       return message.reply("That card is already in your crew!");
@@ -153,9 +162,8 @@ async function execute(message, args) {
   // --- Remove card from team ---
   if (sub === "remove") {
     const cardName = rest.join(' ').trim();
-    if (!cardName) return message.reply("Usage: `op team remove <card name>`");
-    if (!user.team?.some(n => n.toLowerCase() === cardName.toLowerCase()))
-      return message.reply("That card isn't in your crew!");
+       const teamIndex = user.team.findIndex(t => fuzzyMatch(cardName, t.name || t.cardName));
+    if (!teamIndex) return message.reply("That card isn't in your crew!");
 
     user.team = user.team.filter(n => n.toLowerCase() !== cardName.toLowerCase());
     await user.save();

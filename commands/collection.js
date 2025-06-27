@@ -108,16 +108,38 @@ async function execute(message, args) {
       return message.reply(`You have no cards of rank ${arg}!`);
     }
   }
-
-  if (arg === "DOWN") {
-    cardInstances.sort((a, b) => {
-      const ca = getCardByUserInstance(a), cb = getCardByUserInstance(b);
-      if (!ca || !cb) return 0;
-      const [pa] = ca.phs.split('/').map(x => Number(x.trim()));
-      const [pb] = cb.phs.split('/').map(x => Number(x.trim()));
-      return pa - pb;
-    });
-  }
+// Sort by total power (default is highest to lowest)
+  cardInstances.sort((a, b) => {
+    const ca = getCardByUserInstance(a), cb = getCardByUserInstance(b);
+    if (!ca || !cb) return 0;
+    
+    // Calculate total power including level and item boosts
+    const getPowerWithBoosts = (cardInstance, cardDef) => {
+      let [basePower] = cardDef.phs.split('/').map(x => Number(x.trim()));
+      const level = cardInstance.level || cardInstance.timesUpgraded + 1 || 1;
+      const levelBoost = (level - 1) * 2;
+      let totalPower = basePower + levelBoost;
+      
+      // Check for equipped items
+      const normCard = normalize(cardDef.name);
+      const equippedItem = user && user.equipped && user.equipped[normCard];
+      
+      if (equippedItem === 'strawhat') {
+        totalPower = Math.round(totalPower * 1.3);
+      } else if (equippedItem === 'sword') {
+        totalPower += 5;
+      } else if (equippedItem) {
+        totalPower += 3;
+      }
+      
+      return totalPower;
+    };
+    
+    const powerA = getPowerWithBoosts(a, ca);
+    const powerB = getPowerWithBoosts(b, cb);
+    
+    return arg === "DOWN" ? powerA - powerB : powerB - powerA;
+  });
 
   let cardIndex = 0;
   const ownerName = message.author.username;

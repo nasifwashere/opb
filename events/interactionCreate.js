@@ -1,9 +1,9 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const User = require('../db/models/User.js');
-const { calculateDamage, getActiveCard } = require('../utils/battleSystem.js');
+const { calculateDamage, getActiveCard, resetTeamHP } = require('../utils/battleSystem.js');
 const { updateQuestProgress } = require('../utils/questSystem');
 
-// Boss battle functions from explore.js
+// Boss battle functions
 function createBossBattleEmbed(boss, playerTeam, battleLog, turn) {
   const embed = new EmbedBuilder()
     .setTitle(`⚔️ Boss Battle: ${boss.name}`)
@@ -11,7 +11,6 @@ function createBossBattleEmbed(boss, playerTeam, battleLog, turn) {
     .setColor(0xff0000)
     .setThumbnail(boss.image || 'https://i.imgur.com/default-boss.png');
 
-  // Add boss stats
   embed.addFields(
     { name: '🔥 Boss HP', value: `${boss.currentHp}/${boss.maxHp}`, inline: true },
     { name: '⚡ Boss Power', value: `${boss.power}`, inline: true },
@@ -47,7 +46,6 @@ function createHpBar(current, max) {
   const barLength = 10;
   const filledLength = Math.round(barLength * percentage);
   const emptyLength = barLength - filledLength;
-  
   return '█'.repeat(filledLength) + '░'.repeat(emptyLength);
 }
 
@@ -56,20 +54,17 @@ const once = false;
 
 async function execute(interaction, client) {
   if (!interaction.isButton() && !interaction.isSelectMenu()) return;
-  
-  // Handle boss battle interactions
+
   if (interaction.customId.startsWith('boss_')) {
     await handleBossInteraction(interaction, client);
     return;
   }
-  
-  // Handle help interactions
+
   if (interaction.customId.startsWith('help_')) {
     await handleHelpInteraction(interaction, client);
     return;
   }
-  
-  // Handle quest interactions
+
   if (interaction.customId.startsWith('quest_')) {
     await handleQuestInteraction(interaction, client);
     return;
@@ -85,7 +80,6 @@ async function handleBossInteraction(interaction, client) {
   const { boss, playerTeam, battleLog, turn, stageData } = battleData;
   const action = interaction.customId.split('_')[1];
 
-  // Check if battle is over
   if (boss.currentHp <= 0 || playerTeam.every(card => card.currentHp <= 0)) {
     return interaction.reply({ content: 'This battle has already ended.', ephemeral: true });
   }
@@ -93,78 +87,78 @@ async function handleBossInteraction(interaction, client) {
   let playerAction = '';
   let damage = 0;
   const activePlayerCard = getActiveCard(playerTeam);
-  
+
   if (!activePlayerCard) {
     return interaction.reply({ content: 'No active cards available to fight!', ephemeral: true });
   }
 
-  // Handle player action
   switch (action) {
     case 'attack':
       damage = calculateDamage(activePlayerCard, boss, 'normal');
       boss.currentHp = Math.max(0, boss.currentHp - damage);
       playerAction = `${activePlayerCard.name} attacks ${boss.name} for ${damage} damage!`;
       break;
-      
+
     case 'skill':
       damage = calculateDamage(activePlayerCard, boss, 'skill');
       boss.currentHp = Math.max(0, boss.currentHp - damage);
       playerAction = `${activePlayerCard.name} uses special attack on ${boss.name} for ${damage} damage!`;
       break;
-      
-    case 'defend':
-      // Heal 20% of max HP
+
+    case 'defend': {
       const healAmount = Math.floor(activePlayerCard.hp * 0.2);
       activePlayerCard.currentHp = Math.min(activePlayerCard.hp, activePlayerCard.currentHp + healAmount);
       playerAction = `${activePlayerCard.name} defends and recovers ${healAmount} HP!`;
       break;
-      
-    case 'flee':
+    }
+
+    case 'flee': {
+      const user = await User.findOne({ userId: interaction.user.id });
+      // Optionally save state here
       client.battles.delete(interaction.message.id);
       const fleeEmbed = new EmbedBuilder()
         .setTitle('🏃 Battle Fled')
         .setDescription('You fled from the boss battle. You can try again later.')
         .setColor(0xf39c12);
       return interaction.update({ embeds: [fleeEmbed], components: [] });
+    }
   }
 
   battleLog.push(playerAction);
 
-  // Check if boss is defeated
   if (boss.currentHp <= 0) {
     const user = await User.findOne({ userId: interaction.user.id });
     if (user) {
       user.beli = (user.beli || 0) + (stageData.reward?.amount || 0);
       user.xp = (user.xp || 0) + (stageData.reward?.xp || 0);
-      
-      // Progress exploration
       user.exploreStage = (user.exploreStage || 0) + 1;
       user.exploreLast = Date.now();
-      
+      resetTeamHP(playerTeam);
       await user.save();
     }
 
     client.battles.delete(interaction.message.id);
-    
+
     const victoryEmbed = new EmbedBuilder()
       .setTitle(`🏆 Victory! ${boss.name} Defeated!`)
-      .setDescription(`${battleLog.slice(-3).join('\n')}\n\n**Rewards:**\n+${stageData.reward?.amount || 0} Beli\n+${stageData.reward?.xp || 0} XP`)
+      .setDescription(`${battleLog.slice(-3).join('\n')}\n\n**Rewards:**\n+${stageData.reward?.amount || 0} Beli\n+${stageData.reward?.xp || 0} XP\n\n*Your team has recovered!*`)
       .setColor(0x27ae60);
-      
+
     return interaction.update({ embeds: [victoryEmbed], components: [] });
   }
 
-  // Boss turn
   if (boss.currentHp > 0) {
     const bossTarget = playerTeam.find(card => card.currentHp > 0);
     if (bossTarget) {
       const bossDamage = Math.floor(Math.random() * (boss.attack[1] - boss.attack[0] + 1)) + boss.attack[0];
       bossTarget.currentHp = Math.max(0, bossTarget.currentHp - bossDamage);
       battleLog.push(`${boss.name} attacks ${bossTarget.name} for ${bossDamage} damage!`);
+      if (bossTarget.currentHp <= 0) {
+        battleLog.push(`💀 ${bossTarget.name} has been knocked out!`);
+      }
     }
   }
 
-  // Check if player team is defeated
   if (playerTeam.every(card => card.currentHp <= 0)) {
     const user = await User.findOne({ userId: interaction.user.id });
     if (user) {
@@ -173,32 +167,29 @@ async function handleBossInteraction(interaction, client) {
     }
 
     client.battles.delete(interaction.message.id);
-    
+
     const defeatEmbed = new EmbedBuilder()
       .setTitle(`💀 Defeat! ${boss.name} Wins!`)
-      .setDescription(`${battleLog.slice(-3).join('\n')}\n\nYour team has been defeated. Rest and try again later.`)
+      .setDescription(`${battleLog.slice(-3).join('\n')}\n\nYour team has been defeated. Rest and try again later.\n*Use \`op shop\` to buy healing items.*`)
       .setColor(0xe74c3c);
-      
+
     return interaction.update({ embeds: [defeatEmbed], components: [] });
   }
 
-  // Update battle state and continue
   battleData.battleLog = battleLog;
   battleData.turn = turn + 1;
-  
+
   const updatedEmbed = createBossBattleEmbed(boss, playerTeam, battleLog, battleData.turn);
   const updatedButtons = createBossBattleButtons();
-  
+
   await interaction.update({ embeds: [updatedEmbed], components: [updatedButtons] });
 }
 
 async function handleHelpInteraction(interaction, client) {
-  // This will be handled by the help command's collector
   return;
 }
 
 async function handleQuestInteraction(interaction, client) {
-  // This will be handled by the quest command's collector  
   return;
 }
 

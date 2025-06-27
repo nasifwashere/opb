@@ -34,31 +34,44 @@ const equipmentBonuses = {
  * @returns {Array} Array of battle-ready card objects
  */
 function calculateBattleStats(user, cardDatabase = allCards) {
-  if (!user.team || user.team.length === 0) return [];
+  if (!user || !user.team || user.team.length === 0) return [];
 
   const battleTeam = [];
 
   for (const cardName of user.team) {
+    if (!cardName) continue;
+
     // Find user's card instance
     const userCard = user.cards?.find(c => 
-      c.name.toLowerCase() === cardName.toLowerCase()
+      c && c.name && c.name.toLowerCase() === cardName.toLowerCase()
     );
     
     if (!userCard) continue;
 
     // Find card definition
     const cardDef = cardDatabase.find(c => 
-      c.name.toLowerCase() === cardName.toLowerCase()
+      c && c.name && c.name.toLowerCase() === cardName.toLowerCase()
     );
     
-    if (!cardDef) continue;
+    if (!cardDef || !cardDef.phs) continue;
 
     // Skip disallowed cards
     if (user.disallowedCards?.includes(cardDef.name)) continue;
 
-    // Parse base stats
-    const [basePower, baseHealth, baseSpeed] = cardDef.phs.split('/').map(x => parseInt(x.trim()));
-    const level = userCard.level || userCard.timesUpgraded + 1 || 1;
+    // Parse base stats with error handling
+    let basePower, baseHealth, baseSpeed;
+    try {
+      [basePower, baseHealth, baseSpeed] = cardDef.phs.split('/').map(x => parseInt(x.trim()));
+      if (isNaN(basePower) || isNaN(baseHealth) || isNaN(baseSpeed)) {
+        console.warn(`Invalid stats for card: ${cardDef.name}`);
+        continue;
+      }
+    } catch (error) {
+      console.warn(`Error parsing stats for card: ${cardDef.name}`, error);
+      continue;
+    }
+
+    const level = userCard.level || (userCard.timesUpgraded ? userCard.timesUpgraded + 1 : 1);
     const rankMultiplier = rankMultipliers[cardDef.rank] || 1.0;
 
     // Calculate base stats with level and rank
@@ -89,13 +102,14 @@ function calculateBattleStats(user, cardDatabase = allCards) {
     battleTeam.push({
       name: cardDef.name,
       level: level,
-      rank: cardDef.rank,
+      rank: cardDef.rank || 'C',
       power: power,
       hp: health,
       currentHp: health,
+      maxHp: health,
       speed: speed,
       attack: [attackLow, attackHigh],
-      image: cardDef.image,
+      image: cardDef.image || null,
       locked: userCard.locked || false
     });
   }
@@ -111,6 +125,16 @@ function calculateBattleStats(user, cardDatabase = allCards) {
  * @returns {number} Damage dealt
  */
 function calculateDamage(attacker, defender, attackType = 'normal') {
+  if (!attacker || !attacker.attack || !Array.isArray(attacker.attack) || attacker.attack.length < 2) {
+    console.warn('Invalid attacker data:', attacker);
+    return 1;
+  }
+
+  if (!defender) {
+    console.warn('Invalid defender data:', defender);
+    return 1;
+  }
+
   const baseAttack = Math.floor(
     Math.random() * (attacker.attack[1] - attacker.attack[0] + 1)
   ) + attacker.attack[0];
@@ -131,9 +155,11 @@ function calculateDamage(attacker, defender, attackType = 'normal') {
   }
 
   // Speed difference can affect damage (faster = more damage)
-  const speedDiff = attacker.speed - defender.speed;
-  if (speedDiff > 0) {
-    damage += Math.floor(speedDiff * 0.1);
+  if (attacker.speed && defender.speed) {
+    const speedDiff = attacker.speed - defender.speed;
+    if (speedDiff > 0) {
+      damage += Math.floor(speedDiff * 0.1);
+    }
   }
 
   // Minimum damage is 1
@@ -147,7 +173,16 @@ function calculateDamage(attacker, defender, attackType = 'normal') {
  * @returns {Array} Array of cards in turn order
  */
 function calculateTurnOrder(team1, team2) {
-  const allCards = [...team1, ...team2].filter(card => card.currentHp > 0);
+  if (!Array.isArray(team1)) team1 = [];
+  if (!Array.isArray(team2)) team2 = [];
+  
+  const allCards = [...team1, ...team2].filter(card => 
+    card && 
+    typeof card.currentHp === 'number' && 
+    card.currentHp > 0 &&
+    typeof card.speed === 'number'
+  );
+  
   return allCards.sort((a, b) => b.speed - a.speed);
 }
 
@@ -157,7 +192,8 @@ function calculateTurnOrder(team1, team2) {
  * @returns {boolean} True if team can still fight
  */
 function teamCanFight(team) {
-  return team.some(card => card.currentHp > 0);
+  if (!Array.isArray(team)) return false;
+  return team.some(card => card && typeof card.currentHp === 'number' && card.currentHp > 0);
 }
 
 /**
@@ -166,7 +202,8 @@ function teamCanFight(team) {
  * @returns {Object|null} Next card that can fight, or null
  */
 function getActiveCard(team) {
-  return team.find(card => card.currentHp > 0) || null;
+  if (!Array.isArray(team)) return null;
+  return team.find(card => card && typeof card.currentHp === 'number' && card.currentHp > 0) || null;
 }
 
 /**

@@ -59,7 +59,7 @@ function createOwnerMainEmbed() {
 
   const categories = Object.keys(ownerCommands);
   let categoryList = '';
-  categories.forEach((category, index) => {
+  categories.forEach(category => {
     const commandCount = ownerCommands[category].commands.length;
     categoryList += `${category} (${commandCount} commands)\n`;
   });
@@ -104,26 +104,24 @@ function createOwnerNavigationButtons() {
   const categories = Object.keys(ownerCommands);
   const buttons = [];
   
-  // Create buttons for each category (max 5 per row)
   for (let i = 0; i < Math.min(categories.length, 5); i++) {
     buttons.push(
       new ButtonBuilder()
         .setCustomId(`owner_${i}`)
-        .setLabel(categories[i].split(' ')[1] || categories[i]) // Remove emoji for button label
+        .setLabel(categories[i].replace(/^[^\w\s]+/, '').trim()) // Remove emoji for label
         .setStyle(ButtonStyle.Secondary)
     );
   }
 
   const rows = [new ActionRowBuilder().addComponents(buttons)];
 
-  // Add second row if needed
   if (categories.length > 5) {
     const secondRowButtons = [];
     for (let i = 5; i < categories.length; i++) {
       secondRowButtons.push(
         new ButtonBuilder()
           .setCustomId(`owner_${i}`)
-          .setLabel(categories[i].split(' ')[1] || categories[i])
+          .setLabel(categories[i].replace(/^[^\w\s]+/, '').trim())
           .setStyle(ButtonStyle.Secondary)
       );
     }
@@ -143,7 +141,6 @@ function createOwnerBackButton() {
 }
 
 async function execute(message, args, client) {
-  // Check if user is the owner
   if (message.author.id !== OWNER_ID) {
     return message.reply({
       embeds: [new EmbedBuilder()
@@ -155,25 +152,74 @@ async function execute(message, args, client) {
   }
 
   const categories = Object.keys(ownerCommands);
-  
-  // Handle specific owner commands
+
+  // Show embed on "op cheats" command with no args
+  if (message.content.trim().toLowerCase() === 'op cheats') {
+    const mainEmbed = createOwnerMainEmbed();
+    const navigationButtons = createOwnerNavigationButtons();
+
+    const helpMessage = await message.reply({ 
+      embeds: [mainEmbed], 
+      components: navigationButtons 
+    });
+
+    const filter = interaction => interaction.user.id === message.author.id;
+    const collector = helpMessage.createMessageComponentCollector({ filter, time: 300000 });
+
+    collector.on('collect', async interaction => {
+      try {
+        if (interaction.customId === 'owner_back') {
+          const mainEmbed = createOwnerMainEmbed();
+          const navigationButtons = createOwnerNavigationButtons();
+          await interaction.update({ embeds: [mainEmbed], components: navigationButtons });
+        } else if (interaction.customId.startsWith('owner_')) {
+          const categoryIndex = parseInt(interaction.customId.split('_')[1]);
+          const categoryName = categories[categoryIndex];
+          const categoryData = ownerCommands[categoryName];
+
+          if (categoryData) {
+            const embed = createOwnerCategoryEmbed(categoryName, categoryData);
+            await interaction.update({ embeds: [embed], components: [createOwnerBackButton()] });
+          }
+        }
+      } catch (error) {
+        console.error('Owner command interaction error:', error);
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: 'An error occurred. Please try again.', ephemeral: true });
+        }
+      }
+    });
+
+    collector.on('end', () => {
+      try {
+        const disabledButtons = createOwnerNavigationButtons();
+        disabledButtons.forEach(row => {
+          row.components.forEach(button => button.setDisabled(true));
+        });
+        helpMessage.edit({ components: disabledButtons }).catch(() => {});
+      } catch (error) {
+        console.error('Owner collector end error:', error);
+      }
+    });
+
+    return; // Prevent further execution on op cheats
+  }
+
+  // Handle owner subcommands starting with 'owner <cmd>'
   if (args.length > 0) {
     const command = args[0].toLowerCase();
-    
-    // Give commands
+
     if (command === 'give' && args.length >= 4) {
       const targetUser = message.mentions.users.first();
       if (!targetUser) return message.reply('Please mention a user to give items to.');
-      
+
       const amount = parseInt(args[2]);
       const type = args[3].toLowerCase();
-      
+
       try {
         let user = await User.findOne({ userId: targetUser.id });
-        if (!user) {
-          user = new User({ userId: targetUser.id, username: targetUser.username });
-        }
-        
+        if (!user) user = new User({ userId: targetUser.id, username: targetUser.username });
+
         if (type === 'beli' && !isNaN(amount)) {
           user.beli = (user.beli || 0) + amount;
           await user.save();
@@ -185,12 +231,11 @@ async function execute(message, args, client) {
         } else if (type === 'card' && args[4]) {
           const cardName = args.slice(4).join(' ');
           if (!user.cards) user.cards = [];
-          
-          // Check if card exists in database
+
           const cardsPath = path.resolve('data', 'cards.json');
           const allCards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
           const cardExists = allCards.find(c => c.name.toLowerCase() === cardName.toLowerCase());
-          
+
           if (cardExists) {
             user.cards.push({
               name: cardExists.name,
@@ -209,8 +254,7 @@ async function execute(message, args, client) {
         return message.reply('❌ An error occurred while giving items.');
       }
     }
-    
-    // Stats command
+
     if (command === 'stats') {
       try {
         const totalUsers = await User.countDocuments();
@@ -219,7 +263,7 @@ async function execute(message, args, client) {
           { $unwind: '$cards' },
           { $count: 'total' }
         ]);
-        
+
         const embed = new EmbedBuilder()
           .setTitle('📊 Bot Statistics')
           .setColor(0x3498db)
@@ -231,15 +275,14 @@ async function execute(message, args, client) {
             { name: 'Memory Usage', value: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB`, inline: true },
             { name: 'Guilds', value: client.guilds.cache.size.toString(), inline: true }
           );
-        
+
         return message.reply({ embeds: [embed] });
       } catch (error) {
         console.error('Stats command error:', error);
         return message.reply('❌ Error retrieving stats.');
       }
     }
-    
-    // Reset command
+
     if (command === 'reset' && message.mentions.users.first()) {
       const targetUser = message.mentions.users.first();
       try {
@@ -252,69 +295,19 @@ async function execute(message, args, client) {
     }
   }
 
-  // Show help interface
-  const mainEmbed = createOwnerMainEmbed();
-  const navigationButtons = createOwnerNavigationButtons();
-  
-  const helpMessage = await message.reply({ 
-    embeds: [mainEmbed], 
-    components: navigationButtons 
-  });
-
-  // Handle button interactions
-  const filter = (interaction) => interaction.user.id === message.author.id;
-  const collector = helpMessage.createMessageComponentCollector({ 
-    filter, 
-    time: 300000 // 5 minutes
-  });
-
-  collector.on('collect', async (interaction) => {
-    try {
-      if (interaction.customId === 'owner_back') {
-        const mainEmbed = createOwnerMainEmbed();
-        const navigationButtons = createOwnerNavigationButtons();
-        await interaction.update({ embeds: [mainEmbed], components: navigationButtons });
-      } else if (interaction.customId.startsWith('owner_')) {
-        const categoryIndex = parseInt(interaction.customId.split('_')[1]);
-        const categoryName = categories[categoryIndex];
-        const categoryData = ownerCommands[categoryName];
-        
-        if (categoryData) {
-          const embed = createOwnerCategoryEmbed(categoryName, categoryData);
-          await interaction.update({ embeds: [embed], components: [createOwnerBackButton()] });
-        }
-      }
-    } catch (error) {
-      console.error('Owner command interaction error:', error);
-      if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: 'An error occurred. Please try again.', ephemeral: true });
-      }
-    }
-  });
-
-  collector.on('end', () => {
-    try {
-      const disabledButtons = createOwnerNavigationButtons();
-      disabledButtons.forEach(row => {
-        row.components.forEach(button => button.setDisabled(true));
-      });
-      helpMessage.edit({ components: disabledButtons }).catch(() => {});
-    } catch (error) {
-      console.error('Owner collector end error:', error);
-    }
-  });
+  return message.reply('❌ Unknown owner command or missing arguments.');
 }
 
 function formatUptime(seconds) {
   const days = Math.floor(seconds / 86400);
   const hours = Math.floor((seconds % 86400) / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  
+
   const parts = [];
   if (days > 0) parts.push(`${days}d`);
   if (hours > 0) parts.push(`${hours}h`);
   if (minutes > 0) parts.push(`${minutes}m`);
-  
+
   return parts.join(' ') || '< 1m';
 }
 

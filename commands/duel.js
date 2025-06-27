@@ -156,8 +156,8 @@ async function execute(message, args) {
 
     if (interaction.customId === 'duel_accept') {
       // Start the duel
-      const player1Team = calculateBattleStats(challenger, allCards);
-      const player2Team = calculateBattleStats(opponent, allCards);
+      const player1Team = calculateBattleStats(challenger);
+      const player2Team = calculateBattleStats(opponent);
 
       if (player1Team.length === 0 || player2Team.length === 0) {
         await challengeMessage.edit({ 
@@ -220,6 +220,11 @@ async function execute(message, args) {
           loser.losses = (loser.losses || 0) + 1;
           loser.duelCooldown = now + DUEL_COOLDOWN;
           
+          // Save HP state for both players
+          const { saveTeamHP } = require('../utils/battleSystem.js');
+          await saveTeamHP(challenger, player1Team);
+          await saveTeamHP(opponent, player2Team);
+          
           await winnerUser.save();
           await loser.save();
           
@@ -248,6 +253,11 @@ async function execute(message, args) {
           loserUser.losses = (loserUser.losses || 0) + 1;
           loserUser.duelCooldown = now + DUEL_COOLDOWN;
           
+          // Save HP state for both players
+          const { saveTeamHP } = require('../utils/battleSystem.js');
+          await saveTeamHP(challenger, player1Team);
+          await saveTeamHP(opponent, player2Team);
+          
           await winnerUser.save();
           await loserUser.save();
           
@@ -259,18 +269,20 @@ async function execute(message, args) {
         }
 
         let damage = 0;
+        const { calculateDamage } = require('../utils/battleSystem.js');
+        
         if (battleInteraction.customId.includes('attack')) {
-          damage = Math.floor(Math.random() * (activeCard.attack[1] - activeCard.attack[0] + 1)) + activeCard.attack[0];
+          damage = calculateDamage(activeCard, enemyCard, 'normal');
           battleLog += `\n${activeCard.name} attacks ${enemyCard.name} for ${damage} damage!`;
         } else if (battleInteraction.customId.includes('skill')) {
-          damage = Math.floor(activeCard.attack[1] * 1.5);
+          damage = calculateDamage(activeCard, enemyCard, 'skill');
           battleLog += `\n${activeCard.name} uses a special skill on ${enemyCard.name} for ${damage} damage!`;
         }
 
         enemyCard.currentHp = Math.max(0, enemyCard.currentHp - damage);
         
         if (enemyCard.currentHp <= 0) {
-          battleLog += `\n💀 ${enemyCard.name} has been defeated!`;
+          battleLog += `\n💀 ${enemyCard.name} has been knocked out!`;
         }
 
         // Switch turns
@@ -286,6 +298,12 @@ async function execute(message, args) {
           battleLog += '\n\n⏰ Duel timed out!';
           challenger.duelCooldown = now + DUEL_COOLDOWN;
           opponent.duelCooldown = now + DUEL_COOLDOWN;
+          
+          // Save HP state for both players
+          const { saveTeamHP } = require('../utils/battleSystem.js');
+          await saveTeamHP(challenger, player1Team);
+          await saveTeamHP(opponent, player2Team);
+          
           await challenger.save();
           await opponent.save();
           

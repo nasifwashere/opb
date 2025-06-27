@@ -487,5 +487,132 @@
     "image": "https://files.catbox.moe/si9a7u.webp",
     "evolvesFrom": null,
     "saga": "East Blue"
+  },
+  {
+    "name": "Nezumi",
+    "shortDesc": "Corrupt Marine Captain (East Blue)",
+    "phs": "55 / 60 / 58",
+    "rank": "C",
+    "image": "https://files.catbox.moe/9q2x5p.webp",
+    "evolvesFrom": null,
+    "saga": "East Blue"
+  },
+  {
+    "name": "Hatchan",
+    "shortDesc": "Octopus Fishman (East Blue)",
+    "phs": "65 / 70 / 75",
+    "rank": "B",
+    "image": "https://files.catbox.moe/k8m3r1.webp",
+    "evolvesFrom": null,
+    "saga": "East Blue"
+  },
+  {
+    "name": "Kuroobi",
+    "shortDesc": "Ray Fishman (East Blue)",
+    "phs": "70 / 75 / 68",
+    "rank": "B",
+    "image": "https://files.catbox.moe/p7n2x9.webp",
+    "evolvesFrom": null,
+    "saga": "East Blue"
+  },
+  {
+    "name": "Chew",
+    "shortDesc": "Smelt-Whiting Fishman (East Blue)",
+    "phs": "68 / 72 / 70",
+    "rank": "B",
+    "image": "https://files.catbox.moe/q5t8m4.webp",
+    "evolvesFrom": null,
+    "saga": "East Blue"
+  },
+  {
+    "name": "Smoker",
+    "shortDesc": "Marine Captain (East Blue)",
+    "phs": "88 / 85 / 82",
+    "rank": "A",
+    "image": "https://files.catbox.moe/x1v9b2.webp",
+    "evolvesFrom": null,
+    "saga": "East Blue",
+    "evolution": {
+      "nextId": "Smoker (Vice Admiral, Punk Hazard)",
+      "requiredLevel": 40,
+      "cost": 3000,
+      "requiredSaga": "Punk Hazard"
+    }
+  },
+  {
+    "name": "Tashigi",
+    "shortDesc": "Marine Swordswoman (East Blue)",
+    "phs": "65 / 68 / 70",
+    "rank": "B",
+    "image": "https://files.catbox.moe/m9k7p3.webp",
+    "evolvesFrom": null,
+    "saga": "East Blue"
+  },
+  {
+    "name": "Buggy",
+    "shortDesc": "Clown Pirate (East Blue)",
+    "phs": "60 / 65 / 68",
+    "rank": "B",
+    "image": "https://files.catbox.moe/n4x2q8.webp",
+    "evolvesFrom": null,
+    "saga": "East Blue",
+    "evolution": {
+      "nextId": "Buggy (Yonko, Final Saga)",
+      "requiredLevel": 80,
+      "cost": 25000,
+      "requiredSaga": "Final Saga"
+    }
+  },
+  {
+    "name": "Cabaji",
+    "shortDesc": "Acrobat (East Blue)",
+    "phs": "58 / 62 / 72",
+    "rank": "C",
+    "image": "https://files.catbox.moe/r8t5k1.webp",
+    "evolvesFrom": null,
+    "saga": "East Blue"
+  },
+  {
+    "name": "Mohji",
+    "shortDesc": "Beast Tamer (East Blue)",
+    "phs": "52 / 58 / 55",
+    "rank": "C",
+    "image": "https://files.catbox.moe/b3m9x7.webp",
+    "evolvesFrom": null,
+    "saga": "East Blue"
+  },
+  {
+    "name": "Richie",
+    "shortDesc": "Lion (East Blue)",
+    "phs": "60 / 68 / 65",
+    "rank": "C",
+    "image": "https://files.catbox.moe/v5k8p2.webp",
+    "evolvesFrom": null,
+    "saga": "East Blue"
+  },
+  {
+    "name": "Alvida",
+    "shortDesc": "Iron Mace Pirate (East Blue)",
+    "phs": "55 / 62 / 48",
+    "rank": "C",
+    "image": "https://files.catbox.moe/j7q4m8.webp",
+    "evolvesFrom": null,
+    "saga": "East Blue",
+    "evolution": {
+      "nextId": "Alvida (Slip-Slip Fruit, East Blue)",
+      "requiredLevel": 15,
+      "cost": 500,
+      "requiredSaga": "East Blue"
+    }
+  },
+  {
+    "name": "Alvida (Slip-Slip Fruit, East Blue)",
+    "shortDesc": "Beautiful Pirate (East Blue)",
+    "phs": "68 / 72 / 75",
+    "rank": "B",
+    "image": "https://files.catbox.moe/k2p9v5.webp",
+    "evolvesFrom": "Alvida",
+    "saga": "East Blue"
   }
+
 ]
