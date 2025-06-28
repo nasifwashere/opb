@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
 const { connectDB } = require('./db/database.js');
+const { keepAlive } = require('./keepAlive.js'); // 🆕 Keep-alive import
 
 dotenv.config();
 
@@ -51,7 +52,7 @@ async function startBot() {
   try {
     await connectDB();
     console.log('[DATABASE] Connected successfully');
-    
+
     await client.login(process.env.DISCORD_TOKEN);
     console.log('[BOT] Discord bot logged in successfully');
   } catch (error) {
@@ -60,4 +61,5 @@ async function startBot() {
   }
 }
 
+keepAlive(); // 🆕 Start the keep-alive web server
 startBot();
