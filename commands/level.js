@@ -42,7 +42,7 @@ async function execute(message, args) {
   const userCards = user.cards.filter(c => normalize(c.name) === normalize(cardName));
   
   if (userCards.length === 0) {
-    return message.reply(`❌ You don't own "${cardName}".`);
+    return message.reply(`<:arrow:1375872983029256303> You don't own "${cardName}".`);
   }
 
   const mainCard = userCards[0];
@@ -66,7 +66,7 @@ async function execute(message, args) {
   }
 
   if (user.beli < totalCost) {
-    return message.reply(`❌ You need ${totalCost} Beli to level up ${levelsToAdd} time${levelsToAdd > 1 ? 's' : ''}. You have ${user.beli} Beli.`);
+    return message.reply(`<:arrow:1375872983029256303> You need ${totalCost} Beli to level up ${levelsToAdd} time${levelsToAdd > 1 ? 's' : ''}. You have ${user.beli} Beli.`);
   }
 
   // Perform level up
@@ -105,7 +105,7 @@ async function execute(message, args) {
   }
 
   const embed = new EmbedBuilder()
-    .setTitle('⭐ Level Up Success!')
+    .setTitle('<:snoopy_sparkles:1388585338821152978> Level Up Success!')
     .setDescription(`**${mainCard.name}** gained ${levelsToAdd} level${levelsToAdd > 1 ? 's' : ''}!`)
     .addFields(
       { name: 'Previous Level', value: `${currentLevel}`, inline: true },
@@ -124,7 +124,7 @@ async function execute(message, args) {
   // Check if card can now evolve
   if (cardDef && cardDef.evolution && newLevel >= cardDef.evolution.requiredLevel) {
     embed.addFields({ 
-      name: '🧬 Evolution Available!', 
+      name: '<:snoopy_sparkles:1388585338821152978> Evolution Available!', 
       value: `This card can now evolve! Use \`op evolve ${cardName}\``, 
       inline: false 
     });

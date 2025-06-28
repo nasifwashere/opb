@@ -26,7 +26,7 @@ function createDuelEmbed(player1, player2, player1Team, player2Team, battleLog, 
   let description = `**${player1.username}** vs **${player2.username}**\n\n`;
   
   if (winner) {
-    description += `🎉 **${winner.username}** wins the duel!\n\n`;
+    description += `<:namirich:1375662701702807632> **${winner.username}** wins the duel!\n\n`;
   } else {
     description += `**Turn:** ${turn}\n\n`;
   }
@@ -34,7 +34,7 @@ function createDuelEmbed(player1, player2, player1Team, player2Team, battleLog, 
   description += battleLog;
 
   const embed = new EmbedBuilder()
-    .setTitle('⚔️ PvP Duel')
+    .setTitle(' PvP Duel')
     .setDescription(description)
     .addFields(
       { 
@@ -88,7 +88,7 @@ async function execute(message, args) {
   }
 
   if (!challenger.team || challenger.team.length === 0) {
-    return message.reply('⚠️ You need at least one card in your team! Use `op team add <card>` first.');
+    return message.reply('<:arrow:1375872983029256303> You need at least one card in your team! Use `op team add <card>` first.');
   }
 
   // Get mentioned user
@@ -98,40 +98,40 @@ async function execute(message, args) {
   }
 
   if (targetUser.id === challengerId) {
-    return message.reply('❌ You cannot duel yourself!');
+    return message.reply('<:arrow:1375872983029256303> You cannot duel yourself!');
   }
 
   if (targetUser.bot) {
-    return message.reply('❌ You cannot duel bots!');
+    return message.reply('<:arrow:1375872983029256303> You cannot duel bots!');
   }
 
   const opponent = await User.findOne({ userId: targetUser.id });
   if (!opponent) {
-    return message.reply(`❌ ${targetUser.username} hasn't started their journey yet!`);
+    return message.reply(`<:arrow:1375872983029256303> ${targetUser.username} hasn't started their journey yet!`);
   }
 
   if (!opponent.team || opponent.team.length === 0) {
-    return message.reply(`❌ ${targetUser.username} doesn't have any cards in their team!`);
+    return message.reply(`<:arrow:1375872983029256303> ${targetUser.username} doesn't have any cards in their team!`);
   }
 
   if (opponent.duelCooldown && now < opponent.duelCooldown) {
-    return message.reply(`❌ ${targetUser.username} is still on duel cooldown.`);
+    return message.reply(`<:arrow:1375872983029256303> ${targetUser.username} is still on duel cooldown.`);
   }
 
   // Create challenge embed
   const challengeEmbed = new EmbedBuilder()
-    .setTitle('⚔️ Duel Challenge!')
+    .setTitle(' Duel Challenge!')
     .setDescription(`${message.author.username} has challenged ${targetUser.username} to a duel!\n\n${targetUser.username}, do you accept?`)
     .setColor(0xf39c12);
 
   const acceptRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('duel_accept')
-      .setLabel('⚔️ Accept')
+      .setLabel('Accept')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId('duel_decline')
-      .setLabel('❌ Decline')
+      .setLabel('Decline')
       .setStyle(ButtonStyle.Danger)
   );
 
@@ -146,7 +146,7 @@ async function execute(message, args) {
 
     if (interaction.customId === 'duel_decline') {
       const declineEmbed = new EmbedBuilder()
-        .setTitle('⚔️ Duel Declined')
+        .setTitle('Duel Declined')
         .setDescription(`${targetUser.username} declined the duel challenge.`)
         .setColor(0xe74c3c);
       
@@ -161,7 +161,7 @@ async function execute(message, args) {
 
       if (player1Team.length === 0 || player2Team.length === 0) {
         await challengeMessage.edit({ 
-          content: '❌ One or both players have no valid cards for battle!', 
+          content: '<:arrow:1375872983029256303> One or both players have no valid cards for battle!', 
           embeds: [], 
           components: [] 
         });
@@ -205,7 +205,7 @@ async function execute(message, args) {
         const playerName = isPlayer1 ? player1.username : player2.username;
 
         if (battleInteraction.customId.includes('forfeit')) {
-          battleLog += `\n\n🏳️ ${playerName} forfeited the duel!`;
+          battleLog += `\n\n ${playerName} forfeited the duel!`;
           battleEnded = true;
           
           const winner = isPlayer1 ? player2 : player1;
@@ -261,7 +261,7 @@ async function execute(message, args) {
           await winnerUser.save();
           await loserUser.save();
           
-          battleLog += `\n\n🎉 ${winner.username} wins the duel!`;
+          battleLog += `\n\n <:namirich:1375662701702807632> ${winner.username} wins the duel!`;
           
           const winEmbed = createDuelEmbed(player1, player2, player1Team, player2Team, battleLog, turn, winner);
           await challengeMessage.edit({ embeds: [winEmbed], components: [] });
@@ -282,7 +282,7 @@ async function execute(message, args) {
         enemyCard.currentHp = Math.max(0, enemyCard.currentHp - damage);
         
         if (enemyCard.currentHp <= 0) {
-          battleLog += `\n💀 ${enemyCard.name} has been knocked out!`;
+          battleLog += `\n ${enemyCard.name} has been knocked out!`;
         }
 
         // Switch turns
@@ -317,7 +317,7 @@ async function execute(message, args) {
   challengeCollector.on('end', async (collected) => {
     if (collected.size === 0) {
       const timeoutEmbed = new EmbedBuilder()
-        .setTitle('⚔️ Challenge Expired')
+        .setTitle('Challenge Expired')
         .setDescription(`${targetUser.username} didn't respond to the duel challenge.`)
         .setColor(0x95a5a6);
       

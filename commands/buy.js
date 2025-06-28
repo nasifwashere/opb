@@ -37,21 +37,21 @@ async function execute(message, args) {
   const item = findShopItem(itemName, shopData);
 
   if (!item) {
-    return message.reply(`❌ Item "${itemName}" not found in shop. Use \`op shop\` to see available items.`);
+    return message.reply(` Item "${itemName}" not found in shop. Use \`op shop\` to see available items.`);
   }
 
   if (!item.available) {
-    return message.reply(`❌ "${item.name}" is currently out of stock.`);
+    return message.reply(`<:arrow:1375872983029256303> "${item.name}" is currently out of stock.`);
   }
 
   if (user.beli < item.price) {
-    return message.reply(`❌ You don't have enough Beli! You need ${item.price} but only have ${user.beli}.`);
+    return message.reply(`<:arrow:1375872983029256303> You don't have enough Beli! You need ${item.price} but only have ${user.beli}.`);
   }
 
   // Check if user already owns the item (for unique items)
   const normalizedItemName = item.name.toLowerCase().replace(/\s+/g, '');
   if (item.unique && user.inventory && user.inventory.includes(normalizedItemName)) {
-    return message.reply(`❌ You already own "${item.name}". This item can only be purchased once.`);
+    return message.reply(`<:arrow:1375872983029256303> You already own "${item.name}". This item can only be purchased once.`);
   }
 
   // Process purchase
@@ -118,7 +118,7 @@ async function execute(message, args) {
   await user.save();
 
   const embed = new EmbedBuilder()
-    .setTitle('🛍️ Purchase Successful!')
+    .setTitle('<:sucess:1375872950321811547> Purchase Successful!')
     .setDescription(`You bought **${item.name}** for ${item.price} Beli!`)
     .addFields(
       { name: 'Item', value: item.name, inline: true },

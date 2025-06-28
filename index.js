@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
 const { connectDB } = require('./db/database.js');
-const { keepAlive } = require('./keepAlive.js'); // 🆕 Keep-alive import
 
 dotenv.config();
 
@@ -25,8 +24,10 @@ for (const file of commandFiles) {
   const filePath = path.join(commandsPath, file);
   const command = require(filePath);
   if ('data' in command && 'execute' in command) {
-    client.commands.set(command.data.name, command);
-    console.log(`[COMMAND] Loaded ${command.data.name}`);
+    // Handle both slash commands (SlashCommandBuilder) and prefix commands (object)
+    const commandName = typeof command.data.name === 'string' ? command.data.name : command.data.name;
+    client.commands.set(commandName, command);
+    console.log(`[COMMAND] Loaded ${commandName}`);
   } else {
     console.log(`[WARNING] The command at ${filePath} is missing required "data" or "execute" property.`);
   }
@@ -52,7 +53,7 @@ async function startBot() {
   try {
     await connectDB();
     console.log('[DATABASE] Connected successfully');
-
+    
     await client.login(process.env.DISCORD_TOKEN);
     console.log('[BOT] Discord bot logged in successfully');
   } catch (error) {
@@ -61,5 +62,4 @@ async function startBot() {
   }
 }
 
-keepAlive(); // 🆕 Start the keep-alive web server
 startBot();

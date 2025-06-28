@@ -30,13 +30,13 @@ function loadShopData() {
 
 function createShopEmbed(category, items) {
   const categoryNames = {
-    items: '📦 Items',
-    cards: '🃏 Cards', 
-    boosts: '⚡ Boosts'
+    items: ' Items',
+    cards: ' Cards', 
+    boosts: ' Boosts'
   };
 
   const embed = new EmbedBuilder()
-    .setTitle(`🛍️ Shop - ${categoryNames[category] || 'All Items'}`)
+    .setTitle(` Shop - ${categoryNames[category] || 'All Items'}`)
     .setDescription('Purchase items with your Beli!')
     .setColor(0x2ecc40)
     .setFooter({ text: 'Use "op buy <item name>" to purchase' });
@@ -47,13 +47,13 @@ function createShopEmbed(category, items) {
   }
 
   items.forEach((item, index) => {
-    const status = item.available ? '✅ Available' : '❌ Out of Stock';
-    const duration = item.duration ? `\n⏰ Duration: ${Math.floor(item.duration / 60000)} minutes` : '';
-    const category = item.category ? `\n🏷️ ${item.category}` : '';
+    const status = item.available ? '<:sucess:1375872950321811547> Available' : 'Out of Stock';
+    const duration = item.duration ? `\nDuration: ${Math.floor(item.duration / 60000)} minutes` : '';
+    const category = item.category ? `\n${item.category}` : '';
     
     embed.addFields({
       name: `${index + 1}. ${item.name}`,
-      value: `💰 **${item.price} Beli**\n${status}\n📝 ${item.description}${duration}${category}`,
+      value: `<:Money:1375579299565928499> **${item.price} Beli**\n${status}\n ${item.description}${duration}${category}`,
       inline: true
     });
   });
@@ -65,19 +65,19 @@ function createShopButtons(currentCategory) {
   const buttons = [
     new ButtonBuilder()
       .setCustomId('shop_items')
-      .setLabel('📦 Items')
+      .setLabel(' Items')
       .setStyle(currentCategory === 'items' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('shop_cards')
-      .setLabel('🃏 Cards')
+      .setLabel(' Cards')
       .setStyle(currentCategory === 'cards' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('shop_boosts')
-      .setLabel('⚡ Boosts')
+      .setLabel(' Boosts')
       .setStyle(currentCategory === 'boosts' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('shop_all')
-      .setLabel('🔍 All')
+      .setLabel(' All')
       .setStyle(currentCategory === 'all' ? ButtonStyle.Primary : ButtonStyle.Secondary)
   ];
 
@@ -115,7 +115,7 @@ async function execute(message, args) {
   const components = [createShopButtons(currentCategory)];
 
   // Add user's current Beli to embed
-  embed.addFields({ name: 'Your Beli', value: `💰 ${user.beli || 0}`, inline: false });
+  embed.addFields({ name: 'Your Beli', value: `<:Money:1375579299565928499> ${user.beli || 0}`, inline: false });
 
   const shopMessage = await message.reply({ embeds: [embed], components });
 
@@ -143,7 +143,7 @@ async function execute(message, args) {
       
       // Update user's current Beli
       const updatedUser = await User.findOne({ userId });
-      newEmbed.addFields({ name: 'Your Beli', value: `💰 ${updatedUser.beli || 0}`, inline: false });
+      newEmbed.addFields({ name: 'Your Beli', value: `<:Money:1375579299565928499> ${updatedUser.beli || 0}`, inline: false });
 
       await shopMessage.edit({ embeds: [newEmbed], components: newComponents });
     }

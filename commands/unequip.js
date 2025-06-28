@@ -58,7 +58,7 @@ async function execute(message, args, client) {
   user.inventory.push(unequippedItem);
 
   await user.save();
-  return message.reply(`✅ Unequipped ${unequippedItem} from ${cardObj.name}!`);
+  return message.reply(`<:sucess:1375872950321811547> Unequipped ${unequippedItem} from ${cardObj.name}!`);
 }
 
 module.exports = { data, execute };

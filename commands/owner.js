@@ -6,7 +6,7 @@ const path = require('path');
 const OWNER_ID = '1257718161298690119';
 
 const ownerCommands = {
-  '👑 User Management': {
+  ' User Management': {
     commands: [
       { name: 'owner give @user <amount> beli', desc: 'Give Beli to a user' },
       { name: 'owner give @user <amount> xp', desc: 'Give XP to a user' },
@@ -17,7 +17,7 @@ const ownerCommands = {
       { name: 'owner unban @user', desc: 'Unban user' }
     ]
   },
-  '⚡ Bot Management': {
+  ' Bot Management': {
     commands: [
       { name: 'owner reload', desc: 'Reload all bot commands' },
       { name: 'owner shutdown', desc: 'Safely shutdown the bot' },
@@ -26,7 +26,7 @@ const ownerCommands = {
       { name: 'owner maintenance on/off', desc: 'Toggle maintenance mode' }
     ]
   },
-  '🎮 Game Management': {
+  ' Game Management': {
     commands: [
       { name: 'owner spawn <card> <rank>', desc: 'Spawn card in current channel' },
       { name: 'owner event start <type>', desc: 'Start special event' },
@@ -35,7 +35,7 @@ const ownerCommands = {
       { name: 'owner quest reset all', desc: 'Reset all user quests' }
     ]
   },
-  '📊 Database': {
+  ' Database': {
     commands: [
       { name: 'owner backup', desc: 'Create database backup' },
       { name: 'owner purge inactive <days>', desc: 'Remove inactive users' },
@@ -52,7 +52,7 @@ const data = {
 
 function createOwnerMainEmbed() {
   const embed = new EmbedBuilder()
-    .setTitle('👑 Owner Commands - Control Panel')
+    .setTitle(' Owner Commands - Control Panel')
     .setDescription('**Welcome, Owner!** 🏴‍☠️\n\nYou have complete control over the One Piece bot. Use these commands wisely!')
     .setColor(0xffd700)
     .setThumbnail('https://i.imgur.com/X8HDGNQ.png');
@@ -65,13 +65,13 @@ function createOwnerMainEmbed() {
   });
 
   embed.addFields({ 
-    name: '📋 Command Categories', 
+    name: ' Command Categories', 
     value: categoryList || 'No categories available', 
     inline: false 
   });
 
   embed.addFields({ 
-    name: '⚠️ Important Notes', 
+    name: ' Important Notes', 
     value: '• These commands have **permanent effects**\n• Always double-check before executing\n• Use responsibly to maintain game balance\n• Some commands cannot be undone', 
     inline: false 
   });
@@ -82,7 +82,7 @@ function createOwnerMainEmbed() {
 
 function createOwnerCategoryEmbed(category, categoryData) {
   const embed = new EmbedBuilder()
-    .setTitle(`👑 ${category}`)
+    .setTitle(` ${category}`)
     .setDescription(`Commands for ${category.toLowerCase()}`)
     .setColor(0xffd700);
 
@@ -144,7 +144,7 @@ async function execute(message, args, client) {
   if (message.author.id !== OWNER_ID) {
     return message.reply({
       embeds: [new EmbedBuilder()
-        .setTitle('🚫 Access Denied')
+        .setTitle(' Access Denied')
         .setDescription('This command is reserved for the bot owner only.')
         .setColor(0xe74c3c)
       ]
@@ -223,11 +223,11 @@ async function execute(message, args, client) {
         if (type === 'beli' && !isNaN(amount)) {
           user.beli = (user.beli || 0) + amount;
           await user.save();
-          return message.reply(`✅ Gave ${amount} Beli to ${targetUser.username}`);
+          return message.reply(`<:sucess:1375872950321811547> Gave ${amount} Beli to ${targetUser.username}`);
         } else if (type === 'xp' && !isNaN(amount)) {
           user.xp = (user.xp || 0) + amount;
           await user.save();
-          return message.reply(`✅ Gave ${amount} XP to ${targetUser.username}`);
+          return message.reply(`<:sucess:1375872950321811547> Gave ${amount} XP to ${targetUser.username}`);
         } else if (type === 'card' && args[4]) {
           const cardName = args.slice(4).join(' ');
           if (!user.cards) user.cards = [];
@@ -244,14 +244,14 @@ async function execute(message, args, client) {
               level: 1
             });
             await user.save();
-            return message.reply(`✅ Gave ${cardExists.name} (${cardExists.rank}) to ${targetUser.username}`);
+            return message.reply(`<:sucess:1375872950321811547> Gave ${cardExists.name} (${cardExists.rank}) to ${targetUser.username}`);
           } else {
-            return message.reply('❌ Card not found in database.');
+            return message.reply('<:arrow:1375872983029256303> Card not found in database.');
           }
         }
       } catch (error) {
         console.error('Owner give command error:', error);
-        return message.reply('❌ An error occurred while giving items.');
+        return message.reply('<:arrow:1375872983029256303> An error occurred while giving items.');
       }
     }
 
@@ -265,7 +265,7 @@ async function execute(message, args, client) {
         ]);
 
         const embed = new EmbedBuilder()
-          .setTitle('📊 Bot Statistics')
+          .setTitle(' Bot Statistics')
           .setColor(0x3498db)
           .addFields(
             { name: 'Total Users', value: totalUsers.toString(), inline: true },
@@ -279,7 +279,7 @@ async function execute(message, args, client) {
         return message.reply({ embeds: [embed] });
       } catch (error) {
         console.error('Stats command error:', error);
-        return message.reply('❌ Error retrieving stats.');
+        return message.reply('<:arrow:1375872983029256303> Error retrieving stats.');
       }
     }
 
@@ -287,15 +287,15 @@ async function execute(message, args, client) {
       const targetUser = message.mentions.users.first();
       try {
         await User.deleteOne({ userId: targetUser.id });
-        return message.reply(`✅ Reset all progress for ${targetUser.username}`);
+        return message.reply(`<:sucess:1375872950321811547> Reset all progress for ${targetUser.username}`);
       } catch (error) {
         console.error('Reset command error:', error);
-        return message.reply('❌ Error resetting user.');
+        return message.reply('<:arrow:1375872983029256303> Error resetting user.');
       }
     }
   }
 
-  return message.reply('❌ Unknown owner command or missing arguments.');
+  return message.reply('<:arrow:1375872983029256303> Unknown owner command or missing arguments.');
 }
 
 function formatUptime(seconds) {

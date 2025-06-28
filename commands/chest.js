@@ -6,7 +6,7 @@ const CHEST_REWARDS = {
   'c': {
     name: 'C Chest',
     color: 0x8B4513,
-    emoji: '🟫',
+    emoji: '<:c_:1375608627213242468>',
     rewards: {
       guaranteed: [
         { type: 'card', rank: 'C' },
@@ -20,7 +20,7 @@ const CHEST_REWARDS = {
   'b': {
     name: 'B Chest',
     color: 0x0066CC,
-    emoji: '🟦',
+    emoji: '<:b_:1375608257921679360>',
     rewards: {
       guaranteed: [
         { type: 'card', rank: 'B' },
@@ -35,7 +35,7 @@ const CHEST_REWARDS = {
   'a': {
     name: 'A Chest',
     color: 0xFFD700,
-    emoji: '🟨',
+    emoji: '<:a_:1375608345288904786>',
     rewards: {
       guaranteed: [
         { type: 'card', rank: 'A' },
@@ -50,7 +50,7 @@ const CHEST_REWARDS = {
   's': {
     name: 'S Chest',
     color: 0xFF0000,
-    emoji: '🟥',
+    emoji: '<:s_:1375608412477329600>',
     rewards: {
       guaranteed: [
         { type: 'card', rank: 'S' },
@@ -66,7 +66,7 @@ const CHEST_REWARDS = {
   'ur': {
     name: 'UR Chest',
     color: 0x9932CC,
-    emoji: '🟪',
+    emoji: '<:ur:1375608483940139048>',
     rewards: {
       guaranteed: [
         { type: 'card', rank: 'UR' },
@@ -161,11 +161,11 @@ async function execute(message, args) {
       .setDescription('Use `op chest open <type>` to open a chest!')
       .setColor(0x3498db)
       .addFields([
-        { name: '🟫 C Chests', value: chests['cchest'].toString(), inline: true },
-        { name: '🟦 B Chests', value: chests['bchest'].toString(), inline: true },
-        { name: '🟨 A Chests', value: chests['achest'].toString(), inline: true },
-        { name: '🟥 S Chests', value: chests['schest'].toString(), inline: true },
-        { name: '🟪 UR Chests', value: chests['urchest'].toString(), inline: true },
+        { name: '<:c_:1375608627213242468> C Chests', value: chests['cchest'].toString(), inline: true },
+        { name: '<:b_:1375608257921679360> B Chests', value: chests['bchest'].toString(), inline: true },
+        { name: '<:a_:1375608345288904786> A Chests', value: chests['achest'].toString(), inline: true },
+        { name: '<:s_:1375608412477329600> S Chests', value: chests['schest'].toString(), inline: true },
+        { name: '<:ur:1375608483940139048> UR Chests', value: chests['urchest'].toString(), inline: true },
         { name: '\u200b', value: '\u200b', inline: true }
       ]);
 
@@ -217,15 +217,15 @@ async function execute(message, args) {
         break;
       case 'beli':
         user.beli = (user.beli || 0) + reward.amount;
-        rewardText += `💰 ${reward.amount} Beli\n`;
+        rewardText += `<:Money:1375579299565928499> ${reward.amount} Beli\n`;
         break;
       case 'xp':
         user.xp = (user.xp || 0) + reward.amount;
-        rewardText += `⭐ ${reward.amount} XP\n`;
+        rewardText += `<:snoopy_sparkles:1388585338821152978> ${reward.amount} XP\n`;
         break;
       case 'item':
         user.inventory.push(reward.name.toLowerCase().replace(/\s+/g, ''));
-        rewardText += `🎒 ${reward.name}\n`;
+        rewardText += `<:emptybox:1388587415018410177> ${reward.name}\n`;
         break;
     }
   }

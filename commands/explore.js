@@ -378,7 +378,7 @@ async function execute(message, args, client) {
     user.exploreLast = 0;
     user.exploreLossCooldown = 0;
     await user.save();
-    return message.reply("✅ Your exploration progress has been reset!");
+    return message.reply("<:sucess:1375872950321811547> Your exploration progress has been reset!");
   }
 
   let user = await User.findOne({ userId });
@@ -400,19 +400,19 @@ async function execute(message, args, client) {
     const left = prettyTime(user.exploreLossCooldown - now);
     return message.reply(`You are recovering from defeat! Try exploring again in ${left}.`);
   }
-  
+
   const locationCooldown = LOCATION_COOLDOWNS[currentLocation] || 2 * 60 * 1000;
   if (!immune && user.locationCooldowns && user.locationCooldowns[currentLocation] && now < user.locationCooldowns[currentLocation]) {
     const left = prettyTime(user.locationCooldowns[currentLocation] - now);
-    return message.reply(`⏳ You must wait ${left} before exploring ${currentLocation} again.`);
+    return message.reply(`<:icon4:1375877365649117245> You must wait ${left} before exploring ${currentLocation} again.`);
   }
   if (currentLocation === 'COMPLETED') {
-    return message.reply("🎉 You've completed the East Blue saga! The Grand Line awaits in future updates!");
+    return message.reply("<:sucess:1375872950321811547> You've completed the East Blue saga! The Grand Line awaits in future updates!");
   }
 
   const localStage = getLocalStage(stage);
   const locationData = LOCATIONS[currentLocation];
-  
+
   if (!locationData || localStage >= locationData.length) {
     return message.reply("No more stages available in this location!");
   }
@@ -423,7 +423,7 @@ async function execute(message, args, client) {
   // Handle different stage types
   if (stageData.type === "narrative") {
     let rewardText = '';
-    
+
     // Apply rewards
     if (stageData.reward) {
       await applyReward(user, stageData.reward);
@@ -432,7 +432,7 @@ async function execute(message, args, client) {
 
     const embed = new EmbedBuilder()
       .setTitle(`📍 ${currentLocation} - ${stageData.title}`)
-      .setDescription(`${stageData.desc}${rewardText ? `\n\n🎁 **Rewards:**\n${rewardText}` : ''}`)
+      .setDescription(`${stageData.desc}${rewardText ? `\n\n<:Chest:1375599735854989403> **Rewards:**\n${rewardText.split('\n').map(line => `#- ${line}`).join('\n')}` : ''}`)
       .setColor(0x3498db);
 
     await message.reply({ embeds: [embed] });
@@ -446,11 +446,11 @@ async function execute(message, args, client) {
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('choice_yes')
-        .setLabel('✅ Yes')
+        .setLabel(' Yes')
         .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
         .setCustomId('choice_no')
-        .setLabel('❌ No')
+        .setLabel(' No')
         .setStyle(ButtonStyle.Danger)
     );
 
@@ -481,7 +481,7 @@ async function execute(message, args, client) {
       blockProgress = true;
       await message.reply({
         embeds: [new EmbedBuilder()
-          .setTitle("⚠️ You need a team!")
+          .setTitle("<:arrow:1375872983029256303> You need a team!")
           .setDescription("You must add at least one card to your team to fight. Use `op team add <card>`.")
           .setColor(0xe74c3c)
         ]
@@ -495,7 +495,7 @@ async function execute(message, args, client) {
         blockProgress = true;
         return message.reply({
           embeds: [new EmbedBuilder()
-            .setTitle("⚠️ No valid team members!")
+            .setTitle("<:arrow:1375872983029256303> No valid team members!")
             .setDescription("Your team cards couldn't be loaded. Add cards to your team first.")
             .setColor(0xe74c3c)
           ]
@@ -568,14 +568,14 @@ async function execute(message, args, client) {
     await updateQuestProgress(user, 'explore', 1);
 
     user.exploreStage = stage + 1;
-    
+
     // Set location-based cooldown
     if (!immune) {
       if (!user.locationCooldowns) user.locationCooldowns = {};
       const locationCooldown = LOCATION_COOLDOWNS[currentLocation] || 2 * 60 * 1000;
       user.locationCooldowns[currentLocation] = now + locationCooldown;
     }
-    
+
     user.exploreLossCooldown = 0;
     await user.save();
   } else {
@@ -587,9 +587,9 @@ function createBossBattleEmbed(boss, playerTeam, battleLog, turn, enemyType = "e
   let battleTitle = "Battle";
   if (enemyType === "boss") battleTitle = "Boss Battle";
   else if (enemyType === "multi_enemy") battleTitle = "Multi-Enemy Battle";
-  
+
   const embed = new EmbedBuilder()
-    .setTitle(`⚔️ ${battleTitle}`)
+    .setTitle(` ${battleTitle}`)
     .setDescription(`${battleLog.slice(-4).join('\n') || 'Battle begins!'}`)
     .setColor(0xff0000);
 
@@ -603,17 +603,17 @@ function createBossBattleEmbed(boss, playerTeam, battleLog, turn, enemyType = "e
       const hpBar = createHpBar(enemy.currentHp, enemy.maxHp);
       return `${enemy.name} ${hpBar} ${enemy.currentHp}/${enemy.maxHp}`;
     }).join('\n');
-    
+
     embed.addFields(
-      { name: '👹 Enemies', value: enemyDisplay, inline: false },
-      { name: '🛡️ Your Team', value: teamDisplay, inline: false }
+      { name: '<:INTSL_Aokiji_NOPE:1388591619585871902> Enemies', value: enemyDisplay, inline: false },
+      { name: '<:Zoro_CuteStair:1388591115795693688> Your Team', value: teamDisplay, inline: false }
     );
   } else {
     const hpBar = createHpBar(boss.currentHp, boss.maxHp);
     embed.addFields(
-      { name: `🔥 ${boss.name} HP`, value: `${hpBar} ${boss.currentHp}/${boss.maxHp}`, inline: true },
-      { name: '⚡ Attack Power', value: `${boss.attack[0]}-${boss.attack[1]}`, inline: true },
-      { name: '🛡️ Your Team', value: teamDisplay, inline: false }
+      { name: ` ${boss.name} HP`, value: `${hpBar} ${boss.currentHp}/${boss.maxHp}`, inline: true },
+      { name: ' Attack Power', value: `${boss.attack[0]}-${boss.attack[1]}`, inline: true },
+      { name: ' Your Team', value: teamDisplay, inline: false }
     );
   }
 
@@ -625,22 +625,22 @@ function createBossBattleButtons(disabled = false) {
     .addComponents(
       new ButtonBuilder()
         .setCustomId('boss_attack')
-        .setLabel('⚔️ Attack')
+        .setLabel(' Attack')
         .setStyle(ButtonStyle.Danger)
         .setDisabled(disabled),
       new ButtonBuilder()
         .setCustomId('boss_defend')
-        .setLabel('🛡️ Defend')
+        .setLabel(' Defend')
         .setStyle(ButtonStyle.Primary)
         .setDisabled(disabled),
       new ButtonBuilder()
         .setCustomId('boss_inventory')
-        .setLabel('🎒 Items')
+        .setLabel('<:emptybox:1388587415018410177> Items')
         .setStyle(ButtonStyle.Success)
         .setDisabled(disabled),
       new ButtonBuilder()
         .setCustomId('boss_flee')
-        .setLabel('🏃 Flee')
+        .setLabel(' Flee')
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(disabled)
     );
@@ -648,24 +648,24 @@ function createBossBattleButtons(disabled = false) {
 
 function formatRewardText(reward) {
   if (!reward) return '';
-  
+
   if (reward.type === "multiple") {
     return reward.rewards.map(r => formatRewardText(r)).filter(t => t).join('\n');
   }
 
   switch (reward.type) {
     case "card":
-      return `🎴 ${reward.name} (${reward.rank}-Rank)`;
+      return `${reward.name} (${reward.rank}-Rank)`;
     case "beli":
-      return `💰 +${reward.amount} Beli`;
+      return `<:Money:1375579299565928499>+${reward.amount} Beli`;
     case "xp":
-      return `⭐ +${reward.amount} XP`;
+      return `<:snoopy_sparkles:1388585338821152978> +${reward.amount} XP`;
     case "item":
-      return `📦 ${reward.name}${reward.count ? ` x${reward.count}` : ''}`;
+      return `<:emptybox:1388587415018410177> ${reward.name}${reward.count ? ` x${reward.count}` : ''}`;
     case "chest":
-      return `📦 ${reward.rank.toUpperCase()} Chest`;
+      return `<:emptybox:1388587415018410177> ${reward.rank.toUpperCase()} Chest`;
     case "saga_unlock":
-      return `🏝️ ${reward.saga} Saga Unlocked!`;
+      return `${reward.saga} Saga Unlocked!`;
     default:
       return '';
   }

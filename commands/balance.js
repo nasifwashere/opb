@@ -10,10 +10,10 @@ async function execute(message) {
 
   const embed = new EmbedBuilder()
     .setTitle(`${message.author.username}'s Balance`)
-    .setDescription(`💰 **${user.beli || 0}** Beli`)
+    .setDescription(`<:Money:1375579299565928499> **${user.beli || 0}** Beli`)
     .setColor(0xffd700)
     .setThumbnail(message.author.displayAvatarURL())
-    .setFooter({ text: 'Use "op shop" to spend your Beli!' });
+    .setFooter({ text: 'Use `op shop` to spend your Beli!' });
 
   await message.reply({ embeds: [embed] });
 }

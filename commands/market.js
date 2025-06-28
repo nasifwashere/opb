@@ -16,7 +16,7 @@ function normalize(str) {
 
 function createMarketEmbed(listings, page, totalPages, type = 'all') {
   const embed = new EmbedBuilder()
-    .setTitle('🏪 Player Marketplace')
+    .setTitle('<:LuffyJeer:1388593117652844575>Player Marketplace')
     .setDescription(`Browse and purchase items from other players\n\nShowing: ${type === 'all' ? 'All Items' : type.charAt(0).toUpperCase() + type.slice(1)}`)
     .setColor(0x2ecc40)
     .setFooter({ text: `Page ${page + 1}/${totalPages || 1} • Market tax: ${(MARKET_TAX * 100)}%` });
@@ -35,7 +35,7 @@ function createMarketEmbed(listings, page, totalPages, type = 'all') {
     
     embed.addFields({
       name: `${index + 1}. ${itemDisplay}`,
-      value: `💰 **${listing.price} Beli**\n👤 Seller: ${listing.sellerName}\n⏰ ${timeLeft}h remaining\n${listing.description ? `📝 ${listing.description}` : ''}`,
+      value: `<:Money:1375579299565928499> **${listing.price} Beli**\n👤 Seller: ${listing.sellerName}\n<:icon4:1375877365649117245> ${timeLeft}h remaining\n${listing.description ? `📝 ${listing.description}` : ''}`,
       inline: true
     });
   });
@@ -47,12 +47,12 @@ function createMarketButtons(page, totalPages, hasMyListings = false) {
   const navButtons = [
     new ButtonBuilder()
       .setCustomId('market_prev')
-      .setLabel('◀️ Previous')
+      .setLabel('◀ Previous')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(page === 0),
     new ButtonBuilder()
       .setCustomId('market_next')
-      .setLabel('Next ▶️')
+      .setLabel('Next ▶')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(page >= totalPages - 1)
   ];
@@ -60,26 +60,26 @@ function createMarketButtons(page, totalPages, hasMyListings = false) {
   const filterButtons = [
     new ButtonBuilder()
       .setCustomId('market_all')
-      .setLabel('🔍 All')
+      .setLabel(' All')
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('market_cards')
-      .setLabel('🃏 Cards')
+      .setLabel(' Cards')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('market_items')
-      .setLabel('📦 Items')
+      .setLabel(' Items')
       .setStyle(ButtonStyle.Secondary)
   ];
 
   const actionButtons = [
     new ButtonBuilder()
       .setCustomId('market_buy')
-      .setLabel('💰 Buy Item')
+      .setLabel('Buy Item')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId('market_list')
-      .setLabel('📝 List Item')
+      .setLabel('List Item')
       .setStyle(ButtonStyle.Primary)
   ];
 
@@ -87,7 +87,7 @@ function createMarketButtons(page, totalPages, hasMyListings = false) {
     actionButtons.push(
       new ButtonBuilder()
         .setCustomId('market_mylistings')
-        .setLabel('📋 My Listings')
+        .setLabel('My Listings')
         .setStyle(ButtonStyle.Secondary)
     );
   }
@@ -200,22 +200,22 @@ async function execute(message, args) {
     if (subcommand === 'buy') {
       const itemNumber = parseInt(args[1]);
       if (!itemNumber || itemNumber < 1 || itemNumber > listings.length) {
-        return message.reply('❌ Invalid item number. Use the number shown in the market listing.');
+        return message.reply('<:arrow:1375872983029256303> Invalid item number. Use the number shown in the market listing.');
       }
       
       const listing = listings[itemNumber - 1];
       if (listing.sellerId === userId) {
-        return message.reply('❌ You cannot buy your own listing!');
+        return message.reply('<:arrow:1375872983029256303> You cannot buy your own listing!');
       }
       
       if (user.beli < listing.price) {
-        return message.reply(`❌ You don't have enough Beli! You need ${listing.price} but only have ${user.beli}.`);
+        return message.reply(`<:arrow:1375872983029256303> You don't have enough Beli! You need ${listing.price} but only have ${user.beli}.`);
       }
       
       // Process purchase
       const seller = await User.findOne({ userId: listing.sellerId });
       if (!seller) {
-        return message.reply('❌ Seller not found. This listing may be invalid.');
+        return message.reply('<:arrow:1375872983029256303> Seller not found. This listing may be invalid.');
       }
       
       const tax = Math.floor(listing.price * MARKET_TAX);
@@ -245,7 +245,7 @@ async function execute(message, args) {
       await user.save();
       await seller.save();
       
-      await message.reply(`✅ Successfully purchased **${listing.itemName}** for ${listing.price} Beli!`);
+      await message.reply(`<:sucess:1375872950321811547> Successfully purchased **${listing.itemName}** for ${listing.price} Beli!`);
       
     } else if (subcommand === 'list') {
       const [, type, ...itemParts] = args;
@@ -256,7 +256,7 @@ async function execute(message, args) {
       // Parse arguments
       const priceIndex = itemParts.findIndex(part => !isNaN(parseInt(part)));
       if (priceIndex === -1) {
-        return message.reply('❌ Please specify a valid price.');
+        return message.reply('<:arrow:1375872983029256303> Please specify a valid price.');
       }
       
       const itemName = itemParts.slice(0, priceIndex).join(' ').trim();
@@ -264,13 +264,13 @@ async function execute(message, args) {
       const description = itemParts.slice(priceIndex + 1).join(' ').trim();
       
       if (!itemName || price < 1) {
-        return message.reply('❌ Invalid item name or price.');
+        return message.reply('<:arrow:1375872983029256303> Invalid item name or price.');
       }
       
       // Check user's active listings
       const activeListings = await MarketListing.countDocuments({ sellerId: userId, active: true });
       if (activeListings >= MAX_LISTINGS_PER_USER) {
-        return message.reply(`❌ You can only have ${MAX_LISTINGS_PER_USER} active listings at a time.`);
+        return message.reply(`<:arrow:1375872983029256303> You can only have ${MAX_LISTINGS_PER_USER} active listings at a time.`);
       }
       
       // Check if user owns the item
@@ -298,7 +298,7 @@ async function execute(message, args) {
       }
       
       if (!hasItem) {
-        return message.reply(`❌ You don't own "${itemName}".`);
+        return message.reply(`<:arrow:1375872983029256303> You don't own "${itemName}".`);
       }
       
       // Create listing
@@ -316,7 +316,7 @@ async function execute(message, args) {
       await listing.save();
       await user.save();
       
-      await message.reply(`✅ Listed **${itemName}** for ${price} Beli! It will expire in 7 days.`);
+      await message.reply(`<:sucess:1375872950321811547> Listed **${itemName}** for ${price} Beli! It will expire in 7 days.`);
     }
   }
 

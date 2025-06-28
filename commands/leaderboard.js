@@ -2,11 +2,11 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('
 const User = require('../db/models/User.js');
 
 const leaderboardTypes = {
-  beli: { name: 'Richest Pirates', field: 'beli', emoji: '💰' },
-  wins: { name: 'Battle Champions', field: 'wins', emoji: '🏆' },
-  xp: { name: 'Most Experienced', field: 'xp', emoji: '✨' },
-  cards: { name: 'Biggest Collections', field: 'cardCount', emoji: '📚' },
-  level: { name: 'Highest Level Cards', field: 'maxLevel', emoji: '⭐' }
+  beli: { name: 'Richest Pirates', field: 'beli', emoji: '<:Money:1375579299565928499>' },
+  wins: { name: 'Battle Champions', field: 'wins', emoji: '<:LuffyJeer:1388593117652844575>' },
+  xp: { name: 'Most Experienced', field: 'xp', emoji: '<:snoopy_sparkles:1388585338821152978>' },
+  cards: { name: 'Biggest Collections', field: 'cardCount', emoji: '<:icon11:1375881888656392294>' },
+  level: { name: 'Highest Level Cards', field: 'maxLevel', emoji: '<:snoopy_sparkles:1388585338821152978>' }
 };
 
 async function getLeaderboardData(type, page = 0, limit = 10) {
@@ -113,7 +113,7 @@ function createLeaderboardButtons(currentType, page, hasNext) {
       .setDisabled(page === 0),
     new ButtonBuilder()
       .setCustomId('lb_next')
-      .setLabel('Next ▶️')
+      .setLabel('Next ')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(!hasNext)
   ];

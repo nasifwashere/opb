@@ -65,6 +65,28 @@ const name = 'interactionCreate';
 const once = false;
 
 async function execute(interaction, client) {
+  // Handle slash commands
+  if (interaction.isChatInputCommand()) {
+    const command = client.commands.get(interaction.commandName);
+
+    if (!command) {
+      console.error(`No command matching ${interaction.commandName} was found.`);
+      return;
+    }
+
+    try {
+      await command.execute(interaction);
+    } catch (error) {
+      console.error('Error executing slash command:', error);
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
+      } else {
+        await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+      }
+    }
+    return;
+  }
+
   if (!interaction.isButton() && !interaction.isSelectMenu()) return;
 
   if (interaction.customId.startsWith('boss_')) {
@@ -215,68 +237,40 @@ async function handleBossInteraction(interaction, client) {
   const { boss, playerTeam, battleLog, turn, stageData, currentLocation, stage } = battleData;
 
   if (action === 'inventory') {
-    const User = require('../db/models/User.js');
-    const user = await User.findOne({ userId: interaction.user.id });
+          await interaction.deferUpdate();
 
-    if (!user || !user.inventory || user.inventory.length === 0) {
-      return interaction.reply({ content: 'Your inventory is empty!', ephemeral: true });
-    }
+          const user = await User.findOne({ userId: interaction.user.id });
+          if (!user || !user.inventory || user.inventory.length === 0) {
+            await interaction.followUp({ content: 'Your inventory is empty!', ephemeral: true });
+            return;
+          }
 
-    // Filter for battle-usable items
-    const battleItems = user.inventory.filter(item => 
-      item === 'healingpotion' || item === 'statbuffer'
-    );
+          const usableItems = user.inventory.filter(item => 
+            ['healingpotion', 'statbuffer', 'speedboostfood'].includes(item.toLowerCase().replace(/\s+/g, ''))
+          );
 
-    if (battleItems.length === 0) {
-      return interaction.reply({ content: 'You have no battle items!', ephemeral: true });
-    }
+          if (usableItems.length === 0) {
+            await interaction.followUp({ content: 'No usable items in battle!', ephemeral: true });
+            return;
+          }
 
-    // Create item selection buttons
-    const itemButtons = [];
-    const uniqueItems = [...new Set(battleItems)];
+          const itemButtons = new ActionRowBuilder();
+          usableItems.slice(0, 5).forEach((item, index) => {
+            itemButtons.addComponents(
+              new ButtonBuilder()
+                .setCustomId(`use_item_${item}_${index}`)
+                .setLabel(item)
+                .setStyle(ButtonStyle.Success)
+            );
+          });
 
-    uniqueItems.forEach(item => {
-      const count = battleItems.filter(i => i === item).length;
-      let label = '';
-      let emoji = '';
-
-      if (item === 'healingpotion') {
-        label = `Healing Potion (${count})`;
-        emoji = '🧪';
-      } else if (item === 'statbuffer') {
-        label = `Stat Buffer (${count})`;
-        emoji = '⚡';
-      }
-
-      itemButtons.push(
-        new ButtonBuilder()
-          .setCustomId(`battle_item_use_${item}`)
-          .setLabel(label)
-          .setEmoji(emoji)
-          .setStyle(ButtonStyle.Primary)
-      );
-    });
-
-    itemButtons.push(
-      new ButtonBuilder()
-        .setCustomId('battle_item_cancel')
-        .setLabel('Cancel')
-        .setStyle(ButtonStyle.Secondary)
-    );
-
-    const itemRow = new ActionRowBuilder().addComponents(itemButtons.slice(0, 5));
-    const rows = [itemRow];
-    if (itemButtons.length > 5) {
-      const itemRow2 = new ActionRowBuilder().addComponents(itemButtons.slice(5));
-      rows.push(itemRow2);
-    }
-
-    return interaction.reply({
-      content: 'Select an item to use:',
-      components: rows,
-      ephemeral: true
-    });
-  }
+          await interaction.followUp({ 
+            content: 'Choose an item to use:', 
+            components: [itemButtons], 
+            ephemeral: true 
+          });
+          return;
+        }
 
   if (boss.currentHp <= 0 || playerTeam.every(card => card.currentHp <= 0)) {
     return interaction.reply({ content: 'This battle has already ended.', ephemeral: true });

@@ -33,7 +33,7 @@ async function execute(message) {
   });
   await user.save();
 
-  message.reply('🏴‍☠️ Your journey begins! You received:\n🎴 1 Monkey D. Luffy\n💰 500 Beli\n🧪 3 Healing Potions\n⚡ 3 Stat Buffers\n\nGood luck on your adventure!');
+  message.reply(' Your journey begins! You received:\n 1 Monkey D. Luffy\n<:Money:1375579299565928499> 500 Beli\n<:icon7:1375881261133856930> 3 Healing Potions\n<:icon5:1375880705078460436> 3 Stat Buffers\n\nGood luck on your adventure!');
 }
 
 module.exports = { data, execute };

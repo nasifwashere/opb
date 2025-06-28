@@ -27,11 +27,11 @@ async function execute(message, args, client) {
 
   if (!inventory.length) {
     const embed = new EmbedBuilder()
-      .setTitle('📦 Empty Inventory')
+      .setTitle('<:emptybox:1388587415018410177> Empty Inventory')
       .setDescription('Your inventory is empty! Collect items on your adventure.')
       .setColor(0x95a5a6)
       .addFields({
-        name: '💡 How to get items:',
+        name: ' How to get items:',
         value: '• Complete exploration stages\n• Purchase from shop with `op shop`\n• Complete quests with `op quest`',
         inline: false
       });
@@ -46,7 +46,7 @@ async function execute(message, args, client) {
   });
 
   const embed = new EmbedBuilder()
-    .setTitle(`📦 ${message.author.username}'s Inventory`)
+    .setTitle(`<:emptybox:1388587415018410177> ${message.author.username}'s Inventory`)
     .setDescription(`You have ${inventory.length} items in your inventory`)
     .setColor(0x3498db)
     .setThumbnail(message.author.displayAvatarURL());
@@ -67,13 +67,13 @@ async function execute(message, args, client) {
   }
 
   embed.addFields({ 
-    name: '📦 Your Items:', 
+    name: '<:emptybox:1388587415018410177> Your Items:', 
     value: itemsText || 'No items found', 
     inline: false 
   });
 
   embed.addFields({
-    name: '💡 Equipment Tips:',
+    name: ' Equipment Tips:',
     value: '• Use `op equip <item> <card>` to equip items\n• Use `op use <item>` for consumables\n• Some items work automatically when owned',
     inline: false
   });

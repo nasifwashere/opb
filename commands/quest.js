@@ -5,7 +5,7 @@ const { getAvailableQuests, updateQuestProgress, claimQuestReward } = require('.
 
 function createQuestEmbed(quests, activeQuests, completedQuests) {
   const embed = new EmbedBuilder()
-    .setTitle('📋 Quest Log')
+    .setTitle(' Quest Log')
     .setDescription('Complete quests to earn rewards!')
     .setColor(0x3498db);
 
@@ -53,14 +53,14 @@ function createQuestEmbed(quests, activeQuests, completedQuests) {
     let claimableText = '';
     claimableQuests.slice(0, 5).forEach(quest => {
       const rewards = quest.rewards.map(r => {
-        if (r.type === 'beli') return `💰${r.amount}`;
-        if (r.type === 'xp') return `⭐${r.amount}`;
-        if (r.type === 'item') return `📦${r.itemName || r.name}`;
+        if (r.type === 'beli') return `<:Money:1375579299565928499>${r.amount}`;
+        if (r.type === 'xp') return `<:snoopy_sparkles:1388585338821152978>${r.amount}`;
+        if (r.type === 'item') return `<:emptybox:1388587415018410177>${r.itemName || r.name}`;
         return `${r.type}`;
       }).join(' ');
-      claimableText += `🎁 **${quest.name}** - ${rewards}\n`;
+      claimableText += ` **${quest.name}** - ${rewards}\n`;
     });
-    embed.addFields({ name: '🎁 Ready to Claim', value: claimableText, inline: false });
+    embed.addFields({ name: ' Ready to Claim', value: claimableText, inline: false });
   }
 
   // Show active quests
@@ -70,9 +70,9 @@ function createQuestEmbed(quests, activeQuests, completedQuests) {
       const current = progress;
       const target = requirement.target;
       const percentage = Math.floor((current / target) * 100);
-      progressText += `🔄 **${quest.name}** - ${current}/${target} (${percentage}%)\n`;
+      progressText += `<:icon1:1375589270013608206> **${quest.name}** - ${current}/${target} (${percentage}%)\n`;
     });
-    embed.addFields({ name: '🔄 In Progress', value: progressText, inline: false });
+    embed.addFields({ name: '<:icon1:1375589270013608206> In Progress', value: progressText, inline: false });
   }
 
   return embed;
@@ -112,118 +112,118 @@ function createQuestButtons() {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('quest_refresh')
-      .setLabel('🔄 Refresh')
+      .setLabel('<:icon1:1375589270013608206> Refresh')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('quest_info')
-      .setLabel('ℹ️ Info')
+      .setLabel('ℹ Info')
       .setStyle(ButtonStyle.Primary)
   );
 }
 
 async function createQuestInfoEmbed() {
   const embed = new EmbedBuilder()
-    .setTitle('📚 Quest Requirements')
+    .setTitle(' Quest Requirements')
     .setDescription('Here\'s what you need to do to complete each quest:')
     .setColor(0x3498db)
     .addFields(
       {
-        name: '🎴 Daily Card Pull',
+        name: ' Daily Card Pull',
         value: 'Pull 1 card using `op pull`',
         inline: true
       },
       {
-        name: '🗺️ Continue Your Adventure', 
+        name: ' Continue Your Adventure', 
         value: 'Take 3 exploration steps using `op explore`',
         inline: true
       },
       {
-        name: '⚔️ Battle Training',
+        name: ' Battle Training',
         value: 'Win 2 battles using `op battle`',
         inline: true
       },
       {
-        name: '👥 Crew Assembly',
+        name: ' Crew Assembly',
         value: 'Add or change 1 card in your team using `op team`',
         inline: true
       },
       {
-        name: '⭐ Power Enhancement',
+        name: ' Power Enhancement',
         value: 'Level up 1 card using `op level`',
         inline: true
       },
       {
-        name: '📦 Collection Master (Weekly)',
+        name: ' Collection Master (Weekly)',
         value: 'Pull 15 cards this week',
         inline: true
       },
       {
-        name: '🏆 Battle Champion (Weekly)',
+        name: ' Battle Champion (Weekly)',
         value: 'Win 10 battles this week',
         inline: true
       },
       {
-        name: '🌊 Grand Line Explorer (Weekly)',
+        name: ' Grand Line Explorer (Weekly)',
         value: 'Complete 20 exploration steps this week',
         inline: true
       },
       {
-        name: '🔄 Evolution Specialist (Weekly)',
+        name: ' Evolution Specialist (Weekly)',
         value: 'Evolve 3 cards this week using `op evolve`',
         inline: true
       },
       {
-        name: '💰 Market Trader (Weekly)',
+        name: ' Market Trader (Weekly)',
         value: 'Make 5 market transactions (buy/sell)',
         inline: true
       },
       {
-        name: '🚢 First Steps to Piracy (Story)',
+        name: ' First Steps to Piracy (Story)',
         value: 'Complete 5 exploration steps in Romance Dawn',
         inline: true
       },
       {
-        name: '👫 Assembling the Crew (Story)',
+        name: ' Assembling the Crew (Story)',
         value: 'Build a complete team of 3 cards',
         inline: true
       },
       {
-        name: '🥇 First Taste of Victory (Story)',
+        name: ' First Taste of Victory (Story)',
         value: 'Win 1 battle against a boss',
         inline: true
       },
       {
-        name: '🃏 Building a Collection (Story)',
+        name: ' Building a Collection (Story)',
         value: 'Collect 10 different cards through pulls',
         inline: true
       },
       {
-        name: '✨ Unlocking Potential (Story)',
+        name: ' Unlocking Potential (Story)',
         value: 'Evolve 1 card to a stronger form',
         inline: true
       },
       {
-        name: '🏴‍☠️ Romance Dawn Complete (Story)',
+        name: '🏴 Romance Dawn Complete (Story)',
         value: 'Finish all exploration stages in Romance Dawn',
         inline: true
       },
       {
-        name: '💪 Training for Power (Story)',
+        name: ' Training for Power (Story)',
         value: 'Level up cards 5 times total',
         inline: true
       },
       {
-        name: '🛒 Introduction to Trading (Story)',
+        name: ' Introduction to Trading (Story)',
         value: 'Make 1 market transaction (buy or sell)',
         inline: true
       },
       {
-        name: '🗺️ Advanced Explorer (Story)',
+        name: ' Advanced Explorer (Story)',
         value: 'Complete 25 exploration steps across all sagas',
         inline: true
       },
       {
-        name: '⭐ Rank Up Specialist (Story)',
+        name: ' Rank Up Specialist (Story)',
         value: 'Evolve cards to A rank or higher 3 times',
         inline: true
       }
@@ -348,7 +348,7 @@ async function execute(message, args) {
           }
         }
         await currentUser.save();
-        await interaction.followUp({ content: `✅ ${result.message}`, ephemeral: true });
+        await interaction.followUp({ content: `<:sucess:1375872950321811547> ${result.message}`, ephemeral: true });
         
         // Refresh the display
         setTimeout(async () => {
@@ -385,7 +385,7 @@ async function execute(message, args) {
           await questMessage.edit({ embeds: [refreshEmbed], components: refreshComponents }).catch(() => {});
         }, 1000);
       } else {
-        await interaction.followUp({ content: `❌ ${result.message}`, ephemeral: true });
+        await interaction.followUp({ content: `<:arrow:1375872983029256303> ${result.message}`, ephemeral: true });
       }
     }
   });

@@ -63,7 +63,7 @@ async function execute(message, args) {
     { $pull: { team: card.name } }
   );
 
-  await message.reply(`✅ "${card.name}" has been disallowed and removed from all teams. Players cannot use this card in battles until it's re-allowed.`);
+  await message.reply(`<:sucess:1375872950321811547> "${card.name}" has been disallowed and removed from all teams. Players cannot use this card in battles until it's re-allowed.`);
 }
 
 

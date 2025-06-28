@@ -63,13 +63,13 @@ function getEvolutionRequirements(card) {
   );
   let reqs = [];
   if (next.saga) reqs.push(`📍 Saga: ${next.saga}`);
-  if (next.rank) reqs.push(`⭐ Next Rank: ${next.rank}`);
+  if (next.rank) reqs.push(`<:snoopy_sparkles:1388585338821152978> Next Rank: ${next.rank}`);
   if (rule) {
-    reqs.unshift(`💰 Cost: ${rule.cost} Beli`);
-    reqs.unshift(`🧪 Level Required: ${rule.level}`);
+    reqs.unshift(`<:Money:1375579299565928499> Cost: ${rule.cost} Beli`);
+    reqs.unshift(`<:snoopy_sparkles:1388585338821152978> Level Required: ${rule.level}`);
   }
   return [
-    `🧬 Upgrade to [${next.rank}] ${next.name}`,
+    `<:snoopy_sparkles:1388585338821152978> Upgrade to [${next.rank}] ${next.name}`,
     ...reqs
   ].join("\n");
 }
@@ -79,7 +79,7 @@ function infoEmbed(card, ownedCount, userCard) {
   const rankSet = rankSettings[card.rank] || {};
   let level = userCard?.level || userCard?.timesUpgraded + 1 || 1;
   if (!level) level = 1;
-  const lockStatus = userCard?.locked ? ' 🔒' : '';
+  const lockStatus = userCard?.locked ? ' <:Padlock_Crown:1388587874084982956>' : '';
   let title = `**[${card.rank}] ${card.name}${lockStatus} - Lv. ${level}**`;
   let desc = `${card.shortDesc}\n${attackRange(card.phs)}`;
   if (ownedCount === 0) desc += "\n\n*You do not own this card. Use `op pull` or trade to obtain it.*";
@@ -101,17 +101,17 @@ function buildRow(prev, canEvolve, next) {
   const buttons = [
     new ButtonBuilder()
       .setCustomId('evo_prev')
-      .setLabel('⬅️ Previous Evolution')
+      .setLabel('⬅ Previous Evolution')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(!prev),
     new ButtonBuilder()
       .setCustomId('evo_req')
-      .setLabel('🔍 View Upgrade Requirements')
+      .setLabel('View Upgrade Requirements')
       .setStyle(ButtonStyle.Primary)
       .setDisabled(!canEvolve),
     new ButtonBuilder()
       .setCustomId('evo_next')
-      .setLabel('Next Evolution ➡️')
+      .setLabel('Next Evolution ')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(!next)
   ];

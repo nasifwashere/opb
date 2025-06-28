@@ -66,7 +66,7 @@ function createSettingsEmbed(user) {
   const settings = user.settings || {};
   
   const embed = new EmbedBuilder()
-    .setTitle('⚙️ Your Settings')
+    .setTitle(' Your Settings')
     .setDescription('Your current bot settings')
     .setColor(0x3498db)
     .setFooter({ text: 'Use "op set <setting> <value>" to change settings' });
@@ -78,7 +78,7 @@ function createSettingsEmbed(user) {
     
     let displayValue;
     if (setting.type === 'boolean') {
-      displayValue = currentValue ? '✅ Enabled' : '❌ Disabled';
+      displayValue = currentValue ? '<:sucess:1375872950321811547> Enabled' : ' Disabled';
     } else {
       displayValue = currentValue || 'Not set';
     }
@@ -114,11 +114,11 @@ async function execute(message, args) {
     
     if (!setting) {
       const availableSettings = Object.keys(validSettings).map(key => validSettings[key].name).join(', ');
-      return message.reply(`❌ Unknown setting. Available settings: ${availableSettings}`);
+      return message.reply(`<:arrow:1375872983029256303> Unknown setting. Available settings: ${availableSettings}`);
     }
     
     const embed = new EmbedBuilder()
-      .setTitle(`⚙️ ${setting.name} Setting`)
+      .setTitle(` ${setting.name} Setting`)
       .setDescription(setting.description)
       .addFields(
         { name: 'Valid Values', value: setting.values.join(', '), inline: false },
@@ -136,12 +136,12 @@ async function execute(message, args) {
   const setting = validSettings[settingName];
   if (!setting) {
     const availableSettings = Object.keys(validSettings).map(key => validSettings[key].name).join(', ');
-    return message.reply(`❌ Unknown setting. Available settings: ${availableSettings}`);
+    return message.reply(`<:arrow:1375872983029256303> Unknown setting. Available settings: ${availableSettings}`);
   }
 
   const validation = validateAndConvertValue(setting, value);
   if (!validation.valid) {
-    return message.reply(`❌ Invalid value: ${validation.error}`);
+    return message.reply(`<:arrow:1375872983029256303> Invalid value: ${validation.error}`);
   }
 
   // Update the setting
@@ -153,7 +153,7 @@ async function execute(message, args) {
 
   // Create success embed
   const embed = new EmbedBuilder()
-    .setTitle('✅ Setting Updated!')
+    .setTitle('<:sucess:1375872950321811547> Setting Updated!')
     .setDescription(`**${setting.name}** has been updated.`)
     .addFields(
       { name: 'Setting', value: setting.name, inline: true },

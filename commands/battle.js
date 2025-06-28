@@ -33,7 +33,7 @@ function getRandomBoss(saga) {
 
 function createBattleEmbed(boss, playerTeam, battleLog, turn) {
   const embed = new EmbedBuilder()
-    .setTitle(`⚔️ Boss Battle: ${boss.name}`)
+    .setTitle(`Boss Battle: ${boss.name}`)
     .setDescription(`**Boss HP:** ${boss.currentHp}/${boss.hp}\n**Turn:** ${turn}\n\n${battleLog}`)
     .addFields(
       { name: 'Your Team', value: playerTeam.map(card => `${card.name} (HP: ${card.currentHp}/${card.hp})`).join('\n') || 'No active cards', inline: true },
@@ -48,17 +48,17 @@ function createBattleButtons(disabled = false) {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('battle_attack')
-      .setLabel('⚔️ Attack')
+      .setLabel('Attack')
       .setStyle(ButtonStyle.Primary)
       .setDisabled(disabled),
     new ButtonBuilder()
       .setCustomId('battle_skill')
-      .setLabel('✨ Skill')
+      .setLabel(' Skill')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(disabled),
     new ButtonBuilder()
       .setCustomId('battle_flee')
-      .setLabel('🏃 Flee')
+      .setLabel(' Flee')
       .setStyle(ButtonStyle.Danger)
       .setDisabled(disabled)
   );
@@ -67,7 +67,7 @@ function createBattleButtons(disabled = false) {
 const data = { name: 'battle', description: 'Fight boss battles for rewards.' };
 
 async function execute(message) {
-  return message.reply('⚔️ Boss battles are now part of exploration!\n\nUse `op explore` to continue your adventure and fight bosses as part of your story progression.');
+  return message.reply('Boss battles are now part of exploration!\n\nUse `op explore` to continue your adventure and fight bosses as part of your story progression.');
 }
 
 module.exports = { data, execute };

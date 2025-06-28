@@ -93,15 +93,15 @@ const islandData = {
 
 function createMapEmbed(currentSaga, sagaData, userProgress) {
   const embed = new EmbedBuilder()
-    .setTitle(`🗺️ ${currentSaga} Islands`)
+    .setTitle(` ${currentSaga} Islands`)
     .setDescription(sagaData.description)
     .setColor(sagaData.color)
     .setFooter({ text: 'Use buttons to navigate between sagas' });
 
   let mapDisplay = '';
   sagaData.islands.forEach((island, index) => {
-    const status = island.unlocked || userProgress >= index ? '🟢' : '🔴';
-    const progress = userProgress > index ? ' ✅' : userProgress === index ? ' 📍' : '';
+    const status = island.unlocked || userProgress >= index ? '<:unlocked_IDS:1388596601064390656>' : '<:Padlock_Crown:1388587874084982956>';
+    const progress = userProgress > index ? ' <:sucess:1375872950321811547>' : userProgress === index ? ' 📍' : '';
     mapDisplay += `${status} **${island.name}**${progress}\n`;
     mapDisplay += `   └ Boss: ${island.boss}\n\n`;
   });
@@ -111,7 +111,7 @@ function createMapEmbed(currentSaga, sagaData, userProgress) {
   // Add legend
   embed.addFields({ 
     name: 'Legend', 
-    value: '🟢 Available • 🔴 Locked • ✅ Completed • 📍 Current Location', 
+    value: '<:unlocked_IDS:1388596601064390656> Available • <:Padlock_Crown:1388587874084982956> Locked • <:sucess:1375872950321811547> Completed • 📍 Current Location', 
     inline: false 
   });
 
@@ -185,13 +185,13 @@ async function execute(message, args) {
     if (requestedSaga && unlockedSagas.includes(requestedSaga)) {
       currentSaga = requestedSaga;
     } else if (requestedSaga) {
-      return message.reply(`❌ You haven't unlocked the "${requestedSaga}" saga yet!`);
+      return message.reply(`<:arrow:1375872983029256303> You haven't unlocked the "${requestedSaga}" saga yet!`);
     }
   }
 
   const sagaData = islandData[currentSaga];
   if (!sagaData) {
-    return message.reply(`❌ Saga "${currentSaga}" not found.`);
+    return message.reply(`<:arrow:1375872983029256303> Saga "${currentSaga}" not found.`);
   }
 
   const userProgress = getUserProgressInSaga(user, currentSaga);

@@ -1,7 +1,7 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 const commandCategories = {
-  '📦 Collection': {
+  '<:LuffyWhat:1388594146037596180> Collection': {
     commands: [
       { name: 'start', desc: 'Begin your pirate adventure' },
       { name: 'pull', desc: 'Pull random cards from gacha' },
@@ -14,7 +14,7 @@ const commandCategories = {
       { name: 'unlock <card>', desc: 'Remove card protection' }
     ]
   },
-  '⚔️ Battle': {
+  '<:LuffyShocked:1388593270145286235> Battle': {
     commands: [
       { name: 'team [add/remove] [card]', desc: 'Manage your battle team' },
       { name: 'duel @user', desc: 'Challenge another player' },
@@ -22,7 +22,7 @@ const commandCategories = {
       { name: 'evolve <card>', desc: 'Evolve cards to stronger forms' }
     ]
   },
-  '🗺️ Adventure': {
+  '<:LuffyLike:1388593609204301824> Adventure': {
     commands: [
       { name: 'explore', desc: 'Continue your story adventure and fight bosses' },
       { name: 'progress', desc: 'View your current saga' },
@@ -30,7 +30,7 @@ const commandCategories = {
       { name: 'quest', desc: 'View and track daily/weekly missions' }
     ]
   },
-  '💰 Economy': {
+  '<:LuffyJeer:1388593117652844575> Economy': {
     commands: [
       { name: 'shop', desc: 'Browse items for purchase' },
       { name: 'buy <item>', desc: 'Purchase items with Beli' },
@@ -38,22 +38,17 @@ const commandCategories = {
       { name: 'market', desc: 'Player trading marketplace' }
     ]
   },
-  '🏆 Social': {
+  '<:LuffyCry:1388593456657465445> Social': {
     commands: [
       { name: 'leaderboard', desc: 'View top players' },
       { name: 'set <setting> <value>', desc: 'Change bot settings' }
-    ]
-  },
-  '🛡️ Admin': {
-    commands: [
-      { name: 'disallow <card>', desc: 'Disable cards from battles' }
     ]
   }
 };
 
 function createCategoryEmbed(category, categoryData) {
   const embed = new EmbedBuilder()
-    .setTitle(`📚 ${category} Commands`)
+    .setTitle(` ${category} Commands`)
     .setDescription('Here are the available commands in this category:')
     .setColor(0x2c3e50)
     .setThumbnail('https://i.imgur.com/KqAB5Mn.png');
@@ -64,7 +59,7 @@ function createCategoryEmbed(category, categoryData) {
   });
 
   embed.addFields({ 
-    name: '📋 Available Commands', 
+    name: ' Available Commands', 
     value: commandsList || 'No commands available', 
     inline: false 
   });
@@ -93,7 +88,7 @@ function createMainEmbed() {
   });
 
   embed.addFields({ 
-    name: '💡 Quick Start', 
+    name: ' Quick Start', 
     value: 'New to the bot? Start with `op start` then `op pull` to get your first cards!', 
     inline: false 
   });

@@ -207,7 +207,7 @@ async function execute(message, args) {
         `**Combat**\n` +
         `Damage Range: ${minDamage} - ${maxDamage}\n` +
         `Damage Multiplier: ${multiplier}x\n` +
-        `Lock Status: ${currentCard.locked ? '🔒 Locked' : '🔓 Unlocked'}${boostText}\n\n` +
+        `Lock Status: ${currentCard.locked ? '<:Padlock_Crown:1388587874084982956> Locked' : '<:Padlock_Crown:1388587874084982956> Unlocked'}${boostText}\n\n` +
         `**Evolution**\n` +
         `${currentCardDef.evolution ? `Next: ${currentCardDef.evolution.nextId} (Level ${currentCardDef.evolution.requiredLevel})` : 'Max evolution reached'}`;
       

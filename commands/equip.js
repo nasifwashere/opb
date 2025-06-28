@@ -81,7 +81,7 @@ async function execute(message, args, client) {
   if (idx !== -1) user.inventory.splice(idx, 1);
 
   await user.save();
-  return message.reply(`✅ Equipped ${ownedItem} to ${cardObj.name}!`);
+  return message.reply(`<:arrow:1375872983029256303> Equipped ${ownedItem} to ${cardObj.name}!`);
 }
 
 module.exports = { data, execute };

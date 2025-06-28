@@ -48,18 +48,18 @@ async function execute(message, args) {
   // Find the card in user's collection
   const userCard = findUserCard(user, cardName);
   if (!userCard) {
-    return message.reply(`❌ You don't own "${cardName}".`);
+    return message.reply(`<:arrow:1375872983029256303> You don't own "${cardName}".`);
   }
 
   // Find the card definition
   const cardDef = findCard(userCard.name);
   if (!cardDef) {
-    return message.reply(`❌ Card definition for "${userCard.name}" not found.`);
+    return message.reply(`<:arrow:1375872983029256303> Card definition for "${userCard.name}" not found.`);
   }
 
   // Check if card can evolve
   if (!cardDef.evolution) {
-    return message.reply(`❌ "${cardDef.name}" cannot evolve further.`);
+    return message.reply(`<:arrow:1375872983029256303> "${cardDef.name}" cannot evolve further.`);
   }
 
   const evolution = cardDef.evolution;
@@ -67,18 +67,18 @@ async function execute(message, args) {
 
   // Check level requirement
   if (currentLevel < evolution.requiredLevel) {
-    return message.reply(`❌ "${cardDef.name}" needs to be level ${evolution.requiredLevel} to evolve. Current level: ${currentLevel}`);
+    return message.reply(`<:arrow:1375872983029256303> "${cardDef.name}" needs to be level ${evolution.requiredLevel} to evolve. Current level: ${currentLevel}`);
   }
 
   // Check saga requirement
   if (evolution.requiredSaga && user.saga !== evolution.requiredSaga) {
-    return message.reply(`❌ You need to reach the "${evolution.requiredSaga}" saga to evolve this card. Current saga: ${user.saga}`);
+    return message.reply(`<:arrow:1375872983029256303> You need to reach the "${evolution.requiredSaga}" saga to evolve this card. Current saga: ${user.saga}`);
   }
 
   // Find the evolved form
   const evolvedCard = allCards.find(c => c.name === evolution.nextId);
   if (!evolvedCard) {
-    return message.reply(`❌ Evolution target "${evolution.nextId}" not found in database.`);
+    return message.reply(`<:arrow:1375872983029256303> Evolution target "${evolution.nextId}" not found in database.`);
   }
 
   // Calculate evolution cost
@@ -87,13 +87,13 @@ async function execute(message, args) {
 
   // Check if user has enough Beli
   if (user.beli < evolutionCost) {
-    return message.reply(`❌ You need ${evolutionCost} Beli to evolve this card. You have ${user.beli} Beli.`);
+    return message.reply(`<:arrow:1375872983029256303> You need ${evolutionCost} Beli to evolve this card. You have ${user.beli} Beli.`);
   }
 
   // Check for duplicates requirement (some evolutions might need this)
   const duplicates = user.cards.filter(c => normalize(c.name) === normalize(userCard.name)).length - 1;
   if (duplicates < 0) { // This shouldn't happen, but just in case
-    return message.reply(`❌ Evolution failed: insufficient duplicates.`);
+    return message.reply(`<:arrow:1375872983029256303> Evolution failed: insufficient duplicates.`);
   }
 
   // Perform evolution
@@ -120,7 +120,7 @@ async function execute(message, args) {
 
   // Create success embed
   const embed = new EmbedBuilder()
-    .setTitle('🧬 Evolution Success!')
+    .setTitle('<:sucess:1375872950321811547> Evolution Success!')
     .setDescription(`**${cardDef.name}** has evolved into **${evolvedCard.name}**!`)
     .addFields(
       { name: 'Previous Form', value: `[${cardDef.rank}] ${cardDef.name}`, inline: true },

@@ -63,7 +63,7 @@ function cardEmbed(cardInstance, cardDef, ownerName, index = 0, total = 1, user)
   const attackLow = Math.floor(power / 5);
   const attackHigh = Math.floor(power / 3);
   const rankSet = rankSettings[cardDef.rank] || {};
-  const lockStatus = cardInstance.locked ? ' 🔒' : '';
+  const lockStatus = cardInstance.locked ? ' <:Padlock_Crown:1388587874084982956>' : '';
   
   // Calculate XP progress to next level
   const xpForCurrentLevel = (level - 1) * XP_PER_LEVEL;
@@ -173,7 +173,7 @@ async function execute(message, args) {
         `**Combat**\n` +
         `Damage Range: ${minDamage} - ${maxDamage}\n` +
         `Damage Multiplier: ${multiplier}x\n` +
-        `Lock Status: ${cardInstance.locked ? '🔒 Locked' : '🔓 Unlocked'}${boostText}\n\n` +
+        `Lock Status: ${cardInstance.locked ? '<:Padlock_Crown:1388587874084982956> Locked' : '<:unlocked_IDS:1388596601064390656> Unlocked'}${boostText}\n\n` +
         `**Evolution**\n` +
         `${cardDef.evolution ? `Next: ${cardDef.evolution.nextId} (Level ${cardDef.evolution.requiredLevel})` : 'Max evolution reached'}`;
 
