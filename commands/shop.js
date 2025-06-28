@@ -49,10 +49,11 @@ function createShopEmbed(category, items) {
   items.forEach((item, index) => {
     const status = item.available ? '✅ Available' : '❌ Out of Stock';
     const duration = item.duration ? `\n⏰ Duration: ${Math.floor(item.duration / 60000)} minutes` : '';
+    const category = item.category ? `\n🏷️ ${item.category}` : '';
     
     embed.addFields({
       name: `${index + 1}. ${item.name}`,
-      value: `💰 **${item.price} Beli**\n${status}\n${item.description}${duration}`,
+      value: `💰 **${item.price} Beli**\n${status}\n📝 ${item.description}${duration}${category}`,
       inline: true
     });
   });

@@ -46,7 +46,13 @@ const userSchema = new mongoose.Schema({
   },
   battleCooldown: { type: Number, default: 0 },
   duelCooldown: { type: Number, default: 0 },
-  disallowedCards: [{ type: String }]
+  disallowedCards: [{ type: String }],
+  locationCooldowns: { type: Map, of: Number },
+  activeBoosts: [{
+    type: String,
+    expiresAt: Number,
+    multiplier: Number
+  }]
 }, {
   timestamps: true
 });

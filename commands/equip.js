@@ -63,7 +63,7 @@ async function execute(message, args, client) {
   const normCard = normalize(cardObj.name);
 
   // Strawhat lock logic
-  if (normItem === 'strawhat' && !normCard.includes('moneydluffy')) {
+  if (normItem === 'strawhat' && !normCard.includes('luffy')) {
     return message.reply('The Strawhat can only be equipped on Monkey D. Luffy!');
   }
 
@@ -74,7 +74,7 @@ async function execute(message, args, client) {
     user.inventory.push(user.equipped[normCard]);
   }
 
-  user.equipped[normCard] = normItem;
+  user.equipped[normCard] = ownedItem;
 
   // Remove item from inventory
   const idx = user.inventory.findIndex(i => normalize(i) === normItem);

@@ -136,9 +136,18 @@ function calculateDamage(attacker, defender, attackType = 'normal') {
     return 1;
   }
 
-  const baseAttack = Math.floor(
+  let baseAttack = Math.floor(
     Math.random() * (attacker.attack[1] - attacker.attack[0] + 1)
   ) + attacker.attack[0];
+
+  // Apply temporary buffs
+  if (attacker.tempBuffs) {
+    attacker.tempBuffs.forEach(buff => {
+      if (buff.type === 'stat_boost' && buff.duration > 0) {
+        baseAttack = Math.floor(baseAttack * buff.multiplier);
+      }
+    });
+  }
 
   let damage = baseAttack;
 
@@ -156,8 +165,20 @@ function calculateDamage(attacker, defender, attackType = 'normal') {
   }
 
   // Speed difference can affect damage (faster = more damage)
-  if (attacker.speed && defender.speed) {
-    const speedDiff = attacker.speed - defender.speed;
+  let attackerSpeed = attacker.speed || 0;
+  let defenderSpeed = defender.speed || 0;
+
+  // Apply temporary speed buffs
+  if (attacker.tempBuffs) {
+    attacker.tempBuffs.forEach(buff => {
+      if (buff.type === 'stat_boost' && buff.duration > 0) {
+        attackerSpeed = Math.floor(attackerSpeed * buff.multiplier);
+      }
+    });
+  }
+
+  if (defenderSpeed > 0) {
+    const speedDiff = attackerSpeed - defenderSpeed;
     if (speedDiff > 0) {
       damage += Math.floor(speedDiff * 0.1);
     }
@@ -229,6 +250,21 @@ function resetTeamHP(team) {
   });
 }
 
+/**
+ * Process temporary buffs for turn-based duration
+ * @param {Array} team - Array of card objects
+ */
+function processTempBuffs(team) {
+  team.forEach(card => {
+    if (card.tempBuffs) {
+      card.tempBuffs = card.tempBuffs.filter(buff => {
+        buff.duration--;
+        return buff.duration > 0;
+      });
+    }
+  });
+}
+
 module.exports = {
   calculateBattleStats,
   calculateDamage,
@@ -236,5 +272,6 @@ module.exports = {
   teamCanFight,
   getActiveCard,
   healCard,
-  resetTeamHP
+  resetTeamHP,
+  processTempBuffs
 };

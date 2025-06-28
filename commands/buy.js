@@ -49,16 +49,17 @@ async function execute(message, args) {
   }
 
   // Check if user already owns the item (for unique items)
-  if (item.unique && user.inventory && user.inventory.includes(item.name.toLowerCase().replace(/\s+/g, ''))) {
+  const normalizedItemName = item.name.toLowerCase().replace(/\s+/g, '');
+  if (item.unique && user.inventory && user.inventory.includes(normalizedItemName)) {
     return message.reply(`❌ You already own "${item.name}". This item can only be purchased once.`);
   }
 
   // Process purchase
   user.beli -= item.price;
 
-  if (item.type === 'item') {
+  if (item.type === 'item' || item.type === 'equipment') {
     if (!user.inventory) user.inventory = [];
-    user.inventory.push(item.name.toLowerCase().replace(/\s+/g, ''));
+    user.inventory.push(normalizedItemName);
   } else if (item.type === 'boost') {
     // Apply boost effects immediately
     if (!user.activeBoosts) user.activeBoosts = [];
@@ -67,35 +68,41 @@ async function execute(message, args) {
       case 'double_xp':
         user.activeBoosts.push({
           type: 'double_xp',
-          expiresAt: Date.now() + item.duration,
+          expiresAt: Date.now() + (item.duration || 3600000),
           name: item.name
         });
         break;
       case 'beli_boost':
         user.activeBoosts.push({
           type: 'beli_boost',
-          expiresAt: Date.now() + item.duration,
+          expiresAt: Date.now() + (item.duration || 3600000),
           multiplier: 1.5,
           name: item.name
         });
         break;
       case 'reset_pull_cooldown':
         user.pullLast = 0;
+        if (!user.inventory) user.inventory = [];
+        user.inventory.push(normalizedItemName);
         break;
       case 'no_battle_cooldown':
         user.activeBoosts.push({
           type: 'no_battle_cooldown',
-          expiresAt: Date.now() + item.duration,
+          expiresAt: Date.now() + (item.duration || 1800000),
           name: item.name
         });
         break;
       case 'fast_explore':
         user.activeBoosts.push({
           type: 'fast_explore',
-          expiresAt: Date.now() + item.duration,
+          expiresAt: Date.now() + (item.duration || 7200000),
           reduction: 0.75,
           name: item.name
         });
+        break;
+      default:
+        if (!user.inventory) user.inventory = [];
+        user.inventory.push(normalizedItemName);
         break;
     }
   } else if (item.type === 'card') {

@@ -8,7 +8,7 @@ const LOCATIONS = {
       type: "narrative", 
       title: "Your Journey Commences", 
       desc: "You ate the Gum-Gum Fruit! Your rubber powers awaken as your adventure begins in Windmill Village.",
-      reward: { type: "card", name: "Monkey D. Luffy", rank: "B" }
+      reward: { type: "xp", amount: 50 }
     },
     { 
       type: "narrative", 
@@ -27,7 +27,10 @@ const LOCATIONS = {
       title: "Fight with Higuma", 
       desc: "The mountain bandit Higuma blocks your path!",
       enemy: { name: "Higuma", hp: 75, atk: [10, 12], spd: 50, rank: "C" },
-      reward: { type: "beli", amount: 100, xp: 50 },
+      reward: { type: "multiple", rewards: [
+        { type: "beli", amount: 100 },
+        { type: "xp", amount: 50 }
+      ]},
       loseCooldown: 60 * 60 * 1000
     },
     { 
@@ -64,16 +67,25 @@ const LOCATIONS = {
       title: "Fight Helmeppo", 
       desc: "The spoiled Marine captain's son challenges you!",
       enemy: { name: "Helmeppo", hp: 20, atk: [1, 2], spd: 30, rank: "D" },
-      reward: { type: "beli", amount: 50, xp: 25 },
+      reward: { type: "multiple", rewards: [
+        { type: "beli", amount: 50 },
+        { type: "xp", amount: 25 }
+      ]},
       loseCooldown: 30 * 60 * 1000
     },
     { 
-      type: "enemy", 
+      type: "multi_enemy", 
       title: "Fight Marine Squad", 
       desc: "Three Marines block your escape!",
-      enemy: { name: "Marine Grunt", hp: 15, atk: [2, 4], spd: 25, rank: "D" },
-      count: 3,
-      reward: { type: "beli", amount: 75, xp: 40 },
+      enemies: [
+        { name: "Marine Grunt #1", hp: 15, atk: [2, 4], spd: 25, rank: "D" },
+        { name: "Marine Grunt #2", hp: 15, atk: [2, 4], spd: 25, rank: "D" },
+        { name: "Marine Grunt #3", hp: 15, atk: [2, 4], spd: 25, rank: "D" }
+      ],
+      reward: { type: "multiple", rewards: [
+        { type: "beli", amount: 75 },
+        { type: "xp", amount: 40 }
+      ]},
       loseCooldown: 45 * 60 * 1000
     },
     { 
@@ -159,12 +171,17 @@ const LOCATIONS = {
       reward: { type: "card", name: "Usopp", rank: "C" }
     },
     { 
-      type: "enemy", 
+      type: "multi_enemy", 
       title: "Fight Sham and Buchi", 
       desc: "The cat brothers of the Black Cat Pirates attack!",
-      enemy: { name: "Sham", hp: 70, atk: [10, 10], spd: 55, rank: "C" },
-      enemy2: { name: "Buchi", hp: 70, atk: [10, 10], spd: 55, rank: "C" },
-      reward: { type: "beli", amount: 150, xp: 80 },
+      enemies: [
+        { name: "Sham", hp: 70, atk: [10, 10], spd: 55, rank: "C" },
+        { name: "Buchi", hp: 70, atk: [10, 10], spd: 55, rank: "C" }
+      ],
+      reward: { type: "multiple", rewards: [
+        { type: "beli", amount: 150 },
+        { type: "xp", amount: 80 }
+      ]},
       loseCooldown: 60 * 60 * 1000
     },
     { 
@@ -276,7 +293,15 @@ const LOCATIONS = {
   ]
 };
 
-const EXPLORE_COOLDOWN = 2 * 60 * 1000; // 2 minutes
+const LOCATION_COOLDOWNS = {
+  'WINDMILL VILLAGE': 1 * 60 * 1000, // 1 minute
+  'SHELLS TOWN': 3 * 60 * 1000, // 3 minutes
+  'ORANGE TOWN': 3 * 60 * 1000, // 3 minutes
+  'SYRUP VILLAGE': 4 * 60 * 1000, // 4 minutes
+  'BARATIE': 5 * 60 * 1000, // 5 minutes
+  'ARLONG PARK': 6 * 60 * 1000 // 6 minutes
+};
+const DEFEAT_COOLDOWN = 5 * 60 * 1000; // 5 minutes on defeat
 const IMMUNE_USER_ID = "1257718161298690119";
 
 function normalizeItemName(item) {
@@ -368,17 +393,19 @@ async function execute(message, args, client) {
   const now = Date.now();
   const immune = userId === IMMUNE_USER_ID;
 
+  const currentLocation = getCurrentLocation(stage);
+
   // Cooldown checks
   if (!immune && user.exploreLossCooldown && now < user.exploreLossCooldown) {
     const left = prettyTime(user.exploreLossCooldown - now);
     return message.reply(`You are recovering from defeat! Try exploring again in ${left}.`);
   }
-  if (!immune && now - user.exploreLast < EXPLORE_COOLDOWN && stage > 0) {
-    const left = prettyTime(EXPLORE_COOLDOWN - (now - user.exploreLast));
-    return message.reply(`⏳ You must wait ${left} before exploring again.`);
+  
+  const locationCooldown = LOCATION_COOLDOWNS[currentLocation] || 2 * 60 * 1000;
+  if (!immune && user.locationCooldowns && user.locationCooldowns[currentLocation] && now < user.locationCooldowns[currentLocation]) {
+    const left = prettyTime(user.locationCooldowns[currentLocation] - now);
+    return message.reply(`⏳ You must wait ${left} before exploring ${currentLocation} again.`);
   }
-
-  const currentLocation = getCurrentLocation(stage);
   if (currentLocation === 'COMPLETED') {
     return message.reply("🎉 You've completed the East Blue saga! The Grand Line awaits in future updates!");
   }
@@ -395,17 +422,20 @@ async function execute(message, args, client) {
 
   // Handle different stage types
   if (stageData.type === "narrative") {
-    const embed = new EmbedBuilder()
-      .setTitle(`📍 ${currentLocation} - ${stageData.title}`)
-      .setDescription(stageData.desc)
-      .setColor(0x3498db);
-
-    await message.reply({ embeds: [embed] });
+    let rewardText = '';
     
     // Apply rewards
     if (stageData.reward) {
       await applyReward(user, stageData.reward);
+      rewardText = formatRewardText(stageData.reward);
     }
+
+    const embed = new EmbedBuilder()
+      .setTitle(`📍 ${currentLocation} - ${stageData.title}`)
+      .setDescription(`${stageData.desc}${rewardText ? `\n\n🎁 **Rewards:**\n${rewardText}` : ''}`)
+      .setColor(0x3498db);
+
+    await message.reply({ embeds: [embed] });
   }
   else if (stageData.type === "choice") {
     const embed = new EmbedBuilder()
@@ -446,7 +476,7 @@ async function execute(message, args, client) {
 
     return; // Don't progress until choice is made
   }
-  else if (stageData.type === "enemy" || stageData.type === "boss") {
+  else if (stageData.type === "enemy" || stageData.type === "boss" || stageData.type === "multi_enemy") {
     if (!user.team || !user.team.length) {
       blockProgress = true;
       await message.reply({
@@ -472,16 +502,31 @@ async function execute(message, args, client) {
         });
       }
 
-      const enemy = {
-        ...stageData.enemy,
-        currentHp: stageData.enemy.hp,
-        maxHp: stageData.enemy.hp,
-        attack: stageData.enemy.atk,
-        power: Math.floor((stageData.enemy.atk[0] + stageData.enemy.atk[1]) / 2)
-      };
+      let enemies = [];
+      let enemyType = "enemy";
 
-      const enemyType = stageData.type === "boss" ? "boss" : "enemy";
-      const battleEmbed = createBossBattleEmbed(enemy, playerTeam, [], 1, enemyType);
+      if (stageData.type === "multi_enemy") {
+        enemies = stageData.enemies.map(enemy => ({
+          ...enemy,
+          currentHp: enemy.hp,
+          maxHp: enemy.hp,
+          attack: enemy.atk,
+          power: Math.floor((enemy.atk[0] + enemy.atk[1]) / 2)
+        }));
+        enemyType = "multi_enemy";
+      } else {
+        const enemy = {
+          ...stageData.enemy,
+          currentHp: stageData.enemy.hp,
+          maxHp: stageData.enemy.hp,
+          attack: stageData.enemy.atk,
+          power: Math.floor((stageData.enemy.atk[0] + stageData.enemy.atk[1]) / 2)
+        };
+        enemies = [enemy];
+        enemyType = stageData.type === "boss" ? "boss" : "enemy";
+      }
+
+      const battleEmbed = createBossBattleEmbed(enemies[0], playerTeam, [], 1, enemyType, enemies);
       const battleButtons = createBossBattleButtons();
 
       const battleMessage = await message.reply({
@@ -491,7 +536,8 @@ async function execute(message, args, client) {
 
       // Store battle state
       const battleData = {
-        boss: enemy,
+        boss: enemies[0],
+        enemies: enemies,
         playerTeam,
         battleLog: [],
         turn: 1,
@@ -499,7 +545,8 @@ async function execute(message, args, client) {
         stageData,
         currentLocation,
         stage: user.exploreStage,
-        exploreBattle: true
+        exploreBattle: true,
+        enemyType: enemyType
       };
 
       if (!client.battles) client.battles = new Map();
@@ -521,7 +568,14 @@ async function execute(message, args, client) {
     await updateQuestProgress(user, 'explore', 1);
 
     user.exploreStage = stage + 1;
-    user.exploreLast = immune ? 0 : now;
+    
+    // Set location-based cooldown
+    if (!immune) {
+      if (!user.locationCooldowns) user.locationCooldowns = {};
+      const locationCooldown = LOCATION_COOLDOWNS[currentLocation] || 2 * 60 * 1000;
+      user.locationCooldowns[currentLocation] = now + locationCooldown;
+    }
+    
     user.exploreLossCooldown = 0;
     await user.save();
   } else {
@@ -529,13 +583,14 @@ async function execute(message, args, client) {
   }
 }
 
-function createBossBattleEmbed(boss, playerTeam, battleLog, turn, enemyType = "enemy") {
-  const battleTitle = enemyType === "boss" ? "Boss Battle" : "Battle";
-  const hpBar = createHpBar(boss.currentHp, boss.maxHp);
+function createBossBattleEmbed(boss, playerTeam, battleLog, turn, enemyType = "enemy", allEnemies = null) {
+  let battleTitle = "Battle";
+  if (enemyType === "boss") battleTitle = "Boss Battle";
+  else if (enemyType === "multi_enemy") battleTitle = "Multi-Enemy Battle";
   
   const embed = new EmbedBuilder()
-    .setTitle(`⚔️ ${battleTitle}: ${boss.name}`)
-    .setDescription(`**${boss.description || 'A fierce enemy blocks your path!'}**\n\n${battleLog.slice(-4).join('\n')}`)
+    .setTitle(`⚔️ ${battleTitle}`)
+    .setDescription(`${battleLog.slice(-4).join('\n') || 'Battle begins!'}`)
     .setColor(0xff0000);
 
   const teamDisplay = playerTeam.filter(card => card.currentHp > 0).map(card => {
@@ -543,11 +598,24 @@ function createBossBattleEmbed(boss, playerTeam, battleLog, turn, enemyType = "e
     return `${card.name} ${cardHpBar} ${card.currentHp}/${card.hp}`;
   }).join('\n') || 'No cards available';
 
-  embed.addFields(
-    { name: `🔥 ${boss.name} HP`, value: `${hpBar} ${boss.currentHp}/${boss.maxHp}`, inline: true },
-    { name: '⚡ Attack Power', value: `${boss.attack[0]}-${boss.attack[1]}`, inline: true },
-    { name: '🛡️ Your Team', value: teamDisplay, inline: false }
-  );
+  if (enemyType === "multi_enemy" && allEnemies) {
+    const enemyDisplay = allEnemies.filter(enemy => enemy.currentHp > 0).map(enemy => {
+      const hpBar = createHpBar(enemy.currentHp, enemy.maxHp);
+      return `${enemy.name} ${hpBar} ${enemy.currentHp}/${enemy.maxHp}`;
+    }).join('\n');
+    
+    embed.addFields(
+      { name: '👹 Enemies', value: enemyDisplay, inline: false },
+      { name: '🛡️ Your Team', value: teamDisplay, inline: false }
+    );
+  } else {
+    const hpBar = createHpBar(boss.currentHp, boss.maxHp);
+    embed.addFields(
+      { name: `🔥 ${boss.name} HP`, value: `${hpBar} ${boss.currentHp}/${boss.maxHp}`, inline: true },
+      { name: '⚡ Attack Power', value: `${boss.attack[0]}-${boss.attack[1]}`, inline: true },
+      { name: '🛡️ Your Team', value: teamDisplay, inline: false }
+    );
+  }
 
   return embed;
 }
@@ -566,6 +634,11 @@ function createBossBattleButtons(disabled = false) {
         .setStyle(ButtonStyle.Primary)
         .setDisabled(disabled),
       new ButtonBuilder()
+        .setCustomId('boss_inventory')
+        .setLabel('🎒 Items')
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(disabled),
+      new ButtonBuilder()
         .setCustomId('boss_flee')
         .setLabel('🏃 Flee')
         .setStyle(ButtonStyle.Secondary)
@@ -573,13 +646,55 @@ function createBossBattleButtons(disabled = false) {
     );
 }
 
+function formatRewardText(reward) {
+  if (!reward) return '';
+  
+  if (reward.type === "multiple") {
+    return reward.rewards.map(r => formatRewardText(r)).filter(t => t).join('\n');
+  }
+
+  switch (reward.type) {
+    case "card":
+      return `🎴 ${reward.name} (${reward.rank}-Rank)`;
+    case "beli":
+      return `💰 +${reward.amount} Beli`;
+    case "xp":
+      return `⭐ +${reward.amount} XP`;
+    case "item":
+      return `📦 ${reward.name}${reward.count ? ` x${reward.count}` : ''}`;
+    case "chest":
+      return `📦 ${reward.rank.toUpperCase()} Chest`;
+    case "saga_unlock":
+      return `🏝️ ${reward.saga} Saga Unlocked!`;
+    default:
+      return '';
+  }
+}
+
 async function applyReward(user, reward) {
   if (!reward) return;
+
+  if (reward.type === "multiple") {
+    for (const subReward of reward.rewards) {
+      await applyReward(user, subReward);
+    }
+    return;
+  }
 
   switch (reward.type) {
     case "card":
       if (!user.cards) user.cards = [];
-      if (!user.cards.find(c => c.name === reward.name)) {
+      const existingCard = user.cards.find(c => c.name === reward.name);
+      if (existingCard) {
+        // Add a duplicate instead of ignoring
+        user.cards.push({
+          name: reward.name,
+          rank: reward.rank,
+          level: 1,
+          experience: 0,
+          timesUpgraded: 0
+        });
+      } else {
         user.cards.push({
           name: reward.name,
           rank: reward.rank,
@@ -610,6 +725,10 @@ async function applyReward(user, reward) {
       } else {
         addToInventory(user, reward.name);
       }
+      break;
+    case "chest":
+      if (!user.inventory) user.inventory = [];
+      user.inventory.push(`${reward.rank.toLowerCase()}chest`);
       break;
     case "saga_unlock":
       if (!user.unlockedSagas) user.unlockedSagas = ['East Blue'];

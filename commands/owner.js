@@ -153,8 +153,8 @@ async function execute(message, args, client) {
 
   const categories = Object.keys(ownerCommands);
 
-  // Show embed on "op cheats" command with no args
-  if (message.content.trim().toLowerCase() === 'op cheats') {
+  // Show embed on "op owner" command with no args
+  if (args.length === 0) {
     const mainEmbed = createOwnerMainEmbed();
     const navigationButtons = createOwnerNavigationButtons();
 

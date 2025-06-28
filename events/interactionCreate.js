@@ -44,7 +44,12 @@ function createBossBattleButtons(disabled = false) {
         .setCustomId('boss_flee')
         .setLabel('🏃 Flee')
         .setStyle(ButtonStyle.Secondary)
-        .setDisabled(disabled)
+        .setDisabled(disabled),
+      new ButtonBuilder()
+        .setCustomId('boss_inventory')
+        .setLabel('🎒 Inventory')
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(disabled),
     );
 }
 
@@ -67,6 +72,11 @@ async function execute(interaction, client) {
     return;
   }
 
+    if (interaction.customId.startsWith('battle_item_')) {
+        await handleBattleItemInteraction(interaction, client);
+        return;
+    }
+
   if (interaction.customId.startsWith('choice_')) {
     await handleChoiceInteraction(interaction, client);
     return;
@@ -81,6 +91,61 @@ async function execute(interaction, client) {
     await handleQuestInteraction(interaction, client);
     return;
   }
+}
+
+async function handleBattleItemInteraction(interaction, client) {
+    if (interaction.customId === 'battle_item_cancel') {
+        return interaction.update({ content: 'Action cancelled.', components: [] });
+    }
+
+    const item = interaction.customId.split('_')[3];
+    const battleData = client.battles?.get(interaction.message.id);
+
+    if (!battleData || battleData.userId !== interaction.user.id) {
+        return interaction.reply({ content: 'This battle is not for you or has expired.', ephemeral: true });
+    }
+
+    const { playerTeam } = battleData;
+    const activePlayerCard = getActiveCard(playerTeam);
+
+    if (!activePlayerCard) {
+        return interaction.reply({ content: 'No active cards available.', ephemeral: true });
+    }
+
+    const User = require('../db/models/User.js');
+    const user = await User.findOne({ userId: interaction.user.id });
+
+    if (!user || !user.inventory || !user.inventory.includes(item)) {
+        return interaction.reply({ content: 'You do not have this item.', ephemeral: true });
+    }
+
+    // Apply item effects
+    let battleLog = battleData.battleLog;
+    if (item === 'healingpotion') {
+        const healAmount = Math.floor(activePlayerCard.hp * 0.3);
+        activePlayerCard.currentHp = Math.min(activePlayerCard.hp, activePlayerCard.currentHp + healAmount);
+        battleLog.push(`${activePlayerCard.name} uses a Healing Potion and recovers ${healAmount} HP!`);
+    } else if (item === 'statbuffer') {
+        activePlayerCard.attackBuff = (activePlayerCard.attackBuff || 0) + 5;
+        battleLog.push(`${activePlayerCard.name} uses a Stat Buffer and increases attack!`);
+    }
+
+    // Remove item from inventory
+    user.inventory = user.inventory.filter(i => i !== item);
+    await user.save();
+
+    battleData.battleLog = battleLog;
+    client.battles.set(interaction.message.id, battleData);
+
+    const enemyType = battleData.stageData.type === "boss" ? "boss" : "enemy";
+    const updatedEmbed = createBossBattleEmbed(battleData.boss, playerTeam, battleLog, battleData.turn, enemyType);
+    const updatedButtons = createBossBattleButtons();
+
+    return interaction.update({
+        content: 'Item used!',
+        embeds: [updatedEmbed],
+        components: [updatedButtons]
+    });
 }
 
 async function handleChoiceInteraction(interaction, client) {
@@ -101,16 +166,13 @@ async function handleChoiceInteraction(interaction, client) {
   let rewardText = '';
   if (reward.type === 'card') {
     if (!user.cards) user.cards = [];
-    if (!user.cards.find(c => c.name === reward.name)) {
-      user.cards.push({
-        name: reward.name,
-        rank: reward.rank,
-        timesUpgraded: 0
-      });
-      rewardText = `🎴 You obtained **${reward.name}** (${reward.rank} rank)!`;
-    } else {
-      rewardText = `You already have **${reward.name}**.`;
-    }
+    // Allow duplicate cards
+    user.cards.push({
+      name: reward.name,
+      rank: reward.rank,
+      timesUpgraded: 0
+    });
+    rewardText = `🎴 You obtained **${reward.name}** (${reward.rank} rank)!`;
   } else if (reward.type === 'beli') {
     user.beli = (user.beli || 0) + reward.amount;
     rewardText = `💰 You gained **${reward.amount}** Beli!`;
@@ -149,8 +211,72 @@ async function handleBossInteraction(interaction, client) {
     return interaction.reply({ content: 'This battle is not for you or has expired.', ephemeral: true });
   }
 
-  const { boss, playerTeam, battleLog, turn, stageData } = battleData;
   const action = interaction.customId.split('_')[1];
+  const { boss, playerTeam, battleLog, turn, stageData, currentLocation, stage } = battleData;
+
+  if (action === 'inventory') {
+    const User = require('../db/models/User.js');
+    const user = await User.findOne({ userId: interaction.user.id });
+
+    if (!user || !user.inventory || user.inventory.length === 0) {
+      return interaction.reply({ content: 'Your inventory is empty!', ephemeral: true });
+    }
+
+    // Filter for battle-usable items
+    const battleItems = user.inventory.filter(item => 
+      item === 'healingpotion' || item === 'statbuffer'
+    );
+
+    if (battleItems.length === 0) {
+      return interaction.reply({ content: 'You have no battle items!', ephemeral: true });
+    }
+
+    // Create item selection buttons
+    const itemButtons = [];
+    const uniqueItems = [...new Set(battleItems)];
+
+    uniqueItems.forEach(item => {
+      const count = battleItems.filter(i => i === item).length;
+      let label = '';
+      let emoji = '';
+
+      if (item === 'healingpotion') {
+        label = `Healing Potion (${count})`;
+        emoji = '🧪';
+      } else if (item === 'statbuffer') {
+        label = `Stat Buffer (${count})`;
+        emoji = '⚡';
+      }
+
+      itemButtons.push(
+        new ButtonBuilder()
+          .setCustomId(`battle_item_use_${item}`)
+          .setLabel(label)
+          .setEmoji(emoji)
+          .setStyle(ButtonStyle.Primary)
+      );
+    });
+
+    itemButtons.push(
+      new ButtonBuilder()
+        .setCustomId('battle_item_cancel')
+        .setLabel('Cancel')
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    const itemRow = new ActionRowBuilder().addComponents(itemButtons.slice(0, 5));
+    const rows = [itemRow];
+    if (itemButtons.length > 5) {
+      const itemRow2 = new ActionRowBuilder().addComponents(itemButtons.slice(5));
+      rows.push(itemRow2);
+    }
+
+    return interaction.reply({
+      content: 'Select an item to use:',
+      components: rows,
+      ephemeral: true
+    });
+  }
 
   if (boss.currentHp <= 0 || playerTeam.every(card => card.currentHp <= 0)) {
     return interaction.reply({ content: 'This battle has already ended.', ephemeral: true });
@@ -205,6 +331,10 @@ async function handleBossInteraction(interaction, client) {
   }
 
   battleLog.push(playerAction);
+
+  // Process temporary buffs
+  const { processTempBuffs } = require('../utils/battleSystem.js');
+  processTempBuffs(playerTeam);
 
   if (boss.currentHp <= 0) {
           // Player wins

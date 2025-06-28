@@ -50,14 +50,70 @@ async function execute(message, args) {
 
   if (sub === "remove") {
     const cardName = rest.join(' ').trim();
-    user.team = user.team.filter(n => n.toLowerCase() !== cardName.toLowerCase());
+    if (!cardName) return message.reply("Please specify a card to remove. Usage: `op team remove <card name>`");
+    
+    const normalizedInput = normalize(cardName);
+    const originalTeam = [...(user.team || [])];
+    user.team = user.team.filter(cardName => normalize(cardName) !== normalizedInput);
+    
+    if (user.team.length === originalTeam.length) {
+      return message.reply(`Card not found in your team. Use \`op team\` to see your current team.`);
+    }
+    
     await user.save();
     return message.reply(`Removed **${cardName}** from your crew.`);
   }
 
-  // more code for your command handling continues...
+  if (sub === "add") {
+    const cardName = rest.join(' ').trim();
+    if (!cardName) return message.reply("Please specify a card to add. Usage: `op team add <card name>`");
+    
+    if (!user.team) user.team = [];
+    if (user.team.length >= 3) {
+      return message.reply("Your crew is full! Remove a card first using `op team remove <card>`.");
+    }
 
-  return message.reply("Invalid subcommand. Use `op team`, `op team add <card>`, or `op team remove <card>`.");
+    const normalizedInput = normalize(cardName);
+    const userCard = user.cards?.find(card => normalize(card.name) === normalizedInput);
+    
+    if (!userCard) {
+      return message.reply(`You don't own **${cardName}**. Use \`op collection\` to see your cards.`);
+    }
+
+    if (user.team.some(teamCard => normalize(teamCard) === normalizedInput)) {
+      return message.reply(`**${userCard.name}** is already in your crew.`);
+    }
+
+    user.team.push(userCard.name);
+    await user.save();
+    return message.reply(`Added **${userCard.name}** to your crew!`);
+  }
+
+  // Display team (default behavior)
+  if (!user.team) user.team = [];
+  
+  const { calculateCardStats } = require('../utils/levelSystem.js');
+  const teamCards = [];
+  let totalPower = 0;
+
+  for (const cardName of user.team) {
+    const userCard = user.cards?.find(card => normalize(card.name) === normalize(cardName));
+    if (userCard) {
+      const stats = calculateCardStats(userCard);
+      const cardData = {
+        ...userCard,
+        displayName: userCard.name,
+        calcPower: stats.power,
+        locked: userCard.locked || false,
+        level: userCard.level || 1
+      };
+      teamCards.push(cardData);
+      totalPower += stats.power;
+    }
+  }
+
+  const embed = buildTeamEmbed(teamCards, username, totalPower);
+  return message.reply({ embeds: [embed] });
 }
 
 module.exports = { data, execute };

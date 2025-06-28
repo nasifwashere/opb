@@ -22,7 +22,7 @@ async function execute(message) {
     saga: config.defaultSaga,
     team: [],
     wins: 0,
-    inventory: [],
+    inventory: ['healingpotion', 'healingpotion', 'healingpotion', 'statbuffer', 'statbuffer', 'statbuffer'],
     cards: [
       {
         name: luffyCard.name,
@@ -33,7 +33,7 @@ async function execute(message) {
   });
   await user.save();
 
-  message.reply('🏴‍☠️ Your journey begins! You received 1 Monkey D. Luffy and 500 Beli to start your adventure!');
+  message.reply('🏴‍☠️ Your journey begins! You received:\n🎴 1 Monkey D. Luffy\n💰 500 Beli\n🧪 3 Healing Potions\n⚡ 3 Stat Buffers\n\nGood luck on your adventure!');
 }
 
 module.exports = { data, execute };
