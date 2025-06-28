@@ -12,26 +12,26 @@ const questsPath = path.resolve('data', 'quests.json');
 async function loadQuestDatabase() {
   // Try to load from database first
   let dbQuests = await Quest.find({ active: true });
-  
+
   // If no quests in database, load from file and seed database
   if (dbQuests.length === 0) {
     try {
       if (fs.existsSync(questsPath)) {
         const fileQuests = JSON.parse(fs.readFileSync(questsPath, 'utf8'));
-        
+
         // Seed database with quests from file
         for (const questData of fileQuests) {
           const quest = new Quest(questData);
           await quest.save();
         }
-        
+
         dbQuests = await Quest.find({ active: true });
       }
     } catch (error) {
       console.error('Error loading quest database:', error);
     }
   }
-  
+
   return dbQuests;
 }
 
@@ -95,7 +95,7 @@ async function getAvailableQuests(user) {
 async function updateQuestProgress(user, actionType, amount = 1) {
   if (!user.activeQuests) user.activeQuests = [];
   if (!user.questProgress) user.questProgress = {};
-  
+
   const availableQuests = await getAvailableQuests(user);
   const completedQuests = [];
 
@@ -226,7 +226,7 @@ async function claimQuestReward(user, questId) {
 async function resetQuests(resetType = 'daily') {
   try {
     const resetPeriod = getQuestResetPeriod(resetType);
-    
+
     // Remove completed quests of this type from all users
     const result = await User.updateMany(
       {},
@@ -259,7 +259,7 @@ function getQuestProgress(user, questId) {
   }
 
   const progressObj = {};
-  for (const [key, value] of activeQuest.progress) {
+  for (const [key, value] of Object.entries(activeQuest.progress)) {
     progressObj[key] = value;
   }
 

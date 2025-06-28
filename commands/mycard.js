@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const User = require('../db/models/User.js');
 const Fuse = require('fuse.js');
+const { calculateCardStats, XP_PER_LEVEL } = require('../utils/levelSystem.js');
 
 const MAX_STORAGE = 250;
 
@@ -40,8 +41,12 @@ function cardEmbed(cardInstance, cardDef, ownerName, index = 0, total = 1, user)
       .setTitle('Card not found')
       .setDescription('This card is missing from the database.');
   }
-  let [power, health, speed] = cardDef.phs.split('/').map(x => Number(x.trim()));
-  let level = cardInstance.level || cardInstance.timesUpgraded + 1 || 1;
+  
+  const level = cardInstance.level || (cardInstance.timesUpgraded ? cardInstance.timesUpgraded + 1 : 1);
+  const experience = cardInstance.experience || 0;
+  
+  // Get stats with level bonuses applied
+  let { power, health, speed } = calculateCardStats(cardDef, level);
 
   // Stat boost from equipped items
   let boostText = '';
@@ -49,9 +54,9 @@ function cardEmbed(cardInstance, cardDef, ownerName, index = 0, total = 1, user)
   let equippedItem = user && user.equipped && user.equipped[normCard];
 
   if (equippedItem === 'strawhat') {
-    power = Math.round(power * 1.3);
-    health = Math.round(health * 1.3);
-    speed = Math.round(speed * 1.3);
+    power = Math.ceil(power * 1.3);
+    health = Math.ceil(health * 1.3);
+    speed = Math.ceil(speed * 1.3);
     boostText = "\n**Strawhat equipped! Stats boosted by 30%.**";
   }
 
@@ -59,7 +64,14 @@ function cardEmbed(cardInstance, cardDef, ownerName, index = 0, total = 1, user)
   const attackHigh = Math.floor(power / 3);
   const rankSet = rankSettings[cardDef.rank] || {};
   const lockStatus = cardInstance.locked ? ' 🔒' : '';
-  let desc = `**${cardDef.name}**${lockStatus}\n${cardDef.shortDesc}\n\nOwner: ${ownerName}\nLevel: ${level}\nPower: ${power}\nHealth: ${health}\nSpeed: ${speed}\nAttack: ${attackLow}–${attackHigh}\nType: Combat${boostText}`;
+  
+  // Calculate XP progress to next level
+  const xpForCurrentLevel = (level - 1) * XP_PER_LEVEL;
+  const xpForNextLevel = level * XP_PER_LEVEL;
+  const xpProgress = experience - xpForCurrentLevel;
+  const xpNeeded = xpForNextLevel - xpForCurrentLevel;
+  
+  let desc = `**${cardDef.name}**${lockStatus}\n${cardDef.shortDesc}\n\nOwner: ${ownerName}\nLevel: ${level} (${xpProgress}/${xpNeeded} XP)\nPower: ${power}\nHealth: ${health}\nSpeed: ${speed}\nAttack: ${attackLow}–${attackHigh}\nType: Combat${boostText}`;
 
   const embed = new EmbedBuilder()
     .setDescription(desc)
@@ -125,7 +137,7 @@ async function execute(message, args) {
     await interaction.deferUpdate();
 
     if (interaction.customId === 'mycard_info') {
-      const level = cardInstance.level || cardInstance.timesUpgraded + 1 || 1;
+      const level = cardInstance.level || (cardInstance.timesUpgraded ? cardInstance.timesUpgraded + 1 : 1);
       let [power, health, speed] = cardDef.phs.split('/').map(x => Number(x.trim()));
 
       let normCard = normalize(cardDef.name);

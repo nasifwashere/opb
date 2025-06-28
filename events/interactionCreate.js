@@ -4,17 +4,24 @@ const { calculateDamage, getActiveCard, resetTeamHP } = require('../utils/battle
 const { updateQuestProgress } = require('../utils/questSystem');
 
 // Boss battle functions
-function createBossBattleEmbed(boss, playerTeam, battleLog, turn) {
+function createBossBattleEmbed(boss, playerTeam, battleLog, turn, enemyType = "enemy") {
+  const battleTitle = enemyType === "boss" ? "Boss Battle" : "Battle";
+  const hpBar = createHpBar(boss.currentHp, boss.maxHp);
+
   const embed = new EmbedBuilder()
-    .setTitle(`⚔️ Boss Battle: ${boss.name}`)
-    .setDescription(`**${boss.description}**\n\n${battleLog.join('\n')}`)
-    .setColor(0xff0000)
-    .setThumbnail(boss.image || 'https://i.imgur.com/default-boss.png');
+    .setTitle(`⚔️ ${battleTitle}: ${boss.name}`)
+    .setDescription(`**${boss.description || 'A fierce enemy blocks your path!'}**\n\n${battleLog.slice(-4).join('\n')}`)
+    .setColor(0xff0000);
+
+  const teamDisplay = playerTeam.filter(card => card.currentHp > 0).map(card => {
+    const cardHpBar = createHpBar(card.currentHp, card.hp);
+    return `${card.name} ${cardHpBar} ${card.currentHp}/${card.hp}`;
+  }).join('\n') || 'No cards available';
 
   embed.addFields(
-    { name: '🔥 Boss HP', value: `${boss.currentHp}/${boss.maxHp}`, inline: true },
-    { name: '⚡ Boss Power', value: `${boss.power}`, inline: true },
-    { name: '🛡️ Your Team', value: playerTeam.filter(card => card.currentHp > 0).map(card => `${card.name} (${card.currentHp}/${card.maxHp} HP)`).join('\n') || 'No cards available', inline: false }
+    { name: `🔥 ${boss.name} HP`, value: `${hpBar} ${boss.currentHp}/${boss.maxHp}`, inline: true },
+    { name: '⚡ Attack Power', value: `${boss.attack[0]}-${boss.attack[1]}`, inline: true },
+    { name: '🛡️ Your Team', value: teamDisplay, inline: false }
   );
 
   return embed;
@@ -60,6 +67,11 @@ async function execute(interaction, client) {
     return;
   }
 
+  if (interaction.customId.startsWith('choice_')) {
+    await handleChoiceInteraction(interaction, client);
+    return;
+  }
+
   if (interaction.customId.startsWith('help_')) {
     await handleHelpInteraction(interaction, client);
     return;
@@ -68,6 +80,66 @@ async function execute(interaction, client) {
   if (interaction.customId.startsWith('quest_')) {
     await handleQuestInteraction(interaction, client);
     return;
+  }
+}
+
+async function handleChoiceInteraction(interaction, client) {
+  const choiceData = client.choices?.get(interaction.message.id);
+  if (!choiceData || choiceData.userId !== interaction.user.id) {
+    return interaction.reply({ content: 'This choice is not for you or has expired.', ephemeral: true });
+  }
+
+  const { stageData, stage } = choiceData;
+  const choice = interaction.customId.split('_')[1];
+
+  let user = await User.findOne({ userId: interaction.user.id });
+  if (!user) return interaction.reply({ content: 'User not found!', ephemeral: true });
+
+  // Apply reward based on choice
+  const reward = choice === 'yes' ? stageData.choice.yes : stageData.choice.no;
+
+  let rewardText = '';
+  if (reward.type === 'card') {
+    if (!user.cards) user.cards = [];
+    if (!user.cards.find(c => c.name === reward.name)) {
+      user.cards.push({
+        name: reward.name,
+        rank: reward.rank,
+        timesUpgraded: 0
+      });
+      rewardText = `🎴 You obtained **${reward.name}** (${reward.rank} rank)!`;
+    } else {
+      rewardText = `You already have **${reward.name}**.`;
+    }
+  } else if (reward.type === 'beli') {
+    user.beli = (user.beli || 0) + reward.amount;
+    rewardText = `💰 You gained **${reward.amount}** Beli!`;
+  }
+
+  // Progress to next stage
+  user.exploreStage = stage + 1;
+  user.exploreLast = Date.now();
+  await user.save();
+
+  // Remove choice from memory
+  client.choices.delete(interaction.message.id);
+
+  const resultEmbed = new EmbedBuilder()
+    .setTitle(`✅ Choice Made: ${choice === 'yes' ? 'Yes' : 'No'}`)
+    .setDescription(`${stageData.desc}\n\n**Result:** ${rewardText}`)
+    .setColor(choice === 'yes' ? 0x27ae60 : 0xe74c3c);
+
+  try {
+    await interaction.update({
+      embeds: [resultEmbed],
+      components: []
+    });
+  } catch (error) {
+    // If interaction expired, send a new message
+    await interaction.followUp({
+      embeds: [resultEmbed],
+      components: []
+    });
   }
 }
 
@@ -82,6 +154,14 @@ async function handleBossInteraction(interaction, client) {
 
   if (boss.currentHp <= 0 || playerTeam.every(card => card.currentHp <= 0)) {
     return interaction.reply({ content: 'This battle has already ended.', ephemeral: true });
+  }
+
+  // Check if interaction is still valid
+  try {
+    await interaction.deferUpdate();
+  } catch (error) {
+    console.log('Interaction expired or already handled');
+    return;
   }
 
   let playerAction = '';
@@ -118,71 +198,116 @@ async function handleBossInteraction(interaction, client) {
       client.battles.delete(interaction.message.id);
       const fleeEmbed = new EmbedBuilder()
         .setTitle('🏃 Battle Fled')
-        .setDescription('You fled from the boss battle. You can try again later.')
+        .setDescription('You fled from the battle. You can try again later.')
         .setColor(0xf39c12);
-      return interaction.update({ embeds: [fleeEmbed], components: [] });
+      return interaction.editReply({ embeds: [fleeEmbed], components: [] });
     }
   }
 
   battleLog.push(playerAction);
 
   if (boss.currentHp <= 0) {
-    const user = await User.findOne({ userId: interaction.user.id });
-    if (user) {
-      user.beli = (user.beli || 0) + (stageData.reward?.amount || 0);
-      user.xp = (user.xp || 0) + (stageData.reward?.xp || 0);
-      user.exploreStage = (user.exploreStage || 0) + 1;
-      user.exploreLast = Date.now();
-      resetTeamHP(playerTeam);
-      await user.save();
-    }
+          // Player wins
+          let user = await User.findOne({ userId: interaction.user.id });
+          let winMessage = `You defeated ${boss.name}!`;
 
-    client.battles.delete(interaction.message.id);
+          if (stageData && stageData.reward) {
+            // Distribute XP to each team member
+            const xpPerCard = Math.floor(stageData.reward.xp / playerTeam.length);
 
-    const victoryEmbed = new EmbedBuilder()
-      .setTitle(`🏆 Victory! ${boss.name} Defeated!`)
-      .setDescription(`${battleLog.slice(-3).join('\n')}\n\n**Rewards:**\n+${stageData.reward?.amount || 0} Beli\n+${stageData.reward?.xp || 0} XP\n\n*Your team has recovered!*`)
-      .setColor(0x27ae60);
+            // Track level ups for display
+            user.recentLevelUps = [];
 
-    return interaction.update({ embeds: [victoryEmbed], components: [] });
-  }
+            playerTeam.forEach(card => {
+              const oldLevel = card.level || 1;
+              card.xp = (card.xp || 0) + xpPerCard;
 
-  if (boss.currentHp > 0) {
-    const bossTarget = playerTeam.find(card => card.currentHp > 0);
-    if (bossTarget) {
-      const bossDamage = Math.floor(Math.random() * (boss.attack[1] - boss.attack[0] + 1)) + boss.attack[0];
-      bossTarget.currentHp = Math.max(0, bossTarget.currentHp - bossDamage);
-      battleLog.push(`${boss.name} attacks ${bossTarget.name} for ${bossDamage} damage!`);
-      if (bossTarget.currentHp <= 0) {
-        battleLog.push(`💀 ${bossTarget.name} has been knocked out!`);
-      }
-    }
-  }
+              // Level up if enough XP is gained
+              while (card.xp >= 100) {
+                card.xp -= 100;
+                card.level = (card.level || 1) + 1;
+                // Store the original level before the level up
+                user.recentLevelUps.push({ name: card.name, oldLevel: oldLevel, newLevel: card.level });
+              }
+            });
 
-  if (playerTeam.every(card => card.currentHp <= 0)) {
-    const user = await User.findOne({ userId: interaction.user.id });
-    if (user) {
-      user.exploreLossCooldown = Date.now() + (stageData.loseCooldown || 60 * 60 * 1000);
-      await user.save();
-    }
+            // Apply other rewards
+            user.beli = (user.beli || 0) + (stageData.reward?.amount || 0);
 
-    client.battles.delete(interaction.message.id);
+            resetTeamHP(playerTeam); // Heal team after battle
 
-    const defeatEmbed = new EmbedBuilder()
-      .setTitle(`💀 Defeat! ${boss.name} Wins!`)
-      .setDescription(`${battleLog.slice(-3).join('\n')}\n\nYour team has been defeated. Rest and try again later.\n*Use \`op shop\` to buy healing items.*`)
-      .setColor(0xe74c3c);
+            // Check for level ups from XP rewards
+            if (user.recentLevelUps && user.recentLevelUps.length > 0) {
+              winMessage += '\n\n**Level Ups:**\n';
+              user.recentLevelUps.forEach(change => {
+                winMessage += `${change.name}: Level ${change.oldLevel} → ${change.newLevel}\n`;
+              });
+              user.recentLevelUps = undefined; // Clear after displaying
+            }
+          }
 
-    return interaction.update({ embeds: [defeatEmbed], components: [] });
-  }
+          // CRITICAL: Progress exploration stage after boss victory
+          if (battleData.exploreBattle) {
+            user.exploreStage = (user.exploreStage || 0) + 1;
+            user.exploreLast = Date.now();
+            user.exploreLossCooldown = 0;
 
-  battleData.battleLog = battleLog;
-  battleData.turn = turn + 1;
+            // Update quest progress for exploration
+            const { updateQuestProgress } = require('../utils/questSystem.js');
+            await updateQuestProgress(user, 'explore', 1);
+          }
 
-  const updatedEmbed = createBossBattleEmbed(boss, playerTeam, battleLog, battleData.turn);
-  const updatedButtons = createBossBattleButtons();
+          await user.save();
 
-  await interaction.update({ embeds: [updatedEmbed], components: [updatedButtons] });
+          const victoryEmbed = new EmbedBuilder()
+            .setTitle(`🏆 Victory! ${boss.name} Defeated!`)
+            .setDescription(`${battleLog.slice(-3).join('\n')}\n\n${winMessage}\n\n*Your team has recovered!*`)
+            .setColor(0x27ae60);
+
+          try {
+            await interaction.editReply({ embeds: [victoryEmbed], components: [] });
+          } catch (error) {
+            // If interaction expired, send a new message
+            await interaction.followUp({ embeds: [victoryEmbed], components: [] });
+          }
+        } else if (playerTeam.every(card => card.currentHp <= 0)) {
+          const defeatEmbed = new EmbedBuilder()
+            .setTitle(`💀 Defeat! ${boss.name} Wins!`)
+            .setDescription(`${battleLog.slice(-3).join('\n')}\n\nYour team has been defeated. Rest and try again later.\n*Use \`op shop\` to buy healing items.*`)
+            .setColor(0xe74c3c);
+
+          try {
+            await interaction.editReply({ embeds: [defeatEmbed], components: [] });
+          } catch (error) {
+            await interaction.followUp({ embeds: [defeatEmbed], components: [] });
+          }
+        } else {
+          if (boss.currentHp > 0) {
+            const bossTarget = playerTeam.find(card => card.currentHp > 0);
+            if (bossTarget) {
+              const bossDamage = Math.floor(Math.random() * (boss.attack[1] - boss.attack[0] + 1)) + boss.attack[0];
+              bossTarget.currentHp = Math.max(0, bossTarget.currentHp - bossDamage);
+              battleLog.push(`${boss.name} attacks ${bossTarget.name} for ${bossDamage} damage!`);
+              if (bossTarget.currentHp <= 0) {
+                battleLog.push(`💀 ${bossTarget.name} has been knocked out!`);
+              }
+            }
+          }
+
+          battleData.battleLog = battleLog;
+          battleData.turn = turn + 1;
+
+          const enemyType = stageData.type === "boss" ? "boss" : "enemy";
+          const updatedEmbed = createBossBattleEmbed(boss, playerTeam, battleLog, battleData.turn, enemyType);
+          const updatedButtons = createBossBattleButtons();
+
+          try {
+            await interaction.editReply({ embeds: [updatedEmbed], components: [updatedButtons] });
+          } catch (error) {
+            // If interaction expired, send a new message
+            await interaction.followUp({ embeds: [updatedEmbed], components: [updatedButtons] });
+          }
+        }
 }
 
 async function handleHelpInteraction(interaction, client) {

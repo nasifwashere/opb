@@ -72,19 +72,24 @@ async function execute(message, args) {
   // Perform level up
   user.beli -= totalCost;
   
-  // Update the main card's level
+  // Update the main card's level using the new level system
   const cardIndex = user.cards.findIndex(c => normalize(c.name) === normalize(cardName));
-  user.cards[cardIndex].level = (mainCard.level || 1) + levelsToAdd;
+  const { levelUp } = require('../utils/levelSystem.js');
   
-  // Remove duplicate cards
+  // Use the levelUp function which handles experience properly
+  const actualLevelsGained = levelUp(user.cards[cardIndex], duplicates, levelsToAdd);
+  
+  // Remove duplicate cards (1 duplicate = 1 level)
   let duplicatesRemoved = 0;
-  for (let i = user.cards.length - 1; i >= 0 && duplicatesRemoved < levelsToAdd; i--) {
+  for (let i = user.cards.length - 1; i >= 0 && duplicatesRemoved < actualLevelsGained; i--) {
     if (i !== cardIndex && normalize(user.cards[i].name) === normalize(cardName)) {
       user.cards.splice(i, 1);
       duplicatesRemoved++;
       if (i < cardIndex) cardIndex--; // Adjust index if we removed a card before the main card
     }
   }
+  
+  levelsToAdd = actualLevelsGained;
 
   await user.save();
 

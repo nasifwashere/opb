@@ -2,7 +2,7 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('
 const User = require('../db/models/User.js');
 const { getAvailableQuests, updateQuestProgress, claimQuestReward } = require('../utils/questSystem.js');
 
-function createQuestEmbed(quests, activeQuests, completedToday) {
+function createQuestEmbed(quests, activeQuests, completedQuests) {
   const embed = new EmbedBuilder()
     .setTitle('📋 Quest Log')
     .setDescription('Complete quests to earn rewards!')
@@ -24,7 +24,7 @@ function createQuestEmbed(quests, activeQuests, completedToday) {
     let dailyText = '';
     dailyQuests.forEach((quest, index) => {
       const activeQuest = activeQuests.find(aq => aq.questId === quest.questId);
-      const isCompleted = completedToday.includes(quest.questId);
+      const isCompleted = completedQuests.includes(quest.questId);
       
       let status = '⭕ Available';
       let progressText = '';
@@ -33,7 +33,7 @@ function createQuestEmbed(quests, activeQuests, completedToday) {
         status = '✅ Completed';
       } else if (activeQuest) {
         const requirement = quest.requirements[0]; // Assuming single requirement for simplicity
-        const current = activeQuest.progress[requirement.type] || 0;
+        const current = activeQuest.progress.get ? activeQuest.progress.get(requirement.type) || 0 : activeQuest.progress[requirement.type] || 0;
         const target = requirement.target;
         const progress = Math.min(current, target);
         
@@ -48,8 +48,8 @@ function createQuestEmbed(quests, activeQuests, completedToday) {
       const rewards = quest.rewards.map(r => {
         if (r.type === 'beli') return `${r.amount} Beli`;
         if (r.type === 'xp') return `${r.amount} XP`;
-        if (r.type === 'item') return r.itemName;
-        if (r.type === 'card') return r.itemName;
+        if (r.type === 'item') return r.itemName || r.name;
+        if (r.type === 'card') return r.itemName || r.name;
         return `${r.amount} ${r.type}`;
       }).join(', ');
       
@@ -66,7 +66,7 @@ function createQuestEmbed(quests, activeQuests, completedToday) {
     let weeklyText = '';
     weeklyQuests.forEach(quest => {
       const activeQuest = activeQuests.find(aq => aq.questId === quest.questId);
-      const isCompleted = completedToday.includes(quest.questId);
+      const isCompleted = completedQuests.includes(quest.questId);
       
       let status = '⭕ Available';
       let progressText = '';
@@ -75,7 +75,7 @@ function createQuestEmbed(quests, activeQuests, completedToday) {
         status = '✅ Completed';
       } else if (activeQuest) {
         const requirement = quest.requirements[0];
-        const current = activeQuest.progress[requirement.type] || 0;
+        const current = activeQuest.progress.get ? activeQuest.progress.get(requirement.type) || 0 : activeQuest.progress[requirement.type] || 0;
         const target = requirement.target;
         const progress = Math.min(current, target);
         
@@ -90,8 +90,8 @@ function createQuestEmbed(quests, activeQuests, completedToday) {
       const rewards = quest.rewards.map(r => {
         if (r.type === 'beli') return `${r.amount} Beli`;
         if (r.type === 'xp') return `${r.amount} XP`;
-        if (r.type === 'item') return r.itemName;
-        if (r.type === 'card') return r.itemName;
+        if (r.type === 'item') return r.itemName || r.name;
+        if (r.type === 'card') return r.itemName || r.name;
         return `${r.amount} ${r.type}`;
       }).join(', ');
       
@@ -108,7 +108,7 @@ function createQuestEmbed(quests, activeQuests, completedToday) {
     let storyText = '';
     storyQuests.slice(0, 3).forEach(quest => { // Limit to 3 story quests
       const activeQuest = activeQuests.find(aq => aq.questId === quest.questId);
-      const isCompleted = completedToday.includes(quest.questId);
+      const isCompleted = completedQuests.includes(quest.questId);
       
       let status = '⭕ Available';
       let progressText = '';
@@ -117,7 +117,7 @@ function createQuestEmbed(quests, activeQuests, completedToday) {
         status = '✅ Completed';
       } else if (activeQuest) {
         const requirement = quest.requirements[0];
-        const current = activeQuest.progress[requirement.type] || 0;
+        const current = activeQuest.progress.get ? activeQuest.progress.get(requirement.type) || 0 : activeQuest.progress[requirement.type] || 0;
         const target = requirement.target;
         const progress = Math.min(current, target);
         
@@ -132,8 +132,8 @@ function createQuestEmbed(quests, activeQuests, completedToday) {
       const rewards = quest.rewards.map(r => {
         if (r.type === 'beli') return `${r.amount} Beli`;
         if (r.type === 'xp') return `${r.amount} XP`;
-        if (r.type === 'item') return r.itemName;
-        if (r.type === 'card') return r.itemName;
+        if (r.type === 'item') return r.itemName || r.name;
+        if (r.type === 'card') return r.itemName || r.name;
         return `${r.amount} ${r.type}`;
       }).join(', ');
       
@@ -185,6 +185,22 @@ async function execute(message, args) {
       
       const result = await claimQuestReward(user, questId);
       if (result.success) {
+        // Apply XP distribution to team if XP reward
+        if (result.rewards) {
+          for (const reward of result.rewards) {
+            if (reward.type === 'xp') {
+              const { distributeXPToTeam } = require('../utils/levelSystem.js');
+              const levelChanges = distributeXPToTeam(user, reward.amount);
+              if (levelChanges && levelChanges.length > 0) {
+                let levelUpText = '\n\n**Level Ups:**\n';
+                levelChanges.forEach(change => {
+                  levelUpText += `${change.name}: Level ${change.oldLevel} → ${change.newLevel}\n`;
+                });
+                result.message += levelUpText;
+              }
+            }
+          }
+        }
         await user.save();
         return message.reply(`✅ ${result.message}`);
       } else {
@@ -197,14 +213,10 @@ async function execute(message, args) {
   const availableQuests = await getAvailableQuests(user);
   const activeQuests = user.activeQuests || [];
   
-  // Get completed quests for today
-  const today = new Date().toDateString();
-  const completedToday = user.completedQuests?.filter(qId => {
-    // This is simplified - in a real implementation, you'd track completion dates
-    return false; // For now, assume no quests completed today
-  }) || [];
+  // Get completed quests
+  const completedQuests = user.completedQuests || [];
 
-  const embed = createQuestEmbed(availableQuests, activeQuests, completedToday);
+  const embed = createQuestEmbed(availableQuests, activeQuests, completedQuests);
   const components = [createQuestButtons()];
 
   const questMessage = await message.reply({ embeds: [embed], components });
@@ -220,14 +232,15 @@ async function execute(message, args) {
       // Refresh the quest display
       const newAvailableQuests = await getAvailableQuests(user);
       const newActiveQuests = user.activeQuests || [];
-      const newEmbed = createQuestEmbed(newAvailableQuests, newActiveQuests, completedToday);
+      const newCompletedQuests = user.completedQuests || [];
+      const newEmbed = createQuestEmbed(newAvailableQuests, newActiveQuests, newCompletedQuests);
       
       await questMessage.edit({ embeds: [newEmbed], components });
       
     } else if (interaction.customId === 'quest_claim') {
       // Show claim instructions
       await interaction.followUp({ 
-        content: 'To claim quest rewards, use: `op quest claim <quest_id>`\n\nQuest IDs are shown in the quest descriptions (coming in next update).', 
+        content: 'To claim quest rewards, use: `op quest claim <quest_id>`\n\nQuest IDs are shown in the quest descriptions above.', 
         ephemeral: true 
       });
       
@@ -246,7 +259,7 @@ async function execute(message, args) {
         const activeQuest = activeQuests.find(aq => aq.questId === quest.questId);
         if (activeQuest) {
           quest.requirements.forEach(req => {
-            const current = activeQuest.progress.get(req.type) || 0;
+            const current = activeQuest.progress.get ? activeQuest.progress.get(req.type) || 0 : activeQuest.progress[req.type] || 0;
             const target = req.target;
             const percentage = Math.floor((current / target) * 100);
             progressText += `**${quest.name}**: ${current}/${target} (${percentage}%)\n`;
@@ -262,6 +275,5 @@ async function execute(message, args) {
     questMessage.edit({ components: [] }).catch(() => {});
   });
 }
-
 
 module.exports = { data, execute };

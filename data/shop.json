@@ -39,6 +39,32 @@
       "type": "item",
       "available": true,
       "unique": false
+    },
+    {
+      "name": "Straw Hat",
+      "price": 1000,
+      "description": "Luffy's iconic hat that boosts all Luffy cards by 30%",
+      "type": "item",
+      "available": true,
+      "unique": true,
+      "category": "legendary"
+    },
+    {
+      "name": "Speed Boost",
+      "price": 300,
+      "description": "Increases speed stat by 10% for equipped card",
+      "type": "equipment",
+      "available": true,
+      "category": "enhancement"
+    },
+    {
+      "name": "Grand Line Pass",
+      "price": 2000,
+      "description": "Proof of completing East Blue saga - required for certain evolutions",
+      "type": "item",
+      "available": false,
+      "unique": true,
+      "category": "legendary"
     }
   ],
   "cards": [

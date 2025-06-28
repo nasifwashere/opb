@@ -1,60 +1,284 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const User = require('../db/models/User.js');
 
-// Updated: Use "strawhat" (no spaces) as the item name!
-const ROMANCE_DAWN_STAGES = [
-  { type: "narrative", title: "Start of the Grand Adventure", desc: "You set sail for the first time and land at Romance Dawn. The sea breeze tastes like freedom. Your journey begins!" },
-  { type: "item", title: "You Received the Strawhat!", desc: "A mysterious hat is gifted to you. All Luffy cards gain +30% stats!", effect: "strawhat" },
-  { type: "random", pool: [
-      "You find a pouch of **50 Beli** hidden under a barrel.",
-      "A villager shares a rumor about a treasure chest on the beach.",
-      "You stumble upon an old map fragment (it crumbles to dust...).",
-      "You help a child find their cat and gain goodwill.",
-      "You discover a rare seashell. It's pretty, but not valuable.",
-    ],
-    rewards: [
-      { type: "beli", amount: 50 },
-      { type: "none" },
-      { type: "none" },
-      { type: "none" },
-      { type: "none" },
-      { type: "none" },
-    ],
-  },
-  { type: "card", title: "Recruit: Coby", desc: "You meet and recruit **Coby**! He's now part of your crew.", card: { name: "Coby", rank: "C" } },
-  { type: "boss", title: "Boss Battle: Pirate Captain Alvida", desc: "Alvida appears! Prepare for battle.", boss: { name: "Alvida", hp: 180, atk: [18, 32], spd: 70, rank: "B" }, reward: { type: "beli", amount: 150, xp: 75 }, loseCooldown: 60 * 60 * 1000 },
-  { type: "narrative", title: "Sail to Shell Town", desc: "Your crew sails to Shell Town. On the way you experience random events.", pool: [
-      "A friendly dolphin follows your ship.",
-      "You find a floating bottle with an unreadable message.",
-      "You share stories with your crew under the stars.",
-      "A sudden rainstorm washes the deck clean.",
-    ],
-  },
-  { type: "card", title: "Recruit: Zoro", desc: "The swordsman **Zoro** joins your team! His presence inspires confidence.", card: { name: "Zoro", rank: "C" } },
-  { type: "boss", title: "Boss Battle: Captain Morgan", desc: "Axe-Hand Morgan blocks your path!", boss: { name: "Captain Morgan", hp: 220, atk: [22, 38], spd: 75, rank: "B" }, reward: { type: "beli", amount: 200, xp: 100 }, loseCooldown: 45 * 60 * 1000 },
-  { type: "random", pool: [
-      "You gain **25 XP** after a training session.",
-      "You find **20 Beli** in a hidden drawer.",
-      "A merchant gifts you a lucky charm.",
-      "A crewmate gives you a high five.",
-    ],
-    rewards: [
-      { type: "xp", amount: 25 },
-      { type: "beli", amount: 20 },
-      { type: "item", name: "Lucky Charm" },
-      { type: "none" },
-    ],
-  },
-  { type: "card", title: "Recruit: Nami", desc: "The navigator **Nami** joins your crew! Her map skills will be invaluable.", card: { name: "Nami", rank: "C" } },
-  { type: "boss", title: "Boss Battle: Captain Kuro", desc: "The cunning Captain Kuro emerges from the shadows!", boss: { name: "Captain Kuro", hp: 280, atk: [25, 42], spd: 95, rank: "A" }, reward: { type: "beli", amount: 300, xp: 150 }, loseCooldown: 90 * 60 * 1000 },
-  { type: "narrative", title: "Journey to Baratie", desc: "Your crew sets sail for the floating restaurant Baratie. The Grand Line calls!", pool: ["The sea grows rougher as you approach.", "Seagulls guide your ship forward.", "Your crew shares a meal together."] },
-  { type: "boss", title: "Boss Battle: Don Krieg", desc: "The armored pirate Don Krieg challenges your crew!", boss: { name: "Don Krieg", hp: 350, atk: [28, 48], spd: 80, rank: "A" }, reward: { type: "beli", amount: 400, xp: 200 }, loseCooldown: 120 * 60 * 1000 },
-  { type: "card", title: "Recruit: Sanji", desc: "The chef **Sanji** joins your crew! His fighting spirit burns bright.", card: { name: "Sanji", rank: "B" } },
-  { type: "narrative", title: "Arlong Park Awaits", desc: "The final challenge of East Blue saga approaches. Arlong Park looms ahead.", pool: ["The water grows darker.", "Fish-men patrol the area.", "Your resolve strengthens."] },
-  { type: "boss", title: "Boss Battle: Arlong", desc: "The fish-man Arlong stands in your way! This is the ultimate test!", boss: { name: "Arlong", hp: 450, atk: [35, 58], spd: 85, rank: "S" }, reward: { type: "beli", amount: 750, xp: 300 }, loseCooldown: 180 * 60 * 1000, unlocksSaga: "Grand Line" }
-];
+// Location data based on your specifications
+const LOCATIONS = {
+  'WINDMILL VILLAGE': [
+    { 
+      type: "narrative", 
+      title: "Your Journey Commences", 
+      desc: "You ate the Gum-Gum Fruit! Your rubber powers awaken as your adventure begins in Windmill Village.",
+      reward: { type: "card", name: "Monkey D. Luffy", rank: "B" }
+    },
+    { 
+      type: "narrative", 
+      title: "Meeting Shanks", 
+      desc: "You encounter the legendary Red-Haired Shanks at the bar. His presence fills you with determination.",
+      reward: { type: "beli", amount: 50 }
+    },
+    { 
+      type: "narrative", 
+      title: "Set Out to Sea", 
+      desc: "You prepare to leave Windmill Village behind and chase your dream of becoming Pirate King!",
+      reward: { type: "xp", amount: 25 }
+    },
+    { 
+      type: "boss", 
+      title: "Fight with Higuma", 
+      desc: "The mountain bandit Higuma blocks your path!",
+      enemy: { name: "Higuma", hp: 75, atk: [10, 12], spd: 50, rank: "C" },
+      reward: { type: "beli", amount: 100, xp: 50 },
+      loseCooldown: 60 * 60 * 1000
+    },
+    { 
+      type: "narrative", 
+      title: "Shanks' Sacrifice", 
+      desc: "The Sea King attacks! Shanks loses his arm saving you. His sacrifice strengthens your resolve.",
+      reward: { type: "item", name: "Straw Hat" }
+    },
+    { 
+      type: "narrative", 
+      title: "Arrived at Romance Dawn", 
+      desc: "You finally arrive at Romance Dawn Island, ready to begin your grand adventure!",
+      reward: { type: "beli", amount: 75 }
+    }
+  ],
+  'SHELLS TOWN': [
+    { 
+      type: "narrative", 
+      title: "Meet Coby", 
+      desc: "You encounter the timid Coby, who dreams of becoming a Marine. He tells you about the famous pirate hunter Zoro.",
+      reward: { type: "xp", amount: 30 }
+    },
+    { 
+      type: "choice", 
+      title: "Free Zoro?", 
+      desc: "You find Zoro tied up in the Marine base courtyard. Do you want to free the legendary pirate hunter?",
+      choice: { 
+        yes: { type: "card", name: "Roronoa Zoro", rank: "C" },
+        no: { type: "beli", amount: 25 }
+      }
+    },
+    { 
+      type: "enemy", 
+      title: "Fight Helmeppo", 
+      desc: "The spoiled Marine captain's son challenges you!",
+      enemy: { name: "Helmeppo", hp: 20, atk: [1, 2], spd: 30, rank: "D" },
+      reward: { type: "beli", amount: 50, xp: 25 },
+      loseCooldown: 30 * 60 * 1000
+    },
+    { 
+      type: "enemy", 
+      title: "Fight Marine Squad", 
+      desc: "Three Marines block your escape!",
+      enemy: { name: "Marine Grunt", hp: 15, atk: [2, 4], spd: 25, rank: "D" },
+      count: 3,
+      reward: { type: "beli", amount: 75, xp: 40 },
+      loseCooldown: 45 * 60 * 1000
+    },
+    { 
+      type: "narrative", 
+      title: "Gathering Strength", 
+      desc: "You and your crew prepare for the upcoming battle against Captain Morgan.",
+      reward: { type: "item", name: "Marine Sword" }
+    },
+    { 
+      type: "boss", 
+      title: "Captain Morgan", 
+      desc: "The tyrannical Axe-Hand Morgan appears to stop you!",
+      enemy: { name: "Captain Morgan", hp: 100, atk: [12, 15], spd: 60, rank: "C" },
+      reward: { type: "beli", amount: 200, xp: 100 },
+      loseCooldown: 60 * 60 * 1000
+    },
+    { 
+      type: "narrative", 
+      title: "Reached Orange Town", 
+      desc: "With Morgan defeated, you sail toward Orange Town where new adventures await.",
+      reward: { type: "beli", amount: 100 }
+    }
+  ],
+  'ORANGE TOWN': [
+    { 
+      type: "narrative", 
+      title: "Meet Nami", 
+      desc: "You encounter a clever orange-haired thief named Nami. She seems interested in your crew but remains cautious.",
+      reward: { type: "xp", amount: 40 }
+    },
+    { 
+      type: "narrative", 
+      title: "Buggy's Terror", 
+      desc: "The town is in chaos! Buggy the Clown's crew has been terrorizing the innocent villagers.",
+      reward: { type: "beli", amount: 60 }
+    },
+    { 
+      type: "narrative", 
+      title: "Planning the Attack", 
+      desc: "You devise a strategy to take down Buggy's crew and free the town from their reign of terror.",
+      reward: { type: "item", name: "Town Map" }
+    },
+    { 
+      type: "narrative", 
+      title: "Circus Preparation", 
+      desc: "Buggy's crew prepares for their deadly circus performance. The tension in the air is thick.",
+      reward: { type: "xp", amount: 35 }
+    },
+    { 
+      type: "enemy", 
+      title: "Fight Cabaji", 
+      desc: "Buggy's acrobatic swordsman Cabaji challenges you to a duel!",
+      enemy: { name: "Cabaji", hp: 70, atk: [10, 15], spd: 70, rank: "C" },
+      reward: { type: "beli", amount: 120, xp: 60 },
+      loseCooldown: 60 * 60 * 1000
+    },
+    { 
+      type: "boss", 
+      title: "Buggy the Clown", 
+      desc: "The Devil Fruit user Buggy appears! His Chop-Chop powers make sword attacks useless!",
+      enemy: { name: "Buggy", hp: 120, atk: [15, 20], spd: 65, rank: "B", ability: "sword_immunity" },
+      reward: { type: "beli", amount: 300, xp: 120 },
+      loseCooldown: 90 * 60 * 1000
+    },
+    { 
+      type: "narrative", 
+      title: "Nami Joins!", 
+      desc: "Impressed by your victory over Buggy, Nami officially joins your crew as navigator!",
+      reward: { type: "card", name: "Nami", rank: "C" }
+    }
+  ],
+  'SYRUP VILLAGE': [
+    { 
+      type: "narrative", 
+      title: "Peaceful Village", 
+      desc: "You arrive at the seemingly peaceful Syrup Village, unaware of the danger lurking beneath.",
+      reward: { type: "beli", amount: 80 }
+    },
+    { 
+      type: "narrative", 
+      title: "Meet Usopp", 
+      desc: "You meet the village storyteller Usopp, who dreams of becoming a brave warrior of the sea!",
+      reward: { type: "card", name: "Usopp", rank: "C" }
+    },
+    { 
+      type: "enemy", 
+      title: "Fight Sham and Buchi", 
+      desc: "The cat brothers of the Black Cat Pirates attack!",
+      enemy: { name: "Sham", hp: 70, atk: [10, 10], spd: 55, rank: "C" },
+      enemy2: { name: "Buchi", hp: 70, atk: [10, 10], spd: 55, rank: "C" },
+      reward: { type: "beli", amount: 150, xp: 80 },
+      loseCooldown: 60 * 60 * 1000
+    },
+    { 
+      type: "boss", 
+      title: "Captain Kuro", 
+      desc: "The cunning Captain Kuro reveals himself! His incredible speed gives him the first strike!",
+      enemy: { name: "Captain Kuro", hp: 130, atk: [17, 22], spd: 90, rank: "B", ability: "first_strike" },
+      reward: { type: "beli", amount: 400, xp: 150 },
+      loseCooldown: 90 * 60 * 1000
+    },
+    { 
+      type: "narrative", 
+      title: "Go to Baratie", 
+      desc: "With Kuro defeated, you set sail for the floating restaurant Baratie!",
+      reward: { type: "xp", amount: 60 }
+    }
+  ],
+  'BARATIE': [
+    { 
+      type: "narrative", 
+      title: "Speed Boost Food", 
+      desc: "The chefs at Baratie prepare special dishes that enhance your crew's speed!",
+      reward: { type: "item", name: "Speed Boost Food", count: 3 }
+    },
+    { 
+      type: "narrative", 
+      title: "Meet Sanji", 
+      desc: "You meet the passionate cook Sanji, whose kicks are as fiery as his cooking!",
+      reward: { type: "card", name: "Sanji", rank: "B" }
+    },
+    { 
+      type: "narrative", 
+      title: "Mihawk Appears", 
+      desc: "The World's Greatest Swordsman, Dracule Mihawk, makes a brief but intimidating appearance.",
+      reward: { type: "xp", amount: 100 }
+    },
+    { 
+      type: "boss", 
+      title: "Don Krieg", 
+      desc: "The armored pirate Don Krieg attacks! His armor reflects damage back to attackers!",
+      enemy: { name: "Don Krieg", hp: 150, atk: [18, 25], spd: 80, rank: "A", ability: "damage_reflection" },
+      reward: { type: "beli", amount: 500, xp: 200 },
+      loseCooldown: 120 * 60 * 1000
+    },
+    { 
+      type: "narrative", 
+      title: "Reach Arlong Park", 
+      desc: "Your crew sets sail for the dangerous waters of Arlong Park, Nami's troubled past awaits.",
+      reward: { type: "beli", amount: 120 }
+    }
+  ],
+  'ARLONG PARK': [
+    { 
+      type: "narrative", 
+      title: "Nami's Past", 
+      desc: "You learn the truth about Nami's connection to the fish-men and her tragic past.",
+      reward: { type: "xp", amount: 80 }
+    },
+    { 
+      type: "narrative", 
+      title: "Fish-Man Supremacy", 
+      desc: "The fish-men boast about their superiority over humans. Their arrogance fuels your determination.",
+      reward: { type: "beli", amount: 100 }
+    },
+    { 
+      type: "narrative", 
+      title: "Preparing for War", 
+      desc: "You rally the villagers and prepare for the final battle against Arlong's crew.",
+      reward: { type: "item", name: "Battle Banner" }
+    },
+    { 
+      type: "enemy", 
+      title: "Fight Chew", 
+      desc: "The fish-man Chew attacks with his water-spitting abilities!",
+      enemy: { name: "Chew", hp: 80, atk: [15, 15], spd: 60, rank: "C" },
+      reward: { type: "beli", amount: 130, xp: 70 },
+      loseCooldown: 60 * 60 * 1000
+    },
+    { 
+      type: "enemy", 
+      title: "Fight Kuroobi", 
+      desc: "The ray fish-man Kuroobi demonstrates his fish-man karate!",
+      enemy: { name: "Kuroobi", hp: 80, atk: [16, 16], spd: 65, rank: "C" },
+      reward: { type: "beli", amount: 140, xp: 75 },
+      loseCooldown: 60 * 60 * 1000
+    },
+    { 
+      type: "enemy", 
+      title: "Fight Hachi", 
+      desc: "The six-sword wielding octopus fish-man Hachi blocks your path!",
+      enemy: { name: "Hachi", hp: 80, atk: [17, 17], spd: 70, rank: "C" },
+      reward: { type: "beli", amount: 150, xp: 80 },
+      loseCooldown: 60 * 60 * 1000
+    },
+    { 
+      type: "boss", 
+      title: "Arlong", 
+      desc: "The saw-shark fish-man Arlong emerges for the final battle! His reign of terror ends here!",
+      enemy: { name: "Arlong", hp: 200, atk: [20, 30], spd: 85, rank: "A" },
+      reward: { type: "beli", amount: 750, xp: 300 },
+      loseCooldown: 120 * 60 * 1000
+    },
+    { 
+      type: "narrative", 
+      title: "Alabasta Unlocked!", 
+      desc: "With Arlong defeated, you've completed the East Blue saga! The Grand Line awaits - Alabasta arc is now unlocked!",
+      reward: { type: "saga_unlock", saga: "Alabasta" }
+    }
+  ]
+};
 
-// Always stores item as lowercase, no spaces
+const EXPLORE_COOLDOWN = 2 * 60 * 1000; // 2 minutes
+const IMMUNE_USER_ID = "1257718161298690119";
+
 function normalizeItemName(item) {
   return item.replace(/\s+/g, '').toLowerCase();
 }
@@ -62,18 +286,19 @@ function normalizeItemName(item) {
 function addToInventory(user, item) {
   if (!user.inventory) user.inventory = [];
   const normItem = normalizeItemName(item);
-  if (!user.inventory.map(normalizeItemName).includes(normItem)) user.inventory.push(normItem);
+  if (!user.inventory.map(normalizeItemName).includes(normItem)) {
+    user.inventory.push(normItem);
+  }
 }
+
 function addXP(user, amount) {
-  // Check for XP boost
   const xpBoost = user.activeBoosts?.find(boost => 
     boost.type === 'double_xp' && boost.expiresAt > Date.now()
   );
-
   const finalAmount = xpBoost ? amount * 2 : amount;
   user.xp = (user.xp || 0) + finalAmount;
 }
-const EXPLORE_COOLDOWN = 2 * 60 * 1000;
+
 function prettyTime(ms) {
   let seconds = Math.floor(ms / 1000);
   let minutes = Math.floor(seconds / 60);
@@ -87,93 +312,40 @@ function prettyTime(ms) {
   return out.join(", ");
 }
 
-function createBossBattleEmbed(boss, playerTeam, battleLog, turn) {
-  const embed = new EmbedBuilder()
-    .setTitle(`⚔️ Boss Battle: ${boss.name}`)
-    .setColor(0xe74c3c);
-
-  // Boss stats
-  const bossHpBar = createHpBar(boss.currentHp, boss.hp);
-  embed.addFields({
-    name: `${boss.name} (${boss.rank} Rank)`,
-    value: `HP: ${bossHpBar} ${boss.currentHp}/${boss.hp}\nATK: ${boss.attack[0]}-${boss.attack[1]} | SPD: ${boss.speed}`,
-    inline: false
-  });
-
-  // Player team
-  let teamText = '';
-  playerTeam.forEach(card => {
-    const hpBar = createHpBar(card.currentHp, card.hp);
-    teamText += `**${card.name}** (Lv.${card.level})\nHP: ${hpBar} ${card.currentHp}/${card.hp}\n\n`;
-  });
-
-  embed.addFields({
-    name: '🏴‍☠️ Your Team',
-    value: teamText || 'No team members',
-    inline: false
-  });
-
-  // Battle log
-  if (battleLog.length > 0) {
-    const recentLog = battleLog.slice(-3).join('\n');
-    embed.addFields({
-      name: '⚔️ Battle Log',
-      value: recentLog,
-      inline: false
-    });
-  }
-
-  embed.setFooter({ text: `Turn ${turn} | Choose your action!` });
-  return embed;
-}
-
-function createBossBattleButtons(disabled = false) {
-  const row1 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('boss_attack')
-      .setLabel('⚔️ Attack')
-      .setStyle(ButtonStyle.Danger)
-      .setDisabled(disabled),
-    new ButtonBuilder()
-      .setCustomId('boss_skill')
-      .setLabel('💫 Special Attack')
-      .setStyle(ButtonStyle.Primary)
-      .setDisabled(disabled),
-    new ButtonBuilder()
-      .setCustomId('boss_defend')
-      .setLabel('🛡️ Defend')
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(disabled)
-  );
-
-  const row2 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('boss_flee')
-      .setLabel('🏃 Flee')
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(disabled)
-  );
-
-  return [row1, row2];
-}
-
 function createHpBar(current, max) {
-  const percentage = current / max;
+  const percentage = Math.max(0, current / max);
   const barLength = 10;
   const filledBars = Math.round(percentage * barLength);
   const emptyBars = barLength - filledBars;
-   return '█'.repeat(filledBars) + '░'.repeat(emptyBars);
+  return '█'.repeat(filledBars) + '░'.repeat(emptyBars);
 }
 
-// Change this to your Discord user ID for immunity
-const IMMUNE_USER_ID = "1257718161298690119"; // nasif-cloud
+function getCurrentLocation(stage) {
+  if (stage < 6) return 'WINDMILL VILLAGE';
+  if (stage < 13) return 'SHELLS TOWN';
+  if (stage < 20) return 'ORANGE TOWN';
+  if (stage < 25) return 'SYRUP VILLAGE';
+  if (stage < 30) return 'BARATIE';
+  if (stage < 38) return 'ARLONG PARK';
+  return 'COMPLETED';
+}
 
-const data = { name: "explore", description: "Begin or continue your adventure in Romance Dawn Saga!" };
+function getLocalStage(globalStage) {
+  if (globalStage < 6) return globalStage;
+  if (globalStage < 13) return globalStage - 6;
+  if (globalStage < 20) return globalStage - 13;
+  if (globalStage < 25) return globalStage - 20;
+  if (globalStage < 30) return globalStage - 25;
+  if (globalStage < 38) return globalStage - 30;
+  return 0;
+}
+
+const data = { name: "explore", description: "Begin or continue your adventure through the East Blue!" };
 
 async function execute(message, args, client) {
   const userId = message.author.id;
 
-  // --- MOD COMMAND: op explore reset me ---
+  // Reset command
   if (args.length >= 1 && args[0] === 'reset' && args[1] === 'me') {
     let user = await User.findOne({ userId });
     if (!user) return message.reply("User not found.");
@@ -187,18 +359,16 @@ async function execute(message, args, client) {
   let user = await User.findOne({ userId });
   if (!user) return message.reply("Start your journey with `op start` first!");
 
-  // --- Ensure fields exist and are numbers ---
+  // Ensure fields exist
   user.exploreStage = Number(user.exploreStage) || 0;
   user.exploreLast = Number(user.exploreLast) || 0;
   user.exploreLossCooldown = Number(user.exploreLossCooldown) || 0;
 
-  let stage = user.exploreStage;
+  const stage = user.exploreStage;
   const now = Date.now();
-
-  // ---- IMMUNITY TO COOLDOWNS FOR YOU ----
   const immune = userId === IMMUNE_USER_ID;
 
-  // Cooldown/loss checks (bypass if immune)
+  // Cooldown checks
   if (!immune && user.exploreLossCooldown && now < user.exploreLossCooldown) {
     const left = prettyTime(user.exploreLossCooldown - now);
     return message.reply(`You are recovering from defeat! Try exploring again in ${left}.`);
@@ -207,90 +377,87 @@ async function execute(message, args, client) {
     const left = prettyTime(EXPLORE_COOLDOWN - (now - user.exploreLast));
     return message.reply(`⏳ You must wait ${left} before exploring again.`);
   }
-  if (stage >= ROMANCE_DAWN_STAGES.length) {
-    return message.reply("You've finished the Romance Dawn arc! Use `op explore` again when the next saga unlocks.");
+
+  const currentLocation = getCurrentLocation(stage);
+  if (currentLocation === 'COMPLETED') {
+    return message.reply("🎉 You've completed the East Blue saga! The Grand Line awaits in future updates!");
   }
 
-  const stageData = ROMANCE_DAWN_STAGES[stage];
+  const localStage = getLocalStage(stage);
+  const locationData = LOCATIONS[currentLocation];
+  
+  if (!locationData || localStage >= locationData.length) {
+    return message.reply("No more stages available in this location!");
+  }
+
+  const stageData = locationData[localStage];
   let blockProgress = false;
 
-  // --- STAGE HANDLERS ---
+  // Handle different stage types
   if (stageData.type === "narrative") {
-    let flavor = stageData.pool
-      ? stageData.pool[Math.floor(Math.random() * stageData.pool.length)]
-      : "";
-    await message.reply({
-      embeds: [new EmbedBuilder()
-        .setTitle(stageData.title)
-        .setDescription(`${stageData.desc}${flavor ? "\n" + flavor : ""}`)
-        .setColor(0x3498db)
-      ]
-    });
+    const embed = new EmbedBuilder()
+      .setTitle(`📍 ${currentLocation} - ${stageData.title}`)
+      .setDescription(stageData.desc)
+      .setColor(0x3498db);
+
+    await message.reply({ embeds: [embed] });
+    
+    // Apply rewards
+    if (stageData.reward) {
+      await applyReward(user, stageData.reward);
+    }
   }
-  else if (stageData.type === "item" && stageData.effect === "strawhat") {
-    addToInventory(user, "strawhat");
-    await message.reply({
-      embeds: [new EmbedBuilder()
-        .setTitle(stageData.title)
-        .setDescription(`${stageData.desc}\n*Strawhat added to your inventory*`)
-        .setColor(0xffe700)
-      ]
+  else if (stageData.type === "choice") {
+    const embed = new EmbedBuilder()
+      .setTitle(`📍 ${currentLocation} - ${stageData.title}`)
+      .setDescription(stageData.desc)
+      .setColor(0xf39c12);
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('choice_yes')
+        .setLabel('✅ Yes')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('choice_no')
+        .setLabel('❌ No')
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    const choiceMessage = await message.reply({
+      embeds: [embed],
+      components: [row]
     });
-  }
-  else if (stageData.type === "random") {
-    const idx = Math.floor(Math.random() * stageData.pool.length);
-    const flavor = stageData.pool[idx];
-    const reward = stageData.rewards && stageData.rewards[idx];
-    let rewardText = "";
-    if (reward) {
-      if (reward.type === "beli") {
-        user.beli = (user.beli || 0) + reward.amount;
-        rewardText = `\n+${reward.amount} Beli!`;
-      } else if (reward.type === "xp") {
-        addXP(user, reward.amount);
-        rewardText = `\n+${reward.amount} XP!`;
-      } else if (reward.type === "item") {
-        addToInventory(user, normalizeItemName(reward.name));
-        rewardText = `\nItem acquired: ${normalizeItemName(reward.name)}`;
+
+    // Store choice data
+    if (!client.choices) client.choices = new Map();
+    client.choices.set(choiceMessage.id, {
+      userId: user.userId,
+      stageData,
+      currentLocation,
+      stage: user.exploreStage
+    });
+
+    setTimeout(() => {
+      if (client.choices && client.choices.has(choiceMessage.id)) {
+        client.choices.delete(choiceMessage.id);
       }
-    }
-    await message.reply({
-      embeds: [new EmbedBuilder()
-        .setTitle("Event")
-        .setDescription(flavor + rewardText)
-        .setColor(0x2ecc40)
-      ]
-    });
+    }, 2 * 60 * 1000);
+
+    return; // Don't progress until choice is made
   }
-  else if (stageData.type === "card") {
-    if (!user.cards) user.cards = [];
-    if (!user.cards.find(c => c.name === stageData.card.name)) {
-      user.cards.push({
-        name: stageData.card.name,
-        rank: stageData.card.rank,
-        timesUpgraded: 0
-      });
-    }
-    await message.reply({
-      embeds: [new EmbedBuilder()
-        .setTitle(stageData.title)
-        .setDescription(stageData.desc)
-        .setColor(0x9b59b6)
-      ]
-    });
-  }
-  else if (stageData.type === "boss") {
+  else if (stageData.type === "enemy" || stageData.type === "boss") {
     if (!user.team || !user.team.length) {
       blockProgress = true;
       await message.reply({
         embeds: [new EmbedBuilder()
           .setTitle("⚠️ You need a team!")
-          .setDescription("You must add at least one card to your team to challenge the boss. Use `op team add <card>`.")
+          .setDescription("You must add at least one card to your team to fight. Use `op team add <card>`.")
           .setColor(0xe74c3c)
         ]
       });
     } else {
-      // Start interactive boss battle
+      // Start battle
       const { calculateBattleStats } = require('../utils/battleSystem.js');
       const playerTeam = calculateBattleStats(user);
 
@@ -305,89 +472,151 @@ async function execute(message, args, client) {
         });
       }
 
-      const boss = {
-        name: stageData.boss.name,
-        hp: stageData.boss.hp,
-        currentHp: stageData.boss.hp,
-        attack: stageData.boss.atk,
-        speed: stageData.boss.spd,
-        rank: stageData.boss.rank || 'B'
+      const enemy = {
+        ...stageData.enemy,
+        currentHp: stageData.enemy.hp,
+        maxHp: stageData.enemy.hp,
+        attack: stageData.enemy.atk,
+        power: Math.floor((stageData.enemy.atk[0] + stageData.enemy.atk[1]) / 2)
       };
 
-      const battleEmbed = createBossBattleEmbed(boss, playerTeam, [], 1);
+      const enemyType = stageData.type === "boss" ? "boss" : "enemy";
+      const battleEmbed = createBossBattleEmbed(enemy, playerTeam, [], 1, enemyType);
       const battleButtons = createBossBattleButtons();
 
       const battleMessage = await message.reply({
         embeds: [battleEmbed],
-        components: battleButtons
+        components: [battleButtons]
       });
 
       // Store battle state
       const battleData = {
-        boss,
+        boss: enemy,
         playerTeam,
         battleLog: [],
         turn: 1,
         userId: user.userId,
         stageData,
+        currentLocation,
+        stage: user.exploreStage,
         exploreBattle: true
       };
 
-      // Store in memory for interaction handling
       if (!client.battles) client.battles = new Map();
       client.battles.set(battleMessage.id, battleData);
 
-      // Auto-cleanup after 5 minutes
       setTimeout(() => {
         if (client.battles && client.battles.has(battleMessage.id)) {
           client.battles.delete(battleMessage.id);
         }
       }, 5 * 60 * 1000);
 
-      return; // Don't continue explore progression until battle is resolved
-    }
-  }
-  else if (stageData.type === "battle") {
-    let enemy = { ...stageData.enemy, curHp: stageData.enemy.hp };
-    let battleLog = `**${enemy.name}**\nHP: ${enemy.curHp}\nATK: ${enemy.atk[0]}–${enemy.atk[1]}\nSPD: ${enemy.spd}\n\nYou fight Helmeppo!`;
-    let playerWins = Math.random() > 0.25;
-    if (!playerWins) {
-      await message.reply({
-        embeds: [new EmbedBuilder()
-          .setTitle(`Duel: ${enemy.name} – Draw`)
-          .setDescription(`${battleLog}\n\nNo reward this time, but you can try again immediately!`)
-          .setColor(0xf1c40f)
-        ]
-      });
-    } else {
-      user.beli = (user.beli || 0) + (stageData.reward?.amount || 0);
-      await message.reply({
-        embeds: [new EmbedBuilder()
-          .setTitle(`Duel: ${enemy.name} – Victory!`)
-          .setDescription(`${battleLog}\n\nReward: +${stageData.reward?.amount || 0} Beli.`)
-          .setColor(0x27ae60)
-        ]
-      });
+      return; // Don't progress until battle is resolved
     }
   }
 
-  // --- PROGRESSION ---
+  // Progress to next stage
   if (!blockProgress) {
-    // Update quest progress
     const { updateQuestProgress } = require('../utils/questSystem.js');
-
-    if (stageData.type === "battle" || stageData.type === "boss") {
-      await updateQuestProgress(user, 'battle_win', 1);
-    }
-
     await updateQuestProgress(user, 'explore', 1);
 
-    user.exploreStage = Number(stage) + 1;
+    user.exploreStage = stage + 1;
     user.exploreLast = immune ? 0 : now;
     user.exploreLossCooldown = 0;
     await user.save();
   } else {
     await user.save();
+  }
+}
+
+function createBossBattleEmbed(boss, playerTeam, battleLog, turn, enemyType = "enemy") {
+  const battleTitle = enemyType === "boss" ? "Boss Battle" : "Battle";
+  const hpBar = createHpBar(boss.currentHp, boss.maxHp);
+  
+  const embed = new EmbedBuilder()
+    .setTitle(`⚔️ ${battleTitle}: ${boss.name}`)
+    .setDescription(`**${boss.description || 'A fierce enemy blocks your path!'}**\n\n${battleLog.slice(-4).join('\n')}`)
+    .setColor(0xff0000);
+
+  const teamDisplay = playerTeam.filter(card => card.currentHp > 0).map(card => {
+    const cardHpBar = createHpBar(card.currentHp, card.hp);
+    return `${card.name} ${cardHpBar} ${card.currentHp}/${card.hp}`;
+  }).join('\n') || 'No cards available';
+
+  embed.addFields(
+    { name: `🔥 ${boss.name} HP`, value: `${hpBar} ${boss.currentHp}/${boss.maxHp}`, inline: true },
+    { name: '⚡ Attack Power', value: `${boss.attack[0]}-${boss.attack[1]}`, inline: true },
+    { name: '🛡️ Your Team', value: teamDisplay, inline: false }
+  );
+
+  return embed;
+}
+
+function createBossBattleButtons(disabled = false) {
+  return new ActionRowBuilder()
+    .addComponents(
+      new ButtonBuilder()
+        .setCustomId('boss_attack')
+        .setLabel('⚔️ Attack')
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(disabled),
+      new ButtonBuilder()
+        .setCustomId('boss_defend')
+        .setLabel('🛡️ Defend')
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(disabled),
+      new ButtonBuilder()
+        .setCustomId('boss_flee')
+        .setLabel('🏃 Flee')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(disabled)
+    );
+}
+
+async function applyReward(user, reward) {
+  if (!reward) return;
+
+  switch (reward.type) {
+    case "card":
+      if (!user.cards) user.cards = [];
+      if (!user.cards.find(c => c.name === reward.name)) {
+        user.cards.push({
+          name: reward.name,
+          rank: reward.rank,
+          level: 1,
+          experience: 0,
+          timesUpgraded: 0
+        });
+      }
+      break;
+    case "beli":
+      user.beli = (user.beli || 0) + reward.amount;
+      break;
+    case "xp":
+      addXP(user, reward.amount);
+      // Distribute XP to team members
+      const { distributeXPToTeam } = require('../utils/levelSystem.js');
+      const levelChanges = distributeXPToTeam(user, reward.amount);
+      if (levelChanges && levelChanges.length > 0) {
+        // Store level up notifications for later display
+        user.recentLevelUps = levelChanges;
+      }
+      break;
+    case "item":
+      if (reward.count) {
+        for (let i = 0; i < reward.count; i++) {
+          addToInventory(user, reward.name);
+        }
+      } else {
+        addToInventory(user, reward.name);
+      }
+      break;
+    case "saga_unlock":
+      if (!user.unlockedSagas) user.unlockedSagas = ['East Blue'];
+      if (!user.unlockedSagas.includes(reward.saga)) {
+        user.unlockedSagas.push(reward.saga);
+      }
+      break;
   }
 }
 
