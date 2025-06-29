@@ -6,9 +6,10 @@ function buildTeamEmbed(teamCards, username, totalPower) {
   for (let i = 0; i < teamCards.length; i++) {
     const card = teamCards[i];
     const lockStatus = card.locked ? ' <:Padlock_Crown:1388587874084982956>' : '';
+    
     fields.push({
       name: `Lv. ${card.level} ${card.displayName}${lockStatus}`,
-      value: `Card Power: ${card.calcPower}`, // Changed to show power instead of image
+      value: `💪 Power: ${card.power}\n❤️ Health: ${card.health}\n⚡ Speed: ${card.speed}`,
       inline: true,
     });
   }
@@ -22,10 +23,10 @@ function buildTeamEmbed(teamCards, username, totalPower) {
   }
 
   const embed = new EmbedBuilder()
-    .setTitle(`_${username}'s crew_`)
+    .setTitle(`⚔️ ${username}'s Crew`)
     .addFields(fields)
     .addFields([
-      { name: "Total Power", value: `**${totalPower}**`, inline: false }
+      { name: "📊 Total Team Power", value: `**${totalPower}**`, inline: false }
     ])
     .setColor(0xe67e22)
     .setFooter({ text: "Use op team add <card> to add crew members." });
@@ -117,23 +118,46 @@ async function execute(message, args) {
   // Display team (default behavior)
   if (!user.team) user.team = [];
   
+  const fs = require('fs');
+  const path = require('path');
+  const cardsPath = path.resolve('data', 'cards.json');
+  const allCards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
   const { calculateCardStats } = require('../utils/levelSystem.js');
+  
   const teamCards = [];
   let totalPower = 0;
 
   for (const cardName of user.team) {
     const userCard = user.cards?.find(card => normalize(card.name) === normalize(cardName));
     if (userCard) {
-      const stats = calculateCardStats(userCard);
-      const cardData = {
-        ...userCard,
-        displayName: userCard.name,
-        calcPower: stats.power,
-        locked: userCard.locked || false,
-        level: userCard.level || 1
-      };
-      teamCards.push(cardData);
-      totalPower += stats.power;
+      // Find card definition
+      const cardDef = allCards.find(c => normalize(c.name) === normalize(userCard.name));
+      if (cardDef) {
+        const stats = calculateCardStats(cardDef, userCard.level || 1);
+        
+        // Apply equipment bonuses
+        let { power, health, speed } = stats;
+        const normCard = normalize(cardDef.name);
+        const equippedItem = user.equipped && user.equipped[normCard];
+        
+        if (equippedItem === 'strawhat') {
+          power = Math.ceil(power * 1.3);
+          health = Math.ceil(health * 1.3);
+          speed = Math.ceil(speed * 1.3);
+        }
+        
+        const cardData = {
+          ...userCard,
+          displayName: userCard.name,
+          power: power,
+          health: health,
+          speed: speed,
+          locked: userCard.locked || false,
+          level: userCard.level || 1
+        };
+        teamCards.push(cardData);
+        totalPower += power;
+      }
     }
   }
 

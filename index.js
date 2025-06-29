@@ -1,21 +1,16 @@
+require('dotenv').config();
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-const dotenv = require('dotenv');
-const { connectDB } = require('./db/database.js');
-const { keepAlive } = require('./keepAlive.js'); // ✅ Import keepAlive
-
-dotenv.config();
-
-// Keep-alive Express server for Render + UptimeRobot
-keepAlive(); // ✅ Start server immediately to prevent double bot launch
+const mongoose = require('mongoose');
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers
+    ]
 });
 
 client.commands = new Collection();
@@ -25,44 +20,53 @@ const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
 for (const file of commandFiles) {
-  const filePath = path.join(commandsPath, file);
-  const command = require(filePath);
-  if ('data' in command && 'execute' in command) {
-    const commandName = typeof command.data.name === 'string' ? command.data.name : command.data.name;
+    const filePath = path.join(commandsPath, file);
+    const command = require(filePath);
+    const commandName = file.replace('.js', '');
     client.commands.set(commandName, command);
-    console.log(`[COMMAND] Loaded ${commandName}`);
-  } else {
-    console.log(`[WARNING] The command at ${filePath} is missing required "data" or "execute" property.`);
-  }
 }
 
-// Load events
-const eventsPath = path.join(__dirname, 'events');
-const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
+// Connect to MongoDB
+mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/onepiece_bot', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+}).then(() => {
+    console.log('Connected to MongoDB');
+}).catch(err => {
+    console.error('MongoDB connection error:', err);
+});
 
-for (const file of eventFiles) {
-  const filePath = path.join(eventsPath, file);
-  const event = require(filePath);
-  if (event.once) {
-    client.once(event.name, (...args) => event.execute(...args, client));
-  } else {
-    client.on(event.name, (...args) => event.execute(...args, client));
-  }
-  console.log(`[EVENT] Loaded ${event.name}`);
-}
+client.once('ready', () => {
+    console.log(`Ready! Logged in as ${client.user.tag}`);
+});
 
-// Initialize database and start bot
-async function startBot() {
-  try {
-    await connectDB();
-    console.log('[DATABASE] Connected successfully');
+client.on('messageCreate', async message => {
+    if (message.author.bot) return;
+    
+    const config = require('./config.json');
+    const prefix = config.prefix;
+    if (!message.content.startsWith(prefix)) return;
 
-    await client.login(process.env.DISCORD_TOKEN);
-    console.log('[BOT] Discord bot logged in successfully');
-  } catch (error) {
-    console.error('[ERROR] Failed to start bot:', error);
-    process.exit(1);
-  }
-}
+    const args = message.content.slice(prefix.length).trim().split(/ +/);
+    const commandName = args.shift().toLowerCase();
 
-startBot();
+    const command = client.commands.get(commandName);
+    if (!command) return;
+
+    try {
+        await command.execute(message, args, client);
+    } catch (error) {
+        console.error('Error executing command:', error);
+        await message.reply('There was an error while executing this command!');
+    }
+});
+
+client.on('error', error => {
+    console.error('Discord.js error:', error);
+});
+
+process.on('unhandledRejection', error => {
+    console.error('Unhandled promise rejection:', error);
+});
+
+client.login(process.env.DISCORD_TOKEN);

@@ -1,60 +1,80 @@
 const mongoose = require('mongoose');
 
-const cardInstanceSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  rank: { type: String, required: true },
-  level: { type: Number, default: 1 },
-  timesUpgraded: { type: Number, default: 0 },
-  locked: { type: Boolean, default: false },
-  experience: { type: Number, default: 0 }
+const userSchema = new mongoose.Schema({
+    userId: { type: String, required: true, index: true, unique: true },
+    username: { type: String, required: true },
+    beli: { type: Number, default: 0 },
+    xp: { type: Number, default: 0 },
+    level: { type: Number, default: 1 },
+    wins: { type: Number, default: 0 },
+    losses: { type: Number, default: 0 },
+    stage: { type: Number, default: 0 },
+    hp: { type: Number, default: 100 },
+    maxHp: { type: Number, default: 100 },
+    atk: { type: Number, default: 15 },
+    spd: { type: Number, default: 50 },
+    def: { type: Number, default: 10 },
+    
+    // Collections
+    cards: [{
+        name: String,
+        rank: String,
+        level: { type: Number, default: 1 },
+        timesUpgraded: { type: Number, default: 0 }
+    }],
+    
+    inventory: [String],
+    equipped: { type: Map, of: String, default: {} },
+    team: [String],
+    
+    // Battle state
+    battleState: {
+        inBattle: { type: Boolean, default: false },
+        enemy: mongoose.Schema.Types.Mixed,
+        battleHp: Number,
+        turnCount: { type: Number, default: 0 },
+        battleLog: [String]
+    },
+    
+    // Explore states for complex exploration system
+    exploreStates: {
+        inBossFight: { type: Boolean, default: false },
+        battleState: mongoose.Schema.Types.Mixed,
+        currentStage: mongoose.Schema.Types.Mixed,
+        currentLocation: String,
+        defeatCooldown: Date
+    },
+    
+    // Cooldowns
+    lastExplore: { type: Date, default: null },
+    lastBattle: { type: Date, default: null },
+    defeatedAt: { type: Date, default: null },
+    
+    // Quest system
+    questData: {
+        progress: { type: Map, of: Number, default: {} },
+        completed: [String],
+        lastReset: {
+            daily: { type: Number, default: 0 },
+            weekly: { type: Number, default: 0 }
+        }
+    },
+    
+    // Boosts
+    activeBoosts: [{
+        type: String,
+        expiresAt: Date,
+        multiplier: Number
+    }],
+    
+    // Timestamps
+    createdAt: { type: Date, default: Date.now },
+    lastActive: { type: Date, default: Date.now }
 });
 
-const userSchema = new mongoose.Schema({
-  userId: { type: String, required: true, unique: true },
-  beli: { type: Number, default: 500 },
-  xp: { type: Number, default: 0 },
-  saga: { type: String, default: 'East Blue' },
-  team: [{ type: String }],
-  cards: [cardInstanceSchema],
-  inventory: [{ type: String }],
-  equipped: { type: Map, of: String },
-  wins: { type: Number, default: 0 },
-  losses: { type: Number, default: 0 },
-  pulls: [{ type: Number }],
-  lastPull: { type: Number, default: 0 },
-  exploreStage: { type: Number, default: 0 },
-  exploreLast: { type: Number, default: 0 },
-  exploreLossCooldown: { type: Number, default: 0 },
-  exploreLog: [{
-    saga: String,
-    step: Number,
-    event: String,
-    time: { type: Number, default: Date.now }
-  }],
-  location: { type: String, default: 'Windmill Village' },
-  lastDaily: { type: Number, default: 0 },
-  completedQuests: [{ type: String }],
-  activeQuests: [{
-    questId: String,
-    progress: { type: Map, of: Number },
-    startedAt: { type: Number, default: Date.now }
-  }],
-  settings: {
-    notifications: { type: Boolean, default: true },
-    duelAccept: { type: String, default: 'manual' },
-    language: { type: String, default: 'en' }
-  },
-  battleCooldown: { type: Number, default: 0 },
-  duelCooldown: { type: Number, default: 0 },
-  disallowedCards: [{ type: String }],
-  locationCooldowns: { type: Map, of: Number },
-  activeBoosts: [{
-    type: String,
-    expiresAt: Number,
-    multiplier: Number
-  }]
-}, {
-  timestamps: true
-});
+// Additional indexes for performance
+userSchema.index({ beli: -1 });
+userSchema.index({ xp: -1 });
+userSchema.index({ wins: -1 });
 
 module.exports = mongoose.model('User', userSchema);

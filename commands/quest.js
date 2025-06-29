@@ -1,398 +1,364 @@
-
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const User = require('../db/models/User.js');
-const { getAvailableQuests, updateQuestProgress, claimQuestReward } = require('../utils/questSystem.js');
 
-function createQuestEmbed(quests, activeQuests, completedQuests) {
-  const embed = new EmbedBuilder()
-    .setTitle(' Quest Log')
-    .setDescription('Complete quests to earn rewards!')
-    .setColor(0x3498db);
+// Quest definitions
+const QUESTS = {
+    daily: [
+        {
+            id: 'daily_explore',
+            name: 'Explorer',
+            description: 'Complete 3 exploration stages',
+            requirement: { type: 'explore', count: 3 },
+            reward: { type: 'beli', amount: 500 },
+            resetType: 'daily'
+        },
+        {
+            id: 'daily_battle',
+            name: 'Warrior',
+            description: 'Win 5 battles',
+            requirement: { type: 'battle_wins', count: 5 },
+            reward: { type: 'xp', amount: 200 },
+            resetType: 'daily'
+        },
+        {
+            id: 'daily_market',
+            name: 'Trader',
+            description: 'Buy 2 items from the market',
+            requirement: { type: 'market_buy', count: 2 },
+            reward: { type: 'item', name: 'Lucky Charm' },
+            resetType: 'daily'
+        }
+    ],
+    weekly: [
+        {
+            id: 'weekly_boss',
+            name: 'Boss Hunter',
+            description: 'Defeat 3 boss enemies',
+            requirement: { type: 'boss_defeats', count: 3 },
+            reward: { type: 'multiple', rewards: [
+                { type: 'beli', amount: 2000 },
+                { type: 'xp', amount: 1000 }
+            ]},
+            resetType: 'weekly'
+        },
+        {
+            id: 'weekly_collector',
+            name: 'Card Collector',
+            description: 'Obtain 5 new cards',
+            requirement: { type: 'cards_obtained', count: 5 },
+            reward: { type: 'card', name: 'Mystery Card', rank: 'B' },
+            resetType: 'weekly'
+        }
+    ],
+    story: [
+        {
+            id: 'story_east_blue',
+            name: 'East Blue Saga',
+            description: 'Complete the East Blue storyline',
+            requirement: { type: 'stage_completion', stage: 38 },
+            reward: { type: 'multiple', rewards: [
+                { type: 'beli', amount: 5000 },
+                { type: 'xp', amount: 2000 },
+                { type: 'card', name: 'Straw Hat Luffy', rank: 'A' }
+            ]},
+            resetType: 'never'
+        }
+    ]
+};
 
-  if (quests.length === 0) {
-    embed.addFields({ name: 'No Quests Available', value: 'Check back later for new quests!', inline: false });
+// Initialize user quest data
+function initializeUserQuests(user) {
+    if (!user.questData) {
+        user.questData = {
+            progress: {},
+            completed: [],
+            lastReset: {
+                daily: 0,
+                weekly: 0
+            }
+        };
+    }
+    return user.questData;
+}
+
+// Check if quests need to be reset
+function checkQuestResets(questData) {
+    const now = Date.now();
+    const oneDay = 24 * 60 * 60 * 1000;
+    const oneWeek = 7 * oneDay;
+    
+    // Reset daily quests
+    if (now - questData.lastReset.daily > oneDay) {
+        questData.lastReset.daily = now;
+        // Reset daily quest progress
+        Object.keys(questData.progress).forEach(questId => {
+            if (questId.startsWith('daily_')) {
+                delete questData.progress[questId];
+            }
+        });
+        // Remove daily quests from completed list
+        questData.completed = questData.completed.filter(id => !id.startsWith('daily_'));
+    }
+    
+    // Reset weekly quests
+    if (now - questData.lastReset.weekly > oneWeek) {
+        questData.lastReset.weekly = now;
+        // Reset weekly quest progress
+        Object.keys(questData.progress).forEach(questId => {
+            if (questId.startsWith('weekly_')) {
+                delete questData.progress[questId];
+            }
+        });
+        // Remove weekly quests from completed list
+        questData.completed = questData.completed.filter(id => !id.startsWith('weekly_'));
+    }
+}
+
+// Update quest progress
+function updateQuestProgress(user, type, amount = 1) {
+    const questData = initializeUserQuests(user);
+    checkQuestResets(questData);
+    
+    // Find all quests that match the progress type
+    const allQuests = [...QUESTS.daily, ...QUESTS.weekly, ...QUESTS.story];
+    
+    for (const quest of allQuests) {
+        if (quest.requirement.type === type && !questData.completed.includes(quest.id)) {
+            if (!questData.progress[quest.id]) {
+                questData.progress[quest.id] = 0;
+            }
+            
+            questData.progress[quest.id] = Math.min(
+                questData.progress[quest.id] + amount,
+                quest.requirement.count || quest.requirement.stage
+            );
+        }
+    }
+}
+
+// Check for completed quests
+function checkCompletedQuests(user) {
+    const questData = initializeUserQuests(user);
+    const completedQuests = [];
+    
+    const allQuests = [...QUESTS.daily, ...QUESTS.weekly, ...QUESTS.story];
+    
+    for (const quest of allQuests) {
+        if (!questData.completed.includes(quest.id)) {
+            const progress = questData.progress[quest.id] || 0;
+            const required = quest.requirement.count || quest.requirement.stage;
+            
+            if (progress >= required) {
+                questData.completed.push(quest.id);
+                completedQuests.push(quest);
+            }
+        }
+    }
+    
+    return completedQuests;
+}
+
+// Apply quest reward
+async function applyQuestReward(user, reward) {
+    if (reward.type === 'beli') {
+        user.beli = (user.beli || 0) + reward.amount;
+    } else if (reward.type === 'xp') {
+        user.xp = (user.xp || 0) + reward.amount;
+    } else if (reward.type === 'item') {
+        if (!user.inventory) user.inventory = [];
+        user.inventory.push(reward.name.toLowerCase().replace(/\s+/g, ''));
+    } else if (reward.type === 'card') {
+        if (!user.cards) user.cards = [];
+        user.cards.push({
+            name: reward.name,
+            rank: reward.rank,
+            level: 1,
+            timesUpgraded: 0
+        });
+    } else if (reward.type === 'multiple') {
+        for (const subReward of reward.rewards) {
+            await applyQuestReward(user, subReward);
+        }
+    }
+}
+
+// Format reward text
+function formatRewardText(reward) {
+    if (reward.type === 'beli') {
+        return `${reward.amount} Beli`;
+    } else if (reward.type === 'xp') {
+        return `${reward.amount} XP`;
+    } else if (reward.type === 'item') {
+        return `${reward.name}`;
+    } else if (reward.type === 'card') {
+        return `[${reward.rank}] ${reward.name}`;
+    } else if (reward.type === 'multiple') {
+        return reward.rewards.map(r => formatRewardText(r)).join(', ');
+    }
+    return 'Unknown reward';
+}
+
+// Create quest embed
+function createQuestEmbed(questType, quests, user) {
+    const questData = initializeUserQuests(user);
+    checkQuestResets(questData);
+    
+    const embed = new EmbedBuilder()
+        .setTitle(`📋 ${questType.charAt(0).toUpperCase() + questType.slice(1)} Quests`)
+        .setColor(questType === 'daily' ? 0x3498db : questType === 'weekly' ? 0x9b59b6 : 0xe74c3c);
+    
+    if (quests.length === 0) {
+        embed.setDescription('No quests available in this category.');
+        return embed;
+    }
+    
+    let description = '';
+    
+    for (const quest of quests) {
+        const progress = questData.progress[quest.id] || 0;
+        const required = quest.requirement.count || quest.requirement.stage;
+        const isCompleted = questData.completed.includes(quest.id);
+        
+        const status = isCompleted ? '[DONE]' : progress >= required ? '[READY]' : '[ACTIVE]';
+        const progressText = isCompleted ? 'Completed' : `${progress}/${required}`;
+        
+        description += `${status} **${quest.name}**\n`;
+        description += `   ${quest.description}\n`;
+        description += `   Progress: ${progressText}\n`;
+        description += `   Reward: ${formatRewardText(quest.reward)}\n\n`;
+    }
+    
+    embed.setDescription(description);
     return embed;
-  }
+}
 
-  // Show only claimable quests and a few active ones
-  const claimableQuests = [];
-  const inProgressQuests = [];
-  
-  quests.forEach(quest => {
-    // Check if quest is already completed with proper ID format
-    const claimId = `${quest.questId}_${getQuestResetPeriod(quest.type)}`;
-    const isCompleted = completedQuests.some(cq => cq === claimId || cq.includes(quest.questId));
+// Create quest buttons
+function createQuestButtons(currentType) {
+    const buttons = [
+        new ButtonBuilder()
+            .setCustomId('quest_daily')
+            .setLabel('Daily')
+            .setStyle(currentType === 'daily' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId('quest_weekly')
+            .setLabel('Weekly')
+            .setStyle(currentType === 'weekly' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId('quest_story')
+            .setLabel('Story')
+            .setStyle(currentType === 'story' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId('quest_claim')
+            .setLabel('Claim All')
+            .setStyle(ButtonStyle.Success)
+    ];
     
-    if (isCompleted) return; // Skip completed quests
+    return [new ActionRowBuilder().addComponents(buttons)];
+}
+
+const data = {
+    name: 'quest',
+    description: 'View and manage your quests.'
+};
+
+async function execute(message, args, client) {
+    const userId = message.author.id;
+    const user = await User.findOne({ userId });
     
-    const activeQuest = activeQuests.find(aq => aq.questId === quest.questId);
-    if (activeQuest) {
-      let allRequirementsMet = true;
-      let currentProgress = {};
-      
-      for (const requirement of quest.requirements) {
-        const progress = activeQuest.progress instanceof Map ? 
-          activeQuest.progress.get(requirement.type) || 0 : 
-          activeQuest.progress[requirement.type] || 0;
-        currentProgress[requirement.type] = progress;
-        
-        if (progress < requirement.target) {
-          allRequirementsMet = false;
-          inProgressQuests.push({ quest, progress, requirement, currentProgress });
-          break;
-        }
-      }
-      if (allRequirementsMet) {
-        claimableQuests.push(quest);
-      }
+    if (!user) {
+        return message.reply('Start your journey with `op start` first!');
     }
-  });
-
-  // Show claimable quests first
-  if (claimableQuests.length > 0) {
-    let claimableText = '';
-    claimableQuests.slice(0, 5).forEach(quest => {
-      const rewards = quest.rewards.map(r => {
-        if (r.type === 'beli') return `<:Money:1375579299565928499>${r.amount}`;
-        if (r.type === 'xp') return `<:snoopy_sparkles:1388585338821152978>${r.amount}`;
-        if (r.type === 'item') return `<:emptybox:1388587415018410177>${r.itemName || r.name}`;
-        return `${r.type}`;
-      }).join(' ');
-      claimableText += ` **${quest.name}** - ${rewards}\n`;
-    });
-    embed.addFields({ name: ' Ready to Claim', value: claimableText, inline: false });
-  }
-
-  // Show active quests
-  if (inProgressQuests.length > 0) {
-    let progressText = '';
-    inProgressQuests.slice(0, 5).forEach(({ quest, progress, requirement }) => {
-      const current = progress;
-      const target = requirement.target;
-      const percentage = Math.floor((current / target) * 100);
-      progressText += `<:icon1:1375589270013608206> **${quest.name}** - ${current}/${target} (${percentage}%)\n`;
-    });
-    embed.addFields({ name: '<:icon1:1375589270013608206> In Progress', value: progressText, inline: false });
-  }
-
-  return embed;
-}
-
-function getQuestResetPeriod(questType) {
-  if (questType === 'daily') {
-    return new Date().toDateString();
-  } else if (questType === 'weekly') {
-    const now = new Date();
-    const dayOfWeek = now.getDay();
-    const diff = now.getDate() - dayOfWeek;
-    const weekStart = new Date(now.setDate(diff));
-    return weekStart.toDateString();
-  }
-  return '';
-}
-
-function createQuestMenu(claimableQuests) {
-  if (claimableQuests.length === 0) return null;
-
-  const options = claimableQuests.slice(0, 25).map(quest => ({
-    label: quest.name.length > 100 ? quest.name.substring(0, 97) + '...' : quest.name,
-    description: quest.description.length > 100 ? quest.description.substring(0, 97) + '...' : quest.description,
-    value: quest.questId
-  }));
-
-  return new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId('quest_claim_select')
-      .setPlaceholder('Select a quest to claim')
-      .addOptions(options)
-  );
-}
-
-function createQuestButtons() {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('quest_refresh')
-      .setLabel('<:icon1:1375589270013608206> Refresh')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('quest_info')
-      .setLabel('ℹ Info')
-      .setStyle(ButtonStyle.Primary)
-  );
-}
-
-async function createQuestInfoEmbed() {
-  const embed = new EmbedBuilder()
-    .setTitle(' Quest Requirements')
-    .setDescription('Here\'s what you need to do to complete each quest:')
-    .setColor(0x3498db)
-    .addFields(
-      {
-        name: ' Daily Card Pull',
-        value: 'Pull 1 card using `op pull`',
-        inline: true
-      },
-      {
-        name: ' Continue Your Adventure', 
-        value: 'Take 3 exploration steps using `op explore`',
-        inline: true
-      },
-      {
-        name: ' Battle Training',
-        value: 'Win 2 battles using `op battle`',
-        inline: true
-      },
-      {
-        name: ' Crew Assembly',
-        value: 'Add or change 1 card in your team using `op team`',
-        inline: true
-      },
-      {
-        name: ' Power Enhancement',
-        value: 'Level up 1 card using `op level`',
-        inline: true
-      },
-      {
-        name: ' Collection Master (Weekly)',
-        value: 'Pull 15 cards this week',
-        inline: true
-      },
-      {
-        name: ' Battle Champion (Weekly)',
-        value: 'Win 10 battles this week',
-        inline: true
-      },
-      {
-        name: ' Grand Line Explorer (Weekly)',
-        value: 'Complete 20 exploration steps this week',
-        inline: true
-      },
-      {
-        name: ' Evolution Specialist (Weekly)',
-        value: 'Evolve 3 cards this week using `op evolve`',
-        inline: true
-      },
-      {
-        name: ' Market Trader (Weekly)',
-        value: 'Make 5 market transactions (buy/sell)',
-        inline: true
-      },
-      {
-        name: ' First Steps to Piracy (Story)',
-        value: 'Complete 5 exploration steps in Romance Dawn',
-        inline: true
-      },
-      {
-        name: ' Assembling the Crew (Story)',
-        value: 'Build a complete team of 3 cards',
-        inline: true
-      },
-      {
-        name: ' First Taste of Victory (Story)',
-        value: 'Win 1 battle against a boss',
-        inline: true
-      },
-      {
-        name: ' Building a Collection (Story)',
-        value: 'Collect 10 different cards through pulls',
-        inline: true
-      },
-      {
-        name: ' Unlocking Potential (Story)',
-        value: 'Evolve 1 card to a stronger form',
-        inline: true
-      },
-      {
-        name: '🏴 Romance Dawn Complete (Story)',
-        value: 'Finish all exploration stages in Romance Dawn',
-        inline: true
-      },
-      {
-        name: ' Training for Power (Story)',
-        value: 'Level up cards 5 times total',
-        inline: true
-      },
-      {
-        name: ' Introduction to Trading (Story)',
-        value: 'Make 1 market transaction (buy or sell)',
-        inline: true
-      },
-      {
-        name: ' Advanced Explorer (Story)',
-        value: 'Complete 25 exploration steps across all sagas',
-        inline: true
-      },
-      {
-        name: ' Rank Up Specialist (Story)',
-        value: 'Evolve cards to A rank or higher 3 times',
-        inline: true
-      }
-    );
-
-  return embed;
-}
-
-const data = { name: 'quest', description: 'View and manage your quests.' };
-
-async function execute(message, args) {
-  const userId = message.author.id;
-  const user = await User.findOne({ userId });
-
-  if (!user) return message.reply('Start your journey with `op start` first!');
-
-  // Get available quests
-  const availableQuests = await getAvailableQuests(user);
-  const activeQuests = user.activeQuests || [];
-  const completedQuests = user.completedQuests || [];
-
-  // Find claimable quests
-  const claimableQuests = [];
-  availableQuests.forEach(quest => {
-    const activeQuest = activeQuests.find(aq => aq.questId === quest.questId);
-    if (activeQuest) {
-      let allRequirementsMet = true;
-      for (const requirement of quest.requirements) {
-        const progress = activeQuest.progress.get ? activeQuest.progress.get(requirement.type) || 0 : activeQuest.progress[requirement.type] || 0;
-        if (progress < requirement.target) {
-          allRequirementsMet = false;
-          break;
+    
+    // Check for completed quests and auto-notify
+    const completedQuests = checkCompletedQuests(user);
+    if (completedQuests.length > 0) {
+        let notificationText = '**Quests Completed!**\n\n';
+        for (const quest of completedQuests) {
+            notificationText += `[DONE] ${quest.name} - ${formatRewardText(quest.reward)}\n`;
         }
-      }
-      if (allRequirementsMet && !completedQuests.some(cq => cq.includes(quest.questId))) {
-        claimableQuests.push(quest);
-      }
+        notificationText += '\nUse the "Claim All" button to collect your rewards!';
+        
+        // Send notification as a separate message
+        await message.channel.send(notificationText);
     }
-  });
-
-  const embed = createQuestEmbed(availableQuests, activeQuests, completedQuests);
-  const components = [];
-  
-  const questMenu = createQuestMenu(claimableQuests);
-  if (questMenu) components.push(questMenu);
-  components.push(createQuestButtons());
-
-  const questMessage = await message.reply({ embeds: [embed], components });
-
-  // Interaction collector
-  const filter = i => i.user.id === userId;
-  const collector = questMessage.createMessageComponentCollector({ filter, time: 300000 });
-
-  collector.on('collect', async interaction => {
-    await interaction.deferUpdate();
-
-    if (interaction.customId === 'quest_refresh') {
-      // Refresh the quest display
-      const newUser = await User.findOne({ userId });
-      const newAvailableQuests = await getAvailableQuests(newUser);
-      const newActiveQuests = newUser.activeQuests || [];
-      const newCompletedQuests = newUser.completedQuests || [];
-      
-      const newClaimableQuests = [];
-      newAvailableQuests.forEach(quest => {
-        const claimId = `${quest.questId}_${getQuestResetPeriod(quest.type)}`;
-        const isCompleted = newCompletedQuests.some(cq => cq === claimId || cq.includes(quest.questId));
+    
+    let currentType = 'daily';
+    
+    // Check if user specified a quest type
+    if (args[0] && ['daily', 'weekly', 'story'].includes(args[0].toLowerCase())) {
+        currentType = args[0].toLowerCase();
+    }
+    
+    const embed = createQuestEmbed(currentType, QUESTS[currentType], user);
+    const components = createQuestButtons(currentType);
+    
+    const questMessage = await message.reply({ embeds: [embed], components });
+    
+    // Button interaction collector
+    const filter = i => i.user.id === userId;
+    const collector = questMessage.createMessageComponentCollector({ filter, time: 300000 });
+    
+    collector.on('collect', async interaction => {
+        await interaction.deferUpdate();
         
-        if (!isCompleted) {
-          const activeQuest = newActiveQuests.find(aq => aq.questId === quest.questId);
-          if (activeQuest) {
-            let allRequirementsMet = true;
-            for (const requirement of quest.requirements) {
-              const progress = activeQuest.progress instanceof Map ? 
-                activeQuest.progress.get(requirement.type) || 0 : 
-                activeQuest.progress[requirement.type] || 0;
-              if (progress < requirement.target) {
-                allRequirementsMet = false;
-                break;
-              }
-            }
-            if (allRequirementsMet) {
-              newClaimableQuests.push(quest);
-            }
-          }
-        }
-      });
-
-      const newEmbed = createQuestEmbed(newAvailableQuests, newActiveQuests, newCompletedQuests);
-      const newComponents = [];
-      
-      const newQuestMenu = createQuestMenu(newClaimableQuests);
-      if (newQuestMenu) newComponents.push(newQuestMenu);
-      newComponents.push(createQuestButtons());
-
-      await questMessage.edit({ embeds: [newEmbed], components: newComponents });
-
-    } else if (interaction.customId === 'quest_info') {
-      const infoEmbed = await createQuestInfoEmbed();
-      await interaction.followUp({ embeds: [infoEmbed], ephemeral: true });
-
-    } else if (interaction.customId === 'quest_claim_select') {
-      const questId = interaction.values[0];
-      const currentUser = await User.findOne({ userId });
-      
-      const result = await claimQuestReward(currentUser, questId);
-      if (result.success) {
-        // Apply XP distribution to team if XP reward
-        if (result.rewards) {
-          for (const reward of result.rewards) {
-            if (reward.type === 'xp') {
-              const { distributeXPToTeam } = require('../utils/levelSystem.js');
-              const levelChanges = distributeXPToTeam(currentUser, reward.amount);
-              if (levelChanges && levelChanges.length > 0) {
-                let levelUpText = '\n\n**Level Ups:**\n';
-                levelChanges.forEach(change => {
-                  levelUpText += `${change.name}: Level ${change.oldLevel} → ${change.newLevel}\n`;
-                });
-                result.message += levelUpText;
-              }
-            }
-          }
-        }
-        await currentUser.save();
-        await interaction.followUp({ content: `<:sucess:1375872950321811547> ${result.message}`, ephemeral: true });
-        
-        // Refresh the display
-        setTimeout(async () => {
-          const refreshUser = await User.findOne({ userId });
-          const refreshAvailableQuests = await getAvailableQuests(refreshUser);
-          const refreshActiveQuests = refreshUser.activeQuests || [];
-          const refreshCompletedQuests = refreshUser.completedQuests || [];
-          
-          const refreshClaimableQuests = [];
-          refreshAvailableQuests.forEach(quest => {
-            const activeQuest = refreshActiveQuests.find(aq => aq.questId === quest.questId);
-            if (activeQuest) {
-              let allRequirementsMet = true;
-              for (const requirement of quest.requirements) {
-                const progress = activeQuest.progress.get ? activeQuest.progress.get(requirement.type) || 0 : activeQuest.progress[requirement.type] || 0;
-                if (progress < requirement.target) {
-                  allRequirementsMet = false;
-                  break;
+        if (interaction.customId.startsWith('quest_')) {
+            const action = interaction.customId.split('_')[1];
+            
+            if (['daily', 'weekly', 'story'].includes(action)) {
+                currentType = action;
+                
+                const newEmbed = createQuestEmbed(currentType, QUESTS[currentType], user);
+                const newComponents = createQuestButtons(currentType);
+                
+                await questMessage.edit({ embeds: [newEmbed], components: newComponents });
+            } else if (action === 'claim') {
+                // Claim all completed quests
+                const questData = initializeUserQuests(user);
+                const allQuests = [...QUESTS.daily, ...QUESTS.weekly, ...QUESTS.story];
+                
+                let claimedRewards = [];
+                
+                for (const quest of allQuests) {
+                    const progress = questData.progress[quest.id] || 0;
+                    const required = quest.requirement.count || quest.requirement.stage;
+                    
+                    if (progress >= required && !questData.completed.includes(quest.id)) {
+                        questData.completed.push(quest.id);
+                        await applyQuestReward(user, quest.reward);
+                        claimedRewards.push(quest);
+                    }
                 }
-              }
-              if (allRequirementsMet && !refreshCompletedQuests.some(cq => cq.includes(quest.questId))) {
-                refreshClaimableQuests.push(quest);
-              }
+                
+                if (claimedRewards.length > 0) {
+                    let claimText = '**Rewards Claimed!**\n\n';
+                    for (const quest of claimedRewards) {
+                        claimText += `[CLAIMED] ${quest.name}: ${formatRewardText(quest.reward)}\n`;
+                    }
+                    
+                    await user.save();
+                    await interaction.followUp({ content: claimText, ephemeral: true });
+                    
+                    // Refresh the quest display
+                    const newEmbed = createQuestEmbed(currentType, QUESTS[currentType], user);
+                    const newComponents = createQuestButtons(currentType);
+                    await questMessage.edit({ embeds: [newEmbed], components: newComponents });
+                } else {
+                    await interaction.followUp({ content: 'No completed quests to claim!', ephemeral: true });
+                }
             }
-          });
-
-          const refreshEmbed = createQuestEmbed(refreshAvailableQuests, refreshActiveQuests, refreshCompletedQuests);
-          const refreshComponents = [];
-          
-          const refreshQuestMenu = createQuestMenu(refreshClaimableQuests);
-          if (refreshQuestMenu) refreshComponents.push(refreshQuestMenu);
-          refreshComponents.push(createQuestButtons());
-
-          await questMessage.edit({ embeds: [refreshEmbed], components: refreshComponents }).catch(() => {});
-        }, 1000);
-      } else {
-        await interaction.followUp({ content: `<:arrow:1375872983029256303> ${result.message}`, ephemeral: true });
-      }
-    }
-  });
-
-  collector.on('end', () => {
-    questMessage.edit({ components: [] }).catch(() => {});
-  });
+        }
+    });
+    
+    collector.on('end', () => {
+        questMessage.edit({ components: [] }).catch(() => {});
+    });
 }
 
-module.exports = { data, execute };
+// Export functions for use in other commands
+module.exports = { 
+    data, 
+    execute, 
+    updateQuestProgress, 
+    checkCompletedQuests,
+    initializeUserQuests 
+};

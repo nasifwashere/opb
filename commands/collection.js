@@ -24,14 +24,18 @@ function normalize(str) {
   return String(str || '').replace(/\s+/g, '').toLowerCase();
 }
 
-function cardEmbed(cardInstance, cardDef, ownerName, index, total, user) {
+function cardEmbed(cardInstance, cardDef, ownerName, index, total, user, duplicateCount = 1) {
   if (!cardDef) {
     return new EmbedBuilder()
       .setTitle('Card not found')
       .setDescription('This card is missing from the database.');
   }
-  let [power, health, speed] = cardDef.phs.split('/').map(x => Number(x.trim()));
-  let level = cardInstance.level || cardInstance.timesUpgraded + 1 || 1;
+  
+  const { calculateCardStats } = require('../utils/levelSystem.js');
+  const level = cardInstance.level || (cardInstance.timesUpgraded ? cardInstance.timesUpgraded + 1 : 1);
+  const stats = calculateCardStats(cardDef, level);
+  
+  let { power, health, speed } = stats;
 
   // Stat boost: If this card has strawhat equipped, boost stats regardless of the card
   let boostText = '';
@@ -39,17 +43,30 @@ function cardEmbed(cardInstance, cardDef, ownerName, index, total, user) {
   let equippedItem = user && user.equipped && user.equipped[normCard];
 
   if (equippedItem === 'strawhat') {
-    power = Math.round(power * 1.3);
-    health = Math.round(health * 1.3);
-    speed = Math.round(speed * 1.3);
+    power = Math.ceil(power * 1.3);
+    health = Math.ceil(health * 1.3);
+    speed = Math.ceil(speed * 1.3);
     boostText = "\n**Strawhat equipped! Stats boosted by 30%.**";
   }
 
-  const attackLow = Math.floor(power / 5);
-  const attackHigh = Math.floor(power / 3);
+  const rankMultipliers = {
+    'C': 0.08,
+    'B': 0.10,
+    'A': 0.14,
+    'S': 0.17,
+    'UR': 0.20
+  };
+  
+  const multiplier = rankMultipliers[cardDef.rank] || 0.10;
+  const baseDamage = power * multiplier;
+  const attackLow = Math.floor(baseDamage * 1.0);
+  const attackHigh = Math.floor(baseDamage * 1.5);
+
   const rankSet = rankSettings[cardDef.rank] || {};
   const lockStatus = cardInstance.locked ? ' 🔒' : '';
-  let desc = `**${cardDef.name}**${lockStatus}\n${cardDef.shortDesc}\n\nOwner: ${ownerName}\nLevel: ${level}\nPower: ${power}\nHealth: ${health}\nSpeed: ${speed}\nAttack: ${attackLow}–${attackHigh}\nType: Combat${boostText}`;
+  const duplicateText = duplicateCount > 1 ? ` (x${duplicateCount})` : '';
+  
+  let desc = `**${cardDef.name}**${lockStatus}${duplicateText}\n${cardDef.shortDesc}\n\nOwner: ${ownerName}\nLevel: ${level}\nPower: ${power}\nHealth: ${health}\nSpeed: ${speed}\nAttack: ${attackLow}–${attackHigh}\nType: Combat${boostText}`;
 
   const embed = new EmbedBuilder()
     .setDescription(desc)
@@ -108,47 +125,35 @@ async function execute(message, args) {
       return message.reply(`You have no cards of rank ${arg}!`);
     }
   }
-// Sort by total power (default is highest to lowest)
-  cardInstances.sort((a, b) => {
-    const ca = getCardByUserInstance(a), cb = getCardByUserInstance(b);
-    if (!ca || !cb) return 0;
-    
-    // Calculate total power including level and item boosts
-    const getPowerWithBoosts = (cardInstance, cardDef) => {
-      let [basePower] = cardDef.phs.split('/').map(x => Number(x.trim()));
-      const level = cardInstance.level || cardInstance.timesUpgraded + 1 || 1;
-      const levelBoost = (level - 1) * 2;
-      let totalPower = basePower + levelBoost;
-      
-      // Check for equipped items
-      const normCard = normalize(cardDef.name);
-      const equippedItem = user && user.equipped && user.equipped[normCard];
-      
-      if (equippedItem === 'strawhat') {
-        totalPower = Math.round(totalPower * 1.3);
-      } else if (equippedItem === 'sword') {
-        totalPower += 5;
-      } else if (equippedItem) {
-        totalPower += 3;
+
+  // Group cards by name and count duplicates
+  const cardGroups = new Map();
+  cardInstances.forEach(cardInstance => {
+    const cardDef = getCardByUserInstance(cardInstance);
+    if (cardDef) {
+      const key = cardDef.name;
+      if (!cardGroups.has(key)) {
+        cardGroups.set(key, { instance: cardInstance, def: cardDef, count: 0 });
       }
-      
-      return totalPower;
-    };
-    
-    const powerA = getPowerWithBoosts(a, ca);
-    const powerB = getPowerWithBoosts(b, cb);
-    
-    return arg === "DOWN" ? powerA - powerB : powerB - powerA;
+      cardGroups.get(key).count++;
+    }
+  });
+
+  // Convert to array and sort by power
+  const uniqueCards = Array.from(cardGroups.values()).sort((a, b) => {
+    const { calculateCardStats } = require('../utils/levelSystem.js');
+    const statsA = calculateCardStats(a.def, a.instance.level || 1);
+    const statsB = calculateCardStats(b.def, b.instance.level || 1);
+    return statsB.power - statsA.power;
   });
 
   let cardIndex = 0;
   const ownerName = message.author.username;
-  const total = cardInstances.length;
+  const total = uniqueCards.length;
 
   // Show first card
-  const cardInstance = cardInstances[cardIndex];
-  const cardDef = getCardByUserInstance(cardInstance);
-  const embed = cardEmbed(cardInstance, cardDef, ownerName, cardIndex, total, user);
+  const cardGroup = uniqueCards[cardIndex];
+  const embed = cardEmbed(cardGroup.instance, cardGroup.def, ownerName, cardIndex, total, user, cardGroup.count);
   const msg = await message.reply({ embeds: [embed], components: [buildRow(cardIndex, total)] });
 
   const filter = i => i.user.id === userId;
@@ -161,16 +166,19 @@ async function execute(message, args) {
     } else if (interaction.customId === 'collection_next' && cardIndex < total - 1) {
       cardIndex++;
     } else if (interaction.customId === 'collection_info') {
-      const currentCard = cardInstances[cardIndex];
-      const currentCardDef = getCardByUserInstance(currentCard);
+      const currentGroup = uniqueCards[cardIndex];
+      const currentCard = currentGroup.instance;
+      const currentCardDef = currentGroup.def;
       
       if (!currentCardDef) {
         await interaction.followUp({ content: 'Card information not found!', ephemeral: true });
         return;
       }
       
+      const { calculateCardStats } = require('../utils/levelSystem.js');
       const level = currentCard.level || currentCard.timesUpgraded + 1 || 1;
-      let [power, health, speed] = currentCardDef.phs.split('/').map(x => Number(x.trim()));
+      const stats = calculateCardStats(currentCardDef, level);
+      let { power, health, speed } = stats;
       
       // Apply equipment boosts
       let normCard = normalize(currentCardDef.name);
@@ -184,7 +192,6 @@ async function execute(message, args) {
         boostText = '\n**Equipment**: Strawhat (+30% all stats)';
       }
       
-      // Calculate damage multipliers based on rank
       const rankMultipliers = {
         'C': 0.08,
         'B': 0.10,
@@ -200,6 +207,7 @@ async function execute(message, args) {
       
       const infoText = `**${currentCardDef.name}** (${currentCardDef.rank})\n` +
         `${currentCardDef.shortDesc}\n\n` +
+        `**Copies Owned**: ${currentGroup.count}\n` +
         `**Stats (Level ${level})**\n` +
         `Power: ${power}\n` +
         `Health: ${health}\n` +
@@ -207,16 +215,15 @@ async function execute(message, args) {
         `**Combat**\n` +
         `Damage Range: ${minDamage} - ${maxDamage}\n` +
         `Damage Multiplier: ${multiplier}x\n` +
-        `Lock Status: ${currentCard.locked ? '<:Padlock_Crown:1388587874084982956> Locked' : '<:Padlock_Crown:1388587874084982956> Unlocked'}${boostText}\n\n` +
+        `Lock Status: ${currentCard.locked ? '<:Padlock_Crown:1388587874084982956> Locked' : '<:unlocked_IDS:1388596601064390656> Unlocked'}${boostText}\n\n` +
         `**Evolution**\n` +
         `${currentCardDef.evolution ? `Next: ${currentCardDef.evolution.nextId} (Level ${currentCardDef.evolution.requiredLevel})` : 'Max evolution reached'}`;
       
       await interaction.followUp({ content: infoText, ephemeral: true });
       return;
     }
-    const updatedCardInstance = cardInstances[cardIndex];
-    const updatedCardDef = getCardByUserInstance(updatedCardInstance);
-    const updatedEmbed = cardEmbed(updatedCardInstance, updatedCardDef, ownerName, cardIndex, total, user);
+    const updatedGroup = uniqueCards[cardIndex];
+    const updatedEmbed = cardEmbed(updatedGroup.instance, updatedGroup.def, ownerName, cardIndex, total, user, updatedGroup.count);
     await msg.edit({ embeds: [updatedEmbed], components: [buildRow(cardIndex, total)] });
   });
 

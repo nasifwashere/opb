@@ -40,14 +40,14 @@ async function execute(message, args) {
 
   // Find the card in user's collection
   const userCards = user.cards.filter(c => normalize(c.name) === normalize(cardName));
-  
+
   if (userCards.length === 0) {
     return message.reply(`<:arrow:1375872983029256303> You don't own "${cardName}".`);
   }
 
   const mainCard = userCards[0];
   const duplicates = userCards.length - 1;
-  const currentLevel = mainCard.level || mainCard.timesUpgraded + 1 || 1;
+  const currentLevel = mainCard.level || 1;
 
   if (currentLevel >= 100) {
     return message.reply(`❌ "${mainCard.name}" is already at maximum level (100).`);
@@ -57,81 +57,108 @@ async function execute(message, args) {
     return message.reply(`❌ You need ${amount} duplicate card${amount > 1 ? 's' : ''} to level up. You have ${duplicates} duplicate${duplicates !== 1 ? 's' : ''}.`);
   }
 
-  // Calculate total cost for the level ups
-  let totalCost = 0;
-  let levelsToAdd = Math.min(amount, 100 - currentLevel, duplicates);
-  
-  for (let i = 0; i < levelsToAdd; i++) {
-    totalCost += calculateLevelUpCost(currentLevel + i);
+  // Get card definition for stat calculation
+  const cardDef = allCards.find(c => normalize(c.name) === normalize(cardName));
+
+  if (!cardDef) {
+    return message.reply('❌ Card definition not found.');
   }
 
-  if (user.beli < totalCost) {
-    return message.reply(`<:arrow:1375872983029256303> You need ${totalCost} Beli to level up ${levelsToAdd} time${levelsToAdd > 1 ? 's' : ''}. You have ${user.beli} Beli.`);
-  }
+  // Use level system functions
+  const { canLevelUp, levelUp, calculateCardStats } = require('../utils/levelSystem.js');
 
-  // Perform level up
-  user.beli -= totalCost;
-  
-  // Update the main card's level using the new level system
-  const cardIndex = user.cards.findIndex(c => normalize(c.name) === normalize(cardName));
-  const { levelUp } = require('../utils/levelSystem.js');
-  
-  // Use the levelUp function which handles experience properly
-  const actualLevelsGained = levelUp(user.cards[cardIndex], duplicates, levelsToAdd);
-  
-  // Remove duplicate cards (1 duplicate = 1 level)
-  let duplicatesRemoved = 0;
-  for (let i = user.cards.length - 1; i >= 0 && duplicatesRemoved < actualLevelsGained; i--) {
-    if (i !== cardIndex && normalize(user.cards[i].name) === normalize(cardName)) {
-      user.cards.splice(i, 1);
-      duplicatesRemoved++;
-      if (i < cardIndex) cardIndex--; // Adjust index if we removed a card before the main card
+  // Check if we can level up
+  if (!canLevelUp(mainCard, duplicates)) {
+    if (duplicates === 0) {
+      return message.reply(`❌ You need duplicate cards to level up "${mainCard.name}". You currently have ${duplicates} duplicates.`);
+    }
+    if (currentLevel >= 100) {
+      return message.reply(`❌ "${mainCard.name}" is already at maximum level (100).`);
     }
   }
-  
-  levelsToAdd = actualLevelsGained;
+
+  // Calculate cost
+  const costPerLevel = 1000;
+  const totalCost = costPerLevel * amount;
+
+  if ((user.beli || 0) < totalCost) {
+    return message.reply(`❌ You need **${totalCost}** Beli to level up ${amount} time${amount > 1 ? 's' : ''}. You have **${user.beli || 0}** Beli.`);
+  }
+
+  // Calculate old stats
+  const oldStats = calculateCardStats(cardDef, currentLevel);
+
+  // Perform level up
+  const levelsGained = levelUp(mainCard, duplicates, amount);
+
+  if (levelsGained === 0) {
+    return message.reply(`❌ Unable to level up "${mainCard.name}".`);
+  }
+
+  // Remove duplicate cards used
+  for (let i = 0; i < levelsGained; i++) {
+    const duplicateIndex = user.cards.findIndex((c, index) => 
+      index !== user.cards.indexOf(mainCard) && 
+      normalize(c.name) === normalize(cardName)
+    );
+    if (duplicateIndex !== -1) {
+      user.cards.splice(duplicateIndex, 1);
+    }
+  }
+
+  // Deduct Beli
+  const actualCost = costPerLevel * levelsGained;
+  user.beli = (user.beli || 0) - actualCost;
 
   await user.save();
 
-  // Get card definition for display
-  const cardDef = findCard(cardName);
-  const newLevel = user.cards[cardIndex].level;
+  // Calculate new stats
+  const newLevel = currentLevel + levelsGained;
+  const newStats = calculateCardStats(cardDef, newLevel);
 
-  // Calculate new stats (basic calculation)
-  let powerIncrease = 0;
-  if (cardDef && cardDef.phs) {
-    const basePower = parseInt(cardDef.phs.split('/')[0].trim()) || 0;
-    powerIncrease = levelsToAdd * 2; // 2 power per level
-  }
-
-  const embed = new EmbedBuilder()
-    .setTitle('<:snoopy_sparkles:1388585338821152978> Level Up Success!')
-    .setDescription(`**${mainCard.name}** gained ${levelsToAdd} level${levelsToAdd > 1 ? 's' : ''}!`)
+  // Create beautiful level up embed
+  const levelUpEmbed = new EmbedBuilder()
+    .setTitle(`🎉 **LEVEL UP SUCCESSFUL!** 🎉`)
+    .setDescription(`✨ **${mainCard.name}** has grown stronger! ✨`)
+    .setColor(0x4169E1)
     .addFields(
-      { name: 'Previous Level', value: `${currentLevel}`, inline: true },
-      { name: 'New Level', value: `${newLevel}`, inline: true },
-      { name: 'Cost', value: `${totalCost} Beli`, inline: true },
-      { name: 'Duplicates Used', value: `${duplicatesRemoved}`, inline: true },
-      { name: 'Remaining Beli', value: `${user.beli}`, inline: true },
-      { name: 'Power Increase', value: `+${powerIncrease}`, inline: true }
+      { 
+        name: '📊 **Level Progress**', 
+        value: `\`\`\`diff\n- Level ${currentLevel}\n+ Level ${newLevel}\n\`\`\``, 
+        inline: false 
+      },
+      { 
+        name: '💎 **Investment**', 
+        value: `💰 **${actualCost.toLocaleString()}** Beli spent\n🃏 **${levelsGained}** duplicate card${levelsGained > 1 ? 's' : ''} consumed`, 
+        inline: false 
+      },
+      { 
+        name: '⚔️ **Power**', 
+        value: `\`\`\`diff\n- ${oldStats.power}\n+ ${newStats.power} (+${newStats.power - oldStats.power})\n\`\`\``, 
+        inline: true 
+      },
+      { 
+        name: '❤️ **Health**', 
+        value: `\`\`\`diff\n- ${oldStats.health}\n+ ${newStats.health} (+${newStats.health - oldStats.health})\n\`\`\``, 
+        inline: true 
+      },
+      { 
+        name: '💨 **Speed**', 
+        value: `\`\`\`diff\n- ${oldStats.speed}\n+ ${newStats.speed} (+${newStats.speed - oldStats.speed})\n\`\`\``, 
+        inline: true 
+      }
     )
-    .setColor(0xf1c40f);
+    .setFooter({ 
+      text: `${cardDef.rank} Rank • Total Power: ${newStats.power + newStats.health + newStats.speed}`,
+      iconURL: 'https://cdn.discordapp.com/emojis/1234567890123456789.png' 
+    })
+    .setTimestamp();
 
-  if (cardDef && cardDef.image && cardDef.image !== "placeholder") {
-    embed.setThumbnail(cardDef.image);
+  if (cardDef.image) {
+    levelUpEmbed.setThumbnail(cardDef.image);
   }
 
-  // Check if card can now evolve
-  if (cardDef && cardDef.evolution && newLevel >= cardDef.evolution.requiredLevel) {
-    embed.addFields({ 
-      name: '<:snoopy_sparkles:1388585338821152978> Evolution Available!', 
-      value: `This card can now evolve! Use \`op evolve ${cardName}\``, 
-      inline: false 
-    });
-  }
-
-  await message.reply({ embeds: [embed] });
+  return message.reply({ embeds: [levelUpEmbed] });
 }
-
 
 module.exports = { data, execute };

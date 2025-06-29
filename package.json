@@ -16,6 +16,7 @@
   "author": "nasif-cloud",
   "license": "MIT",
   "dependencies": {
+    "copilot": "^0.5.1",
     "discord.js": "^14.21.0",
     "dotenv": "^16.4.5",
     "express": "^5.1.0",

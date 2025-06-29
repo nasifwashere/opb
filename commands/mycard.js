@@ -35,7 +35,7 @@ function getCardByUserInstance(instance) {
   return allCards.find(c => c.name === instance.cardName || c.name === instance.name);
 }
 
-function cardEmbed(cardInstance, cardDef, ownerName, index = 0, total = 1, user) {
+function cardEmbed(cardInstance, cardDef, ownerName, index = 0, total = 1, user, duplicateCount = 1) {
   if (!cardDef) {
     return new EmbedBuilder()
       .setTitle('Card not found')
@@ -64,6 +64,7 @@ function cardEmbed(cardInstance, cardDef, ownerName, index = 0, total = 1, user)
   const attackHigh = Math.floor(power / 3);
   const rankSet = rankSettings[cardDef.rank] || {};
   const lockStatus = cardInstance.locked ? ' <:Padlock_Crown:1388587874084982956>' : '';
+  const duplicateText = duplicateCount > 1 ? ` (x${duplicateCount})` : '';
   
   // Calculate XP progress to next level
   const xpForCurrentLevel = (level - 1) * XP_PER_LEVEL;
@@ -71,7 +72,7 @@ function cardEmbed(cardInstance, cardDef, ownerName, index = 0, total = 1, user)
   const xpProgress = experience - xpForCurrentLevel;
   const xpNeeded = xpForNextLevel - xpForCurrentLevel;
   
-  let desc = `**${cardDef.name}**${lockStatus}\n${cardDef.shortDesc}\n\nOwner: ${ownerName}\nLevel: ${level} (${xpProgress}/${xpNeeded} XP)\nPower: ${power}\nHealth: ${health}\nSpeed: ${speed}\nAttack: ${attackLow}–${attackHigh}\nType: Combat${boostText}`;
+  let desc = `**${cardDef.name}**${lockStatus}${duplicateText}\n${cardDef.shortDesc}\n\nOwner: ${ownerName}\nLevel: ${level} (${xpProgress}/${xpNeeded} XP)\nPower: ${power}\nHealth: ${health}\nSpeed: ${speed}\nAttack: ${attackLow}–${attackHigh}\nType: Combat${boostText}`;
 
   const embed = new EmbedBuilder()
     .setDescription(desc)
@@ -120,14 +121,21 @@ async function execute(message, args) {
 
   const cardDef = results[0].item;
 
-  // Find the card instance the user owns (exact match normalized)
-  const cardInstance = user.cards.find(c => normalize(c.name) === normalize(cardDef.name));
-  if (!cardInstance) {
+  // Find all instances of this card the user owns
+  const cardInstances = user.cards.filter(c => normalize(c.name) === normalize(cardDef.name));
+  if (cardInstances.length === 0) {
     return message.reply(`You do not own the card **${cardDef.name}**.`);
   }
 
-  // Show the card embed with buttons
-  const embed = cardEmbed(cardInstance, cardDef, message.author.username, 0, 1, user);
+  // Use the highest level instance for display
+  const cardInstance = cardInstances.reduce((highest, current) => {
+    const currentLevel = current.level || 1;
+    const highestLevel = highest.level || 1;
+    return currentLevel > highestLevel ? current : highest;
+  });
+
+  // Show the card embed with buttons and duplicate count
+  const embed = cardEmbed(cardInstance, cardDef, message.author.username, 0, 1, user, cardInstances.length);
   const msg = await message.reply({ embeds: [embed], components: [buildRow()] });
 
   const filter = i => i.user.id === userId;

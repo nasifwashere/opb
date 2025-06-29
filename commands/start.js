@@ -1,39 +1,90 @@
+const { EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
-const fs = require('fs');
-const path = require('path');
+const config = require('../config.json');
 
-const data = { name: 'start', description: 'Begin your pirate adventure!' };
+const data = {
+    name: 'start',
+    description: "Begin your One Piece adventure!"
+};
 
-const config = JSON.parse(fs.readFileSync(path.join(__dirname, '../config.json')));
-// Load cards.json and find Monkey D. Luffy
-const cards = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/cards.json')));
-const luffyCard = cards.find(c => c.name === "Monkey D. Luffy");
+async function execute(message, args, client) {
+    const userId = message.author.id;
+    const username = message.author.username;
+    
+    let user = await User.findOne({ userId });
+    
+    if (user) {
+        return message.reply('You have already started your adventure! Use `op explore` to continue.');
+    }
 
-async function execute(message) {
-  const userId = message.author.id;
-  let user = await User.findOne({ userId });
-  if (user) return message.reply('You already have a pirate adventure!');
+    // Create new user with all required fields
+    user = new User({
+        userId,
+        username,
+        beli: config.defaultCurrency || 500,
+        xp: 0,
+        level: 1,
+        stage: 0,
+        hp: 100,
+        maxHp: 100,
+        atk: 15,
+        spd: 50,
+        def: 10,
+        wins: 0,
+        losses: 0,
+        cards: [],
+        inventory: ["Basic Potion", "Basic Potion", "Basic Potion"],
+        equipped: new Map(),
+        team: [],
+        battleState: {
+            inBattle: false,
+            enemy: null,
+            battleHp: 100,
+            turnCount: 0,
+            battleLog: []
+        },
+        exploreStates: {
+            inBossFight: false,
+            battleState: null,
+            currentStage: null,
+            currentLocation: null,
+            defeatCooldown: null
+        },
+        lastExplore: null,
+        lastBattle: null,
+        defeatedAt: null,
+        questData: {
+            progress: new Map(),
+            completed: [],
+            lastReset: {
+                daily: 0,
+                weekly: 0
+            }
+        },
+        activeBoosts: [],
+        createdAt: new Date(),
+        lastActive: new Date()
+    });
 
-  if (!luffyCard) return message.reply('Luffy is missing from the card database. Please contact an admin.');
+    try {
+        await user.save();
+        
+        const embed = new EmbedBuilder()
+            .setTitle('Welcome to the Grand Line!')
+            .setDescription(`${username}, your journey begins now! You've received:\n\n💰 ${config.defaultCurrency} Beli\n🧪 3 Basic Potions\n\nUse \`op explore\` to start your adventure!\nUse \`op quest\` to see available quests!`)
+            .setColor(0x3498db)
+            .setThumbnail(message.author.displayAvatarURL())
+            .addFields(
+                { name: 'Stats', value: `HP: ${user.hp}/${user.maxHp}\nATK: ${user.atk}\nDEF: ${user.def}\nSPD: ${user.spd}`, inline: true },
+                { name: 'Level', value: `${user.level} (${user.xp} XP)`, inline: true }
+            );
 
-  user = new User({
-    userId,
-    beli: 500,
-    saga: config.defaultSaga,
-    team: [],
-    wins: 0,
-    inventory: ['healingpotion', 'healingpotion', 'healingpotion', 'statbuffer', 'statbuffer', 'statbuffer'],
-    cards: [
-      {
-        name: luffyCard.name,
-        rank: luffyCard.rank,
-        timesUpgraded: 0
-      }
-    ]
-  });
-  await user.save();
-
-  message.reply(' Your journey begins! You received:\n 1 Monkey D. Luffy\n<:Money:1375579299565928499> 500 Beli\n<:icon7:1375881261133856930> 3 Healing Potions\n<:icon5:1375880705078460436> 3 Stat Buffers\n\nGood luck on your adventure!');
+        await message.reply({ embeds: [embed] });
+        
+    } catch (error) {
+        console.error('Error creating user:', error);
+        await message.reply('There was an error starting your adventure. Please try again.');
+    }
 }
 
 module.exports = { data, execute };
