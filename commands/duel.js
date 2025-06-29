@@ -1,6 +1,21 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
-const { calculateBattleStats, calculateDamage, teamCanFight, getActiveCard, resetTeamHP, processTempBuffs } = require('../utils/battleSystem.js');
+const { calculateBattleStats } = require('../utils/battleSystem.js');
+
+const DUEL_COOLDOWN = 10 * 60 * 1000; // 10 minutes
+
+function prettyTime(ms) {
+  let seconds = Math.floor(ms / 1000);
+  let minutes = Math.floor(seconds / 60);
+  let hours = Math.floor(minutes / 60);
+  minutes = minutes % 60;
+  seconds = seconds % 60;
+  let out = [];
+  if (hours > 0) out.push(`${hours} hour${hours !== 1 ? "s" : ""}`);
+  if (minutes > 0) out.push(`${minutes} minute${minutes !== 1 ? "s" : ""}`);
+  if (out.length === 0) out.push(`${seconds} seconds`);
+  return out.join(", ");
+}
 
 function createHpBar(current, max) {
   const percentage = Math.max(0, current / max);
@@ -10,205 +25,205 @@ function createHpBar(current, max) {
   return '█'.repeat(filledBars) + '░'.repeat(emptyBars);
 }
 
-function createDuelEmbed(player1, player2, battleLog, turn, currentPlayer = null, winner = null) {
-  let color = 0xff0000;
-  let title = '⚔️ PvP Duel Battle';
-  
+function createDuelEmbed(player1, player2, player1Team, player2Team, battleLog, turn, currentPlayerId, winner = null) {
+  let description = `**${player1.username}** vs **${player2.username}**\n\n`;
+
   if (winner) {
-    color = 0x27ae60;
-    title = `🏆 ${winner.username} Wins!`;
+    description += `🏆 **${winner.username}** wins the duel!\n\n`;
+  } else {
+    const currentPlayerName = currentPlayerId === player1.id ? player1.username : player2.username;
+    description += `**Turn:** ${turn} | **Current:** ${currentPlayerName}\n\n`;
   }
+
+  description += battleLog.slice(-4).join('\n');
 
   const embed = new EmbedBuilder()
-    .setTitle(title)
-    .setDescription(`${battleLog.slice(-4).join('\n') || 'Battle begins!'}`)
-    .setColor(color);
+    .setTitle('⚔️ PvP Duel')
+    .setDescription(description)
+    .setColor(winner ? 0x2ecc40 : 0x3498db);
 
-  const team1Display = player1.team.filter(card => card.currentHp > 0).map(card => {
-    const cardHpBar = createHpBar(card.currentHp, card.hp);
-    return `${card.name} ${cardHpBar} ${card.currentHp}/${card.hp}`;
-  }).join('\n') || 'All cards defeated';
+  const team1Display = player1Team.filter(card => card.currentHp > 0).map(card => {
+    const hpBar = createHpBar(card.currentHp, card.hp);
+    return `${card.name} ${hpBar} ${card.currentHp}/${card.hp}`;
+  }).join('\n') || 'No active cards';
 
-  const team2Display = player2.team.filter(card => card.currentHp > 0).map(card => {
-    const cardHpBar = createHpBar(card.currentHp, card.hp);
-    return `${card.name} ${cardHpBar} ${card.currentHp}/${card.hp}`;
-  }).join('\n') || 'All cards defeated';
-
-  // Add turn indicator if battle is ongoing
-  let player1Name = `⚔️ ${player1.username}'s Team`;
-  let player2Name = `⚔️ ${player2.username}'s Team`;
-  
-  if (!winner && currentPlayer) {
-    if (currentPlayer === player1.data.userId) {
-      player1Name = `🔥 ${player1.username}'s Team (Current Turn)`;
-    } else if (currentPlayer === player2.data.userId) {
-      player2Name = `🔥 ${player2.username}'s Team (Current Turn)`;
-    }
-  }
+  const team2Display = player2Team.filter(card => card.currentHp > 0).map(card => {
+    const hpBar = createHpBar(card.currentHp, card.hp);
+    return `${card.name} ${hpBar} ${card.currentHp}/${card.hp}`;
+  }).join('\n') || 'No active cards';
 
   embed.addFields(
-    { name: player1Name, value: team1Display, inline: true },
-    { name: player2Name, value: team2Display, inline: true },
-    { name: 'Turn', value: `${turn}`, inline: false }
+    { name: `🛡️ ${player1.username}'s Team`, value: team1Display, inline: true },
+    { name: `🛡️ ${player2.username}'s Team`, value: team2Display, inline: true }
   );
 
   return embed;
 }
 
-function createDuelButtons(disabled = false) {
-  return new ActionRowBuilder()
-    .addComponents(
-      new ButtonBuilder()
-        .setCustomId('duel_attack')
-        .setLabel('⚔️ Attack')
-        .setStyle(ButtonStyle.Danger)
-        .setDisabled(disabled),
-      new ButtonBuilder()
-        .setCustomId('duel_defend')
-        .setLabel('🛡️ Defend')
-        .setStyle(ButtonStyle.Primary)
-        .setDisabled(disabled),
-      new ButtonBuilder()
-        .setCustomId('duel_inventory')
-        .setLabel('🎒 Items')
-        .setStyle(ButtonStyle.Success)
-        .setDisabled(disabled),
-      new ButtonBuilder()
-        .setCustomId('duel_forfeit')
-        .setLabel('🏃 Forfeit')
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(disabled)
-    );
+function createDuelButtons(currentPlayerId, disabled = false) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('duel_attack')
+      .setLabel('⚔️ Attack')
+      .setStyle(ButtonStyle.Danger)
+      .setDisabled(disabled),
+    new ButtonBuilder()
+      .setCustomId('duel_defend')
+      .setLabel('🛡️ Defend')
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(disabled),
+    new ButtonBuilder()
+      .setCustomId('duel_inventory')
+      .setLabel('🎒 Items')
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(disabled),
+    new ButtonBuilder()
+      .setCustomId('duel_forfeit')
+      .setLabel('🏳️ Forfeit')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(disabled)
+  );
 }
 
-const data = { name: 'duel', description: 'Challenge another player to a PvP battle!' };
+const data = { name: 'duel', description: 'Challenge another player to a PvP duel.' };
 
-async function execute(message, args) {
-  const challenger = message.author;
-  const challengerId = challenger.id;
+async function execute(message, args, client) {
+  const challengerId = message.author.id;
+  const challenger = await User.findOne({ userId: challengerId });
 
-  // Get mentioned user or find by name
-  let opponent = message.mentions.users.first();
-  if (!opponent && args.length > 0) {
-    const opponentName = args.join(' ').toLowerCase();
-    opponent = message.guild?.members.cache.find(member => 
-      member.user.username.toLowerCase().includes(opponentName) ||
-      member.displayName.toLowerCase().includes(opponentName)
-    )?.user;
-  }
+  if (!challenger) return message.reply('Start your journey with `op start` first!');
 
-  if (!opponent) {
-    return message.reply('❌ Please mention a user or provide their name to duel! Usage: `op duel @user` or `op duel username`');
-  }
-
-  if (opponent.id === challengerId) {
-    return message.reply('❌ You cannot duel yourself!');
-  }
-
-  if (opponent.bot) {
-    return message.reply('❌ You cannot duel bots!');
-  }
-
-  // Check users exist and have teams
-  const challengerUser = await User.findOne({ userId: challengerId });
-  const opponentUser = await User.findOne({ userId: opponent.id });
-
-  if (!challengerUser) {
-    return message.reply('❌ You need to start your journey first! Use `op start`');
-  }
-
-  if (!opponentUser) {
-    return message.reply('❌ Your opponent needs to start their journey first!');
-  }
-
-  if (!challengerUser.team || challengerUser.team.length === 0) {
-    return message.reply('❌ You need to build a team first! Use `op team add <card>`');
-  }
-
-  if (!opponentUser.team || opponentUser.team.length === 0) {
-    return message.reply('❌ Your opponent needs to build a team first!');
-  }
-
-  // Check cooldowns
   const now = Date.now();
-  const DUEL_COOLDOWN = 10 * 60 * 1000; // 10 minutes
-
-  if (challengerUser.duelCooldown && now < challengerUser.duelCooldown) {
-    const timeLeft = Math.ceil((challengerUser.duelCooldown - now) / 60000);
-    return message.reply(`❌ You must wait ${timeLeft} minutes before dueling again!`);
+  if (challenger.duelCooldown && now < challenger.duelCooldown) {
+    const timeLeft = prettyTime(challenger.duelCooldown - now);
+    return message.reply(`⏳ You must wait ${timeLeft} before dueling again.`);
   }
 
-  if (opponentUser.duelCooldown && now < opponentUser.duelCooldown) {
-    const timeLeft = Math.ceil((opponentUser.duelCooldown - now) / 60000);
-    return message.reply(`❌ Your opponent must wait ${timeLeft} minutes before dueling again!`);
+  if (!challenger.team || challenger.team.length === 0) {
+    return message.reply('<:arrow:1375872983029256303> You need at least one card in your team! Use `op team add <card>` first.');
   }
 
-  // Calculate battle stats for both teams
-  const challengerTeam = calculateBattleStats(challengerUser);
-  const opponentTeam = calculateBattleStats(opponentUser);
-
-  if (challengerTeam.length === 0) {
-    return message.reply('❌ Your team has no valid battle cards!');
+  const targetUser = message.mentions.users.first();
+  if (!targetUser) {
+    return message.reply('Usage: `op duel @user`\n\nMention the user you want to challenge!');
   }
 
-  if (opponentTeam.length === 0) {
-    return message.reply('❌ Your opponent has no valid battle cards!');
+  if (targetUser.id === challengerId) {
+    return message.reply('<:arrow:1375872983029256303> You cannot duel yourself!');
+  }
+
+  if (targetUser.bot) {
+    return message.reply('<:arrow:1375872983029256303> You cannot duel bots!');
+  }
+
+  const opponent = await User.findOne({ userId: targetUser.id });
+  if (!opponent) {
+    return message.reply(`<:arrow:1375872983029256303> ${targetUser.username} hasn't started their journey yet!`);
+  }
+
+  if (!opponent.team || opponent.team.length === 0) {
+    return message.reply(`<:arrow:1375872983029256303> ${targetUser.username} doesn't have any cards in their team!`);
+  }
+
+  if (opponent.duelCooldown && now < opponent.duelCooldown) {
+    return message.reply(`<:arrow:1375872983029256303> ${targetUser.username} is still on duel cooldown.`);
   }
 
   // Create challenge embed
   const challengeEmbed = new EmbedBuilder()
     .setTitle('⚔️ Duel Challenge!')
-    .setDescription(`${challenger} challenges ${opponent} to a duel!\n\n${opponent}, do you accept this challenge?`)
-    .setColor(0xf39c12)
-    .addFields(
-      { name: `${challenger.username}'s Team Power`, value: `${challengerTeam.reduce((sum, card) => sum + card.power, 0)}`, inline: true },
-      { name: `${opponent.username}'s Team Power`, value: `${opponentTeam.reduce((sum, card) => sum + card.power, 0)}`, inline: true }
-    );
+    .setDescription(`${message.author.username} has challenged ${targetUser.username} to a duel!\n\n${targetUser.username}, do you accept?`)
+    .setColor(0xf39c12);
 
-  const challengeButtons = new ActionRowBuilder()
-    .addComponents(
-      new ButtonBuilder()
-        .setCustomId('duel_accept')
-        .setLabel('✅ Accept')
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId('duel_decline')
-        .setLabel('❌ Decline')
-        .setStyle(ButtonStyle.Danger)
-    );
+  const acceptRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('duel_accept')
+      .setLabel('✅ Accept')
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId('duel_decline')
+      .setLabel('❌ Decline')
+      .setStyle(ButtonStyle.Danger)
+  );
 
-  const challengeMessage = await message.reply({
-    content: `${opponent}`,
-    embeds: [challengeEmbed],
-    components: [challengeButtons]
-  });
+  const challengeMessage = await message.reply({ embeds: [challengeEmbed], components: [acceptRow] });
 
-  // Store challenge data temporarily
-  if (!message.client.duelChallenges) {
-    message.client.duelChallenges = new Map();
-  }
+  // Challenge acceptance phase
+  const challengeFilter = i => i.user.id === targetUser.id;
+  const challengeCollector = challengeMessage.createMessageComponentCollector({ filter: challengeFilter, time: 60000 });
 
-  message.client.duelChallenges.set(challengeMessage.id, {
-    challengerId,
-    opponentId: opponent.id,
-    challengerTeam,
-    opponentTeam,
-    challengerUser,
-    opponentUser,
-    timestamp: now
-  });
+  challengeCollector.on('collect', async interaction => {
+    await interaction.deferUpdate();
 
-  // Clean up challenge after 2 minutes
-  setTimeout(() => {
-    if (message.client.duelChallenges?.has(challengeMessage.id)) {
-      message.client.duelChallenges.delete(challengeMessage.id);
-      challengeMessage.edit({ 
-        content: '⏰ Challenge expired!', 
-        embeds: [challengeEmbed.setColor(0x95a5a6)], 
-        components: [] 
-      }).catch(() => {});
+    if (interaction.customId === 'duel_decline') {
+      const declineEmbed = new EmbedBuilder()
+        .setTitle('❌ Duel Declined')
+        .setDescription(`${targetUser.username} declined the duel challenge.`)
+        .setColor(0xe74c3c);
+
+      await challengeMessage.edit({ embeds: [declineEmbed], components: [] });
+      return;
     }
-  }, 2 * 60 * 1000);
+
+    if (interaction.customId === 'duel_accept') {
+      // Start the duel using explore.js battle system
+      const player1Team = calculateBattleStats(challenger);
+      const player2Team = calculateBattleStats(opponent);
+
+      if (player1Team.length === 0 || player2Team.length === 0) {
+        await challengeMessage.edit({ 
+          content: '<:arrow:1375872983029256303> One or both players have no valid cards for battle!', 
+          embeds: [], 
+          components: [] 
+        });
+        return;
+      }
+
+      let battleLog = ['The duel begins!'];
+      let turn = 1;
+      let currentPlayer = challengerId;
+
+      const player1 = { username: message.author.username, id: challengerId };
+      const player2 = { username: targetUser.username, id: targetUser.id };
+
+      const duelEmbed = createDuelEmbed(player1, player2, player1Team, player2Team, battleLog, turn, currentPlayer);
+      await challengeMessage.edit({ 
+        embeds: [duelEmbed], 
+        components: [createDuelButtons(currentPlayer)] 
+      });
+
+      // Store battle state in client battles map
+      const battleData = {
+        type: 'duel',
+        player1: { user: challenger, team: player1Team, data: player1 },
+        player2: { user: opponent, team: player2Team, data: player2 },
+        battleLog,
+        turn,
+        currentPlayer,
+        userId: currentPlayer // For compatibility with existing battle system
+      };
+
+      if (!client.battles) client.battles = new Map();
+      client.battles.set(challengeMessage.id, battleData);
+
+      setTimeout(() => {
+        if (client.battles && client.battles.has(challengeMessage.id)) {
+          client.battles.delete(challengeMessage.id);
+        }
+      }, 5 * 60 * 1000);
+    }
+  });
+
+  challengeCollector.on('end', async (collected) => {
+    if (collected.size === 0) {
+      const timeoutEmbed = new EmbedBuilder()
+        .setTitle('⏰ Challenge Expired')
+        .setDescription(`${targetUser.username} didn't respond to the duel challenge.`)
+        .setColor(0x95a5a6);
+
+      await challengeMessage.edit({ embeds: [timeoutEmbed], components: [] });
+    }
+  });
 }
 
-module.exports = { data, execute, createDuelEmbed, createDuelButtons };
+module.exports = { data, execute };
