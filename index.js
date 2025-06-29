@@ -3,8 +3,12 @@ const fs = require('fs');
 const path = require('path');
 const dotenv = require('dotenv');
 const { connectDB } = require('./db/database.js');
+const { keepAlive } = require('./keepAlive.js'); // ✅ Import keepAlive
 
 dotenv.config();
+
+// Keep-alive Express server for Render + UptimeRobot
+keepAlive(); // ✅ Start server immediately to prevent double bot launch
 
 const client = new Client({
   intents: [
@@ -24,7 +28,6 @@ for (const file of commandFiles) {
   const filePath = path.join(commandsPath, file);
   const command = require(filePath);
   if ('data' in command && 'execute' in command) {
-    // Handle both slash commands (SlashCommandBuilder) and prefix commands (object)
     const commandName = typeof command.data.name === 'string' ? command.data.name : command.data.name;
     client.commands.set(commandName, command);
     console.log(`[COMMAND] Loaded ${commandName}`);
@@ -53,7 +56,7 @@ async function startBot() {
   try {
     await connectDB();
     console.log('[DATABASE] Connected successfully');
-    
+
     await client.login(process.env.DISCORD_TOKEN);
     console.log('[BOT] Discord bot logged in successfully');
   } catch (error) {
