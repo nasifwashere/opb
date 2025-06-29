@@ -143,7 +143,7 @@ function calculateDamage(attacker, defender, attackType = 'normal') {
   // Apply temporary buffs
   if (attacker.tempBuffs) {
     attacker.tempBuffs.forEach(buff => {
-      if (buff.type === 'stat_boost' && buff.duration > 0) {
+      if ((buff.type === 'stat_boost' || buff.type === 'attack_boost') && buff.duration > 0) {
         baseAttack = Math.floor(baseAttack * buff.multiplier);
       }
     });
@@ -171,7 +171,7 @@ function calculateDamage(attacker, defender, attackType = 'normal') {
   // Apply temporary speed buffs
   if (attacker.tempBuffs) {
     attacker.tempBuffs.forEach(buff => {
-      if (buff.type === 'stat_boost' && buff.duration > 0) {
+      if ((buff.type === 'stat_boost' || buff.type === 'speed_boost') && buff.duration > 0) {
         attackerSpeed = Math.floor(attackerSpeed * buff.multiplier);
       }
     });
@@ -255,11 +255,16 @@ function resetTeamHP(team) {
  * @param {Array} team - Array of card objects
  */
 function processTempBuffs(team) {
+  if (!Array.isArray(team)) return;
+  
   team.forEach(card => {
-    if (card.tempBuffs) {
+    if (card.tempBuffs && Array.isArray(card.tempBuffs)) {
       card.tempBuffs = card.tempBuffs.filter(buff => {
-        buff.duration--;
-        return buff.duration > 0;
+        if (buff.duration > 0) {
+          buff.duration--;
+          return buff.duration > 0;
+        }
+        return false;
       });
     }
   });

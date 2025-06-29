@@ -100,8 +100,12 @@ function createMapEmbed(currentSaga, sagaData, userProgress) {
 
   let mapDisplay = '';
   sagaData.islands.forEach((island, index) => {
-    const status = island.unlocked || userProgress >= index ? '<:unlocked_IDS:1388596601064390656>' : '<:Padlock_Crown:1388587874084982956>';
-    const progress = userProgress > index ? ' <:sucess:1375872950321811547>' : userProgress === index ? ' 📍' : '';
+    const isUnlocked = userProgress >= index;
+    const isCompleted = userProgress > index;
+    const isCurrent = userProgress === index;
+    
+    const status = isUnlocked ? '<:unlocked_IDS:1388596601064390656>' : '<:Padlock_Crown:1388587874084982956>';
+    const progress = isCompleted ? ' <:sucess:1375872950321811547>' : isCurrent ? ' 📍' : '';
     mapDisplay += `${status} **${island.name}**${progress}\n`;
     mapDisplay += `   └ Boss: ${island.boss}\n\n`;
   });
@@ -151,16 +155,27 @@ function getUserUnlockedSagas(user) {
 }
 
 function getUserProgressInSaga(user, saga) {
-  // This would normally be based on user's exploration progress
-  // For now, return a simple calculation based on explore stage
-  if (saga !== user.saga) {
-    return saga === 'East Blue' ? 6 : 0; // Completed East Blue if not current
+  const exploreStage = user.exploreStage || 0;
+  
+  // Map explore stages to island progress for East Blue
+  if (saga === 'East Blue') {
+    if (exploreStage >= 38) return 6; // Completed East Blue
+    if (exploreStage >= 30) return 5; // Arlong Park
+    if (exploreStage >= 25) return 4; // Baratie  
+    if (exploreStage >= 20) return 3; // Syrup Village
+    if (exploreStage >= 13) return 2; // Orange Town
+    if (exploreStage >= 6) return 1;  // Shells Town
+    return 0; // Windmill Village
   }
   
-  // Current saga progress based on explore stage
-  const stageToIslandRatio = Math.floor((user.exploreStage || 0) / 2);
-  const sagaData = islandData[saga];
-  return Math.min(stageToIslandRatio, sagaData ? sagaData.islands.length - 1 : 0);
+  // For other sagas, check if unlocked and return 0 for now
+  const unlockedSagas = user.unlockedSagas || ['East Blue'];
+  if (!unlockedSagas.includes(saga)) {
+    return -1; // Not unlocked
+  }
+  
+  // Return 0 for unlocked but not started sagas
+  return 0;
 }
 
 const data = { name: 'map', description: 'View the world map and your exploration progress.' };

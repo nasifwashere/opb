@@ -443,3 +443,258 @@ async function handleQuestInteraction(interaction, client) {
 }
 
 module.exports = { name, once, execute };
+async function handleItemUsage(interaction, client) {
+    const battleData = client.battles?.get(interaction.message.id);
+    if (!battleData || battleData.userId !== interaction.user.id) {
+        return interaction.reply({ content: 'This battle is not for you or has expired.', ephemeral: true });
+    }
+
+    const parts = interaction.customId.split('_');
+    const item = parts[2];
+
+    const user = await User.findOne({ userId: interaction.user.id });
+    if (!user || !user.inventory || !user.inventory.includes(item)) {
+        return interaction.reply({ content: 'You don\'t have this item!', ephemeral: true });
+    }
+
+    let activePlayerCard;
+    let playerTeam;
+
+    // Handle different battle types
+    if (battleData.type === 'duel') {
+        const isPlayer1 = battleData.currentPlayer === battleData.player1.data.id;
+        playerTeam = isPlayer1 ? battleData.player1.team : battleData.player2.team;
+        activePlayerCard = playerTeam.find(card => card.currentHp > 0);
+    } else {
+        playerTeam = battleData.playerTeam;
+        activePlayerCard = playerTeam.find(card => card.currentHp > 0);
+    }
+
+    if (!activePlayerCard) {
+        return interaction.reply({ content: 'No active cards to use items on!', ephemeral: true });
+    }
+
+    // Apply item effects with proper healing and buffing
+    let battleLog = battleData.battleLog;
+    let effectApplied = false;
+
+    switch (item.toLowerCase()) {
+        case 'healingpotion':
+            const healAmount = Math.floor(activePlayerCard.hp * 0.5); // Heal 50% of max HP
+            const actualHeal = Math.min(healAmount, activePlayerCard.hp - activePlayerCard.currentHp);
+            activePlayerCard.currentHp = Math.min(activePlayerCard.hp, activePlayerCard.currentHp + healAmount);
+            battleLog.push(`💚 ${activePlayerCard.name} uses a Healing Potion and recovers ${actualHeal} HP!`);
+            effectApplied = true;
+            break;
+
+        case 'statbuffer':
+        case 'powerboost':
+            // Apply temporary attack buff
+            if (!activePlayerCard.tempBuffs) activePlayerCard.tempBuffs = [];
+            activePlayerCard.tempBuffs.push({
+                type: 'attack_boost',
+                multiplier: 1.25,
+                duration: 3 // Lasts 3 turns
+            });
+            battleLog.push(`⚡ ${activePlayerCard.name} uses a Power Boost! Attack increased by 25% for 3 turns!`);
+            effectApplied = true;
+            break;
+
+        case 'speedboostfood':
+            // Apply temporary speed buff
+            if (!activePlayerCard.tempBuffs) activePlayerCard.tempBuffs = [];
+            activePlayerCard.tempBuffs.push({
+                type: 'speed_boost',
+                multiplier: 1.5,
+                duration: 3 // Lasts 3 turns
+            });
+            battleLog.push(`🏃 ${activePlayerCard.name} uses Speed Boost Food! Speed increased by 50% for 3 turns!`);
+            effectApplied = true;
+            break;
+
+        default:
+            return interaction.reply({ content: 'This item cannot be used in battle!', ephemeral: true });
+    }
+
+    if (!effectApplied) {
+        return interaction.reply({ content: 'Failed to use item!', ephemeral: true });
+    }
+
+    // Remove item from inventory
+    user.inventory = user.inventory.filter(i => i !== item);
+    await user.save();
+
+    battleData.battleLog = battleLog;
+    client.battles.set(interaction.message.id, battleData);
+
+    // Update embed based on battle type
+    let updatedEmbed;
+    let updatedButtons;
+
+    if (battleData.type === 'duel') {
+        const { player1, player2, turn, currentPlayer } = battleData;
+        updatedEmbed = createDuelEmbed(player1.data, player2.data, player1.team, player2.team, battleLog, turn, currentPlayer);
+        updatedButtons = createDuelButtons(currentPlayer);
+    } else {
+        const enemyType = battleData.stageData?.type === "boss" ? "boss" : "enemy";
+        updatedEmbed = createBossBattleEmbed(battleData.boss, playerTeam, battleLog, battleData.turn, enemyType);
+        updatedButtons = createBossBattleButtons();
+    }
+
+    return interaction.update({
+        content: '✨ Item used successfully!',
+        embeds: [updatedEmbed],
+        components: [updatedButtons]
+    });
+}
+
+async function handleDuelInteraction(interaction, client) {
+  const battleData = client.battles?.get(interaction.message.id);
+  if (!battleData || battleData.type !== 'duel') {
+    return interaction.reply({ content: 'This duel has expired or is invalid.', ephemeral: true });
+  }
+
+  if (interaction.user.id !== battleData.currentPlayer) {
+    return interaction.reply({ content: "It's not your turn!", ephemeral: true });
+  }
+
+  const action = interaction.customId.split('_')[1];
+  const { player1, player2, battleLog, turn } = battleData;
+
+  const isPlayer1Turn = battleData.currentPlayer === player1.data.id;
+  const activePlayer = isPlayer1Turn ? player1 : player2;
+  const enemyPlayer = isPlayer1Turn ? player2 : player1;
+  const activeTeam = activePlayer.team;
+  const enemyTeam = enemyPlayer.team;
+
+  if (action === 'inventory') {
+    await interaction.deferUpdate();
+
+    const user = await User.findOne({ userId: interaction.user.id });
+    if (!user || !user.inventory || user.inventory.length === 0) {
+      await interaction.followUp({ content: 'Your inventory is empty!', ephemeral: true });
+      return;
+    }
+
+    const usableItems = user.inventory.filter(item => 
+      ['healingpotion', 'statbuffer', 'powerboost', 'speedboostfood'].includes(item.toLowerCase())
+    );
+
+    if (usableItems.length === 0) {
+      await interaction.followUp({ content: 'No usable items in battle!', ephemeral: true });
+      return;
+    }
+
+    const itemButtons = new ActionRowBuilder();
+    usableItems.slice(0, 5).forEach((item, index) => {
+      itemButtons.addComponents(
+        new ButtonBuilder()
+          .setCustomId(`use_item_${item}_${index}`)
+          .setLabel(item.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()))
+          .setStyle(ButtonStyle.Primary)
+      );
+    });
+
+    await interaction.followUp({ 
+      content: 'Choose an item to use:', 
+      components: [itemButtons], 
+      ephemeral: true 
+    });
+    return;
+  }
+
+  // Check battle end conditions
+  const activeCard = activeTeam.find(card => card.currentHp > 0);
+  const enemyCard = enemyTeam.find(card => card.currentHp > 0);
+
+  if (!activeCard || !enemyCard) {
+    const winner = enemyCard ? enemyPlayer.data : activePlayer.data;
+    const winnerUser = winner.id === player1.data.id ? player1.user : player2.user;
+    const loserUser = winner.id === player1.data.id ? player2.user : player1.user;
+
+    // Apply rewards and cooldowns
+    const now = Date.now();
+    winnerUser.wins = (winnerUser.wins || 0) + 1;
+    winnerUser.beli = (winnerUser.beli || 0) + 150;
+    winnerUser.xp = (winnerUser.xp || 0) + 50;
+    winnerUser.duelCooldown = now + 10 * 60 * 1000;
+
+    loserUser.losses = (loserUser.losses || 0) + 1;
+    loserUser.duelCooldown = now + 10 * 60 * 1000;
+
+    await winnerUser.save();
+    await loserUser.save();
+
+    client.battles.delete(interaction.message.id);
+
+    battleLog.push(`🏆 ${winner.username} wins the duel!`);
+    const winEmbed = createDuelEmbed(player1.data, player2.data, player1.team, player2.team, battleLog, turn, battleData.currentPlayer, winner);
+    return interaction.update({ embeds: [winEmbed], components: [] });
+  }
+
+  try {
+    await interaction.deferUpdate();
+  } catch (error) {
+    console.log('Interaction already handled');
+    return;
+  }
+
+  let damage = 0;
+  const { calculateDamage } = require('../utils/battleSystem.js');
+
+  switch (action) {
+    case 'attack':
+      damage = calculateDamage(activeCard, enemyCard, 'normal');
+      enemyCard.currentHp = Math.max(0, enemyCard.currentHp - damage);
+      battleLog.push(`⚔️ ${activeCard.name} attacks ${enemyCard.name} for ${damage} damage!`);
+      if (enemyCard.currentHp <= 0) {
+        battleLog.push(`💀 ${enemyCard.name} has been knocked out!`);
+      }
+      break;
+
+    case 'defend':
+      const healAmount = Math.floor(activeCard.hp * 0.2);
+      activeCard.currentHp = Math.min(activeCard.hp, activeCard.currentHp + healAmount);
+      battleLog.push(`🛡️ ${activeCard.name} defends and recovers ${healAmount} HP!`);
+      break;
+
+    case 'forfeit':
+      const winner = enemyPlayer.data;
+      const winnerUser = winner.id === player1.data.id ? player1.user : player2.user;
+      const loserUser = winner.id === player1.data.id ? player2.user : player1.user;
+
+      const now = Date.now();
+      winnerUser.wins = (winnerUser.wins || 0) + 1;
+      winnerUser.beli = (winnerUser.beli || 0) + 100;
+      winnerUser.duelCooldown = now + 10 * 60 * 1000;
+
+      loserUser.losses = (loserUser.losses || 0) + 1;
+      loserUser.duelCooldown = now + 10 * 60 * 1000;
+
+      await winnerUser.save();
+      await loserUser.save();
+
+      client.battles.delete(interaction.message.id);
+
+      battleLog.push(`🏳️ ${activePlayer.data.username} forfeited the duel!`);
+      const forfeitEmbed = createDuelEmbed(player1.data, player2.data, player1.team, player2.team, battleLog, turn, battleData.currentPlayer, winner);
+      return interaction.update({ embeds: [forfeitEmbed], components: [] });
+  }
+
+  // Process temporary buffs
+  const { processTempBuffs } = require('../utils/battleSystem.js');
+  processTempBuffs(activeTeam);
+  processTempBuffs(enemyTeam);
+
+  // Switch turns
+  battleData.currentPlayer = battleData.currentPlayer === player1.data.id ? player2.data.id : player1.data.id;
+  battleData.turn = turn + 1;
+  battleData.battleLog = battleLog;
+
+  client.battles.set(interaction.message.id, battleData);
+
+  const updatedEmbed = createDuelEmbed(player1.data, player2.data, player1.team, player2.team, battleLog, battleData.turn, battleData.currentPlayer);
+  const updatedButtons = createDuelButtons(battleData.currentPlayer);
+
+  await interaction.editReply({ embeds: [updatedEmbed], components: [updatedButtons] });
+}
