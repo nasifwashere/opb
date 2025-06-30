@@ -80,7 +80,7 @@ async function getUserPullState(userId, username) {
         const config = require('../config.json');
         user = new User({
             userId: userId,
-            username: username || `User_${userId.slice(-4)}`, // FIXED: Added username field
+            username: username || `User_${userId.slice(-4)}`,
             beli: config.defaultCurrency || 500,
             xp: 0,
             level: 1,
@@ -135,6 +135,12 @@ async function getUserPullState(userId, username) {
     if (!user.lastPull) user.lastPull = 0;
     if (!user.saga) user.saga = "East Blue";
     if (!user.cards) user.cards = [];
+
+    // Ensure username is set if missing
+    if (!user.username) {
+        user.username = username;
+        await user.save();
+    }
 
     return user;
 }

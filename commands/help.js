@@ -1,7 +1,8 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const User = require('../db/models/User.js'); // adjust path if needed
 
 const commandCategories = {
-  '<:LuffyWhat:1388594146037596180> Collection': {
+  'Collection': {
     commands: [
       { name: 'start', desc: 'Begin your pirate adventure' },
       { name: 'pull', desc: 'Pull random cards from gacha' },
@@ -14,7 +15,7 @@ const commandCategories = {
       { name: 'unlock <card>', desc: 'Remove card protection' }
     ]
   },
-  '<:LuffyShocked:1388593270145286235> Battle': {
+  'Battle': {
     commands: [
       { name: 'team [add/remove] [card]', desc: 'Manage your battle team' },
       { name: 'duel @user', desc: 'Challenge another player' },
@@ -22,15 +23,15 @@ const commandCategories = {
       { name: 'evolve <card>', desc: 'Evolve cards to stronger forms' }
     ]
   },
-  '<:LuffyLike:1388593609204301824> Adventure': {
+  'Adventure': {
     commands: [
       { name: 'explore', desc: 'Continue your story adventure and fight bosses' },
       { name: 'progress', desc: 'View your current saga' },
       { name: 'map', desc: 'View unlocked islands and sagas' },
-      { name: 'quest', desc: 'View and track daily/weekly missions' }
+      { name: 'quest', desc: 'Track and complete missions' }
     ]
   },
-  '<:LuffyJeer:1388593117652844575> Economy': {
+  'Economy': {
     commands: [
       { name: 'shop', desc: 'Browse items for purchase' },
       { name: 'buy <item>', desc: 'Purchase items with Beli' },
@@ -38,7 +39,7 @@ const commandCategories = {
       { name: 'market', desc: 'Player trading marketplace' }
     ]
   },
-  '<:LuffyCry:1388593456657465445> Social': {
+  'Social': {
     commands: [
       { name: 'leaderboard', desc: 'View top players' },
       { name: 'set <setting> <value>', desc: 'Change bot settings' }
@@ -48,24 +49,22 @@ const commandCategories = {
 
 function createCategoryEmbed(category, categoryData) {
   const embed = new EmbedBuilder()
-    .setTitle(` ${category} Commands`)
-    .setDescription('Here are the available commands in this category:')
-    .setColor(0x2c3e50)
-    .setThumbnail('https://i.imgur.com/KqAB5Mn.png');
+    .setTitle(`${category} Commands`)
+    .setColor(0x1f1f1f)
+    .setDescription('`op` prefix is used for all commands.\n\n**Available Commands:**');
 
-  let commandsList = '';
-  categoryData.commands.forEach(cmd => {
-    commandsList += `**op ${cmd.name}** - ${cmd.desc}\n`;
-  });
+  const commandsList = categoryData.commands
+    .map(cmd => `› **op ${cmd.name}** — ${cmd.desc}`)
+    .join('\n');
 
-  embed.addFields({ 
-    name: ' Available Commands', 
-    value: commandsList || 'No commands available', 
-    inline: false 
+  embed.addFields({
+    name: '\u200B',
+    value: commandsList || 'No commands available.',
+    inline: false
   });
 
   embed.setFooter({
-    text: `${categoryData.commands.length} commands available | Use op help to return`,
+    text: `${categoryData.commands.length} commands • Use "op help" to return`,
     iconURL: 'https://i.imgur.com/KqAB5Mn.png'
   });
 
@@ -74,27 +73,27 @@ function createCategoryEmbed(category, categoryData) {
 
 function createMainEmbed() {
   const embed = new EmbedBuilder()
-    .setTitle('🏴‍☠️ One Piece Bot Commands')
-    .setDescription('Welcome to the One Piece Gacha RPG! Choose a category below to see available commands.')
-    .setColor(0xe67e22);
+    .setTitle('One Piece Bot Help Menu')
+    .setColor(0x2c2f33)
+    .setDescription([
+      'Welcome to the **One Piece Gacha RPG**.',
+      'Use the buttons below to view commands by category.\n',
+      'Start your journey with:',
+      '`op start` — create your pirate profile',
+      '`op pull` — pull cards from the gacha'
+    ].join('\n'));
 
   Object.keys(commandCategories).forEach(category => {
     const count = commandCategories[category].commands.length;
-    embed.addFields({ 
-      name: category, 
-      value: `${count} command${count !== 1 ? 's' : ''}`, 
-      inline: true 
+    embed.addFields({
+      name: category,
+      value: `${count} command${count !== 1 ? 's' : ''}`,
+      inline: true
     });
   });
 
-  embed.addFields({ 
-    name: ' Quick Start', 
-    value: 'New to the bot? Start with `op start` then `op pull` to get your first cards!', 
-    inline: false 
-  });
-
   embed.setFooter({
-    text: 'Use the buttons below to navigate categories',
+    text: 'Use the category buttons below to navigate',
     iconURL: 'https://i.imgur.com/KqAB5Mn.png'
   });
 
@@ -104,27 +103,25 @@ function createMainEmbed() {
 function createNavigationButtons() {
   const categories = Object.keys(commandCategories);
   const buttons = [];
-  
-  // Create buttons for each category (max 5 per row)
+
   for (let i = 0; i < Math.min(categories.length, 5); i++) {
     buttons.push(
       new ButtonBuilder()
         .setCustomId(`help_${i}`)
-        .setLabel(categories[i].split(' ')[1] || categories[i]) // Remove emoji for button label
+        .setLabel(categories[i])
         .setStyle(ButtonStyle.Secondary)
     );
   }
 
   const rows = [new ActionRowBuilder().addComponents(buttons)];
 
-  // Add second row if needed
   if (categories.length > 5) {
     const secondRowButtons = [];
     for (let i = 5; i < categories.length; i++) {
       secondRowButtons.push(
         new ButtonBuilder()
           .setCustomId(`help_${i}`)
-          .setLabel(categories[i].split(' ')[1] || categories[i])
+          .setLabel(categories[i])
           .setStyle(ButtonStyle.Secondary)
       );
     }
@@ -138,21 +135,31 @@ function createBackButton() {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('help_back')
-      .setLabel('← Back to Categories')
+      .setLabel('Back to Categories')
       .setStyle(ButtonStyle.Primary)
   );
 }
 
-const data = { name: 'help', description: 'Display bot commands and help information.' };
+const data = {
+  name: 'help',
+  description: 'Display bot commands and help information.'
+};
 
 async function execute(message, args, client) {
-  // Always show main help menu with all categories
+  const userId = message.author.id;
+  const username = message.author.username;
+  let user = await User.findOne({ userId });
+
+  if (user && !user.username) {
+    user.username = username;
+    await user.save();
+  }
+
   const embed = createMainEmbed();
   const components = createNavigationButtons();
-  
+
   const helpMessage = await message.reply({ embeds: [embed], components });
 
-  // Button interaction collector
   const filter = i => i.user.id === message.author.id;
   const collector = helpMessage.createMessageComponentCollector({ filter, time: 300000 });
 
@@ -160,19 +167,17 @@ async function execute(message, args, client) {
     await interaction.deferUpdate();
 
     if (interaction.customId === 'help_back') {
-      // Return to main menu
       const mainEmbed = createMainEmbed();
       const mainComponents = createNavigationButtons();
       await helpMessage.edit({ embeds: [mainEmbed], components: mainComponents });
       return;
     }
 
-    // Handle category selection
     if (interaction.customId.startsWith('help_')) {
       const categories = Object.keys(commandCategories);
       const categoryIndex = parseInt(interaction.customId.split('_')[1]);
       const categoryName = categories[categoryIndex];
-      
+
       if (categoryName && commandCategories[categoryName]) {
         const categoryEmbed = createCategoryEmbed(categoryName, commandCategories[categoryName]);
         await helpMessage.edit({ embeds: [categoryEmbed], components: [createBackButton()] });
@@ -184,6 +189,5 @@ async function execute(message, args, client) {
     helpMessage.edit({ components: [] }).catch(() => {});
   });
 }
-
 
 module.exports = { data, execute };

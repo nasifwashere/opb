@@ -14,7 +14,7 @@ async function execute(message, args) {
   );
 
   if (!hasAdminRole && message.author.id !== message.guild.ownerId) {
-    return message.reply('❌ You need admin permissions to use this command.');
+    return message.reply(' You need admin permissions to use this command.');
   }
 
   const cardName = args.join(' ').trim();
@@ -32,7 +32,7 @@ async function execute(message, args) {
   );
 
   if (!card) {
-    return message.reply(`❌ Card "${cardName}" not found in the database.`);
+    return message.reply(` Card "${cardName}" not found in the database.`);
   }
 
   // Add card to global disallowed list (stored in admin user document)
@@ -51,7 +51,7 @@ async function execute(message, args) {
   }
 
   if (adminUser.disallowedCards.includes(card.name)) {
-    return message.reply(`❌ "${card.name}" is already disallowed.`);
+    return message.reply(` "${card.name}" is already disallowed.`);
   }
 
   adminUser.disallowedCards.push(card.name);

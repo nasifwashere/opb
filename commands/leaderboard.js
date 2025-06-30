@@ -145,6 +145,15 @@ function createLeaderboardButtons(currentType, page, hasNext) {
 const data = { name: 'leaderboard', description: 'View top players in various categories.' };
 
 async function execute(message, args, client) {
+    const userId = message.author.id;
+    const username = message.author.username;
+    let user = await User.findOne({ userId });
+
+    // Ensure user exists and has username set
+    if (user && !user.username) {
+        user.username = username;
+        await user.save();
+    }
     let currentType = 'beli';
     let currentPage = 0;
 

@@ -1,12 +1,33 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const User = require('../db/models/User.js');
+const fs = require('fs');
+const path = require('path');
+
+// Load cards data
+const cardsPath = path.resolve('data', 'cards.json');
+const allCards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
+
+function normalize(str) {
+  return String(str || '').replace(/\s+/g, '').toLowerCase();
+}
+
+function calculateCardStats(cardDef, level) {
+  const [basePower, baseHealth, baseSpeed] = cardDef.phs.split('/').map(x => parseInt(x.trim()));
+  const multiplier = 1 + (level - 1) * 0.1;
+
+  return {
+    power: Math.floor(basePower * multiplier),
+    health: Math.floor(baseHealth * multiplier),
+    speed: Math.floor(baseSpeed * multiplier)
+  };
+}
 
 function buildTeamEmbed(teamCards, username, totalPower) {
   let fields = [];
   for (let i = 0; i < teamCards.length; i++) {
     const card = teamCards[i];
     const lockStatus = card.locked ? ' <:Padlock_Crown:1388587874084982956>' : '';
-    
+
     fields.push({
       name: `Lv. ${card.level} ${card.displayName}${lockStatus}`,
       value: `💪 Power: ${card.power}\n❤️ Health: ${card.health}\n⚡ Speed: ${card.speed}`,
@@ -34,12 +55,6 @@ function buildTeamEmbed(teamCards, username, totalPower) {
   return embed;
 }
 
-const data = { name: 'team', description: 'Manage and view your crew.' };
-
-function normalize(str) {
-  return String(str || '').replace(/\s+/g, '').toLowerCase();
-}
-
 function fuzzyFindCard(cards, input) {
   const normInput = normalize(input);
   let bestMatch = null;
@@ -62,6 +77,8 @@ function fuzzyFindCard(cards, input) {
   return bestMatch;
 }
 
+const data = { name: 'team', description: 'Manage and view your crew.' };
+
 async function execute(message, args) {
   const userId = message.author.id;
   const username = message.author.username;
@@ -70,23 +87,29 @@ async function execute(message, args) {
 
   let user = await User.findOne({ userId });
   if (!user) return message.reply("You need to start first! Use `op start`.");
+  
+  // Ensure username is set if missing
+  if (!user.username) {
+    user.username = username;
+    await user.save();
+  }
 
   if (sub === "remove") {
     const cardName = rest.join(' ').trim();
     if (!cardName) return message.reply("Please specify a card to remove. Usage: `op team remove <card name>`");
-    
+
     const userCard = fuzzyFindCard(user.cards || [], cardName);
     if (!userCard) {
       return message.reply(`Card not found in your collection. Use \`op collection\` to see your cards.`);
     }
-    
+
     const originalTeam = [...(user.team || [])];
     user.team = user.team.filter(teamCardName => normalize(teamCardName) !== normalize(userCard.name));
-    
+
     if (user.team.length === originalTeam.length) {
       return message.reply(`Card not found in your team. Use \`op team\` to see your current team.`);
     }
-    
+
     await user.save();
     return message.reply(`Removed **${userCard.name}** from your crew.`);
   }
@@ -94,14 +117,14 @@ async function execute(message, args) {
   if (sub === "add") {
     const cardName = rest.join(' ').trim();
     if (!cardName) return message.reply("Please specify a card to add. Usage: `op team add <card name>`");
-    
+
     if (!user.team) user.team = [];
     if (user.team.length >= 3) {
       return message.reply("Your crew is full! Remove a card first using `op team remove <card>`.");
     }
 
     const userCard = fuzzyFindCard(user.cards || [], cardName);
-    
+
     if (!userCard) {
       return message.reply(`You don't own **${cardName}**. Use \`op collection\` to see your cards.`);
     }
@@ -117,13 +140,7 @@ async function execute(message, args) {
 
   // Display team (default behavior)
   if (!user.team) user.team = [];
-  
-  const fs = require('fs');
-  const path = require('path');
-  const cardsPath = path.resolve('data', 'cards.json');
-  const allCards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
-  const { calculateCardStats } = require('../utils/levelSystem.js');
-  
+
   const teamCards = [];
   let totalPower = 0;
 
@@ -134,18 +151,18 @@ async function execute(message, args) {
       const cardDef = allCards.find(c => normalize(c.name) === normalize(userCard.name));
       if (cardDef) {
         const stats = calculateCardStats(cardDef, userCard.level || 1);
-        
+
         // Apply equipment bonuses
         let { power, health, speed } = stats;
         const normCard = normalize(cardDef.name);
         const equippedItem = user.equipped && user.equipped[normCard];
-        
+
         if (equippedItem === 'strawhat') {
           power = Math.ceil(power * 1.3);
           health = Math.ceil(health * 1.3);
           speed = Math.ceil(speed * 1.3);
         }
-        
+
         const cardData = {
           ...userCard,
           displayName: userCard.name,

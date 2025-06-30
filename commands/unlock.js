@@ -13,16 +13,25 @@ const data = { name: 'unlock', description: 'Unlock a card to allow selling or t
 
 async function execute(message, args) {
   const userId = message.author.id;
-  const user = await User.findOne({ userId });
+  const username = message.author.username;
+  let user = await User.findOne({ userId });
 
-  if (!user) return message.reply('Start your journey with `op start` first!');
+  if (!user) {
+    return message.reply('Start your journey with `op start` first!');
+  }
+
+  // Ensure username is set if missing
+  if (!user.username) {
+    user.username = username;
+    await user.save();
+  }
 
   if (args.length === 0) {
     return message.reply('Usage: `op unlock <card name>`\n\nUnlocking a card allows it to be sold or traded again.');
   }
 
   const cardName = args.join(' ').trim();
-  
+
   // Find the card in user's collection
   const userCard = findUserCard(user, cardName);
   if (!userCard) {

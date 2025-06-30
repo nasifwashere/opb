@@ -1,3 +1,4 @@
+
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const User = require('../db/models/User.js');
 
@@ -44,9 +45,21 @@ const LOCATIONS = {
             title: "Arrived at Romance Dawn",
             desc: "You finally arrive at Romance Dawn Island, ready to begin your grand adventure!",
             reward: { type: "beli", amount: 75 }
+        },
+        {
+            type: "narrative",
+            title: "Final Departure",
+            desc: "With Shanks' hat on your head, you set sail to begin your grand adventure!",
+            reward: { type: "xp", amount: 75 }
         }
     ],
     'SHELLS TOWN': [
+        {
+            type: "narrative", 
+            title: "Arrival at Shells Town",
+            desc: "You arrive at the Marine base town, seeking your first crew member.",
+            reward: { type: "xp", amount: 30 }
+        },
         {
             type: "narrative",
             title: "Meet Coby",
@@ -349,22 +362,22 @@ function createHpBar(current, max) {
 }
 
 function getCurrentLocation(stage) {
-    if (stage < 6) return 'WINDMILL VILLAGE';
-    if (stage < 13) return 'SHELLS TOWN';
-    if (stage < 20) return 'ORANGE TOWN';
-    if (stage < 25) return 'SYRUP VILLAGE';
-    if (stage < 30) return 'BARATIE';
-    if (stage < 38) return 'ARLONG PARK';
+    if (stage < 7) return 'WINDMILL VILLAGE';
+    if (stage < 16) return 'SHELLS TOWN';
+    if (stage < 24) return 'ORANGE TOWN';
+    if (stage < 29) return 'SYRUP VILLAGE';
+    if (stage < 34) return 'BARATIE';
+    if (stage < 43) return 'ARLONG PARK';
     return 'COMPLETED';
 }
 
 function getLocalStage(globalStage) {
-    if (globalStage < 6) return globalStage;
-    if (globalStage < 13) return globalStage - 6;
-    if (globalStage < 20) return globalStage - 13;
-    if (globalStage < 25) return globalStage - 20;
-    if (globalStage < 30) return globalStage - 25;
-    if (globalStage < 38) return globalStage - 30;
+    if (globalStage < 7) return globalStage;
+    if (globalStage < 16) return globalStage - 7;
+    if (globalStage < 24) return globalStage - 16;
+    if (globalStage < 29) return globalStage - 24;
+    if (globalStage < 34) return globalStage - 29;
+    if (globalStage < 43) return globalStage - 34;
     return 0;
 }
 
@@ -383,14 +396,22 @@ function calculateEquippedBonuses(user) {
         'speedboostfood': { spd: 25 }
     };
     
-    for (const [cardName, itemName] of Object.entries(user.equipped)) {
-        const normalizedItem = normalizeItemName(itemName);
-        if (itemBonuses[normalizedItem]) {
-            const bonus = itemBonuses[normalizedItem];
-            bonuses.hp += bonus.hp || 0;
-            bonuses.atk += bonus.atk || 0;
-            bonuses.spd += bonus.spd || 0;
-            bonuses.def += bonus.def || 0;
+    // Handle both Map and Object types for equipped items
+    const equippedEntries = user.equipped instanceof Map ? 
+        Array.from(user.equipped.entries()) : 
+        Object.entries(user.equipped);
+    
+    for (const [cardName, itemName] of equippedEntries) {
+        // Ensure itemName is a string before normalizing
+        if (itemName && typeof itemName === 'string') {
+            const normalizedItem = normalizeItemName(itemName);
+            if (itemBonuses[normalizedItem]) {
+                const bonus = itemBonuses[normalizedItem];
+                bonuses.hp += bonus.hp || 0;
+                bonuses.atk += bonus.atk || 0;
+                bonuses.spd += bonus.spd || 0;
+                bonuses.def += bonus.def || 0;
+            }
         }
     }
     
@@ -480,7 +501,7 @@ async function execute(message, args, client) {
     const lastExplore = user.lastExplore ? new Date(user.lastExplore).getTime() : 0;
     const timeLeft = (lastExplore + cooldownTime) - Date.now();
 
-    if (timeLeft > 0) {
+    if (timeLeft > 0 && userId !== IMMUNE_USER_ID) {
         return message.reply(`⏰ You need to wait ${prettyTime(timeLeft)} before exploring again!`);
     }
 
@@ -526,6 +547,14 @@ async function handleNarrative(message, user, stageData, currentLocation) {
     // Set cooldown and advance stage
     user.lastExplore = new Date();
     user.stage++;
+    
+    // Update quest progress for exploration
+    try {
+        const { updateQuestProgress } = require('../utils/questSystem.js');
+        await updateQuestProgress(user, 'explore', 1);
+    } catch (error) {
+        console.log('Quest system not available');
+    }
     
     await user.save();
     
@@ -576,6 +605,14 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
             // Set cooldown and advance stage
             user.lastExplore = new Date();
             user.stage++;
+            
+            // Update quest progress for exploration
+            try {
+                const { updateQuestProgress } = require('../utils/questSystem.js');
+                await updateQuestProgress(user, 'explore', 1);
+            } catch (error) {
+                console.log('Quest system not available');
+            }
             
             await user.save();
             
@@ -889,15 +926,15 @@ async function handleBattleItems(interaction, user, battleMessage) {
             effectText = `Healed ${healAmount} HP!`;
         } else if (effect.type === 'attack_boost') {
             if (!battleState.userBoosts) battleState.userBoosts = {};
-            battleState.userBoosts.attack = (battleState.userBoosts.attack || 0) + effect.amount;
+            battleState.userBoosts.attack_boost = { amount: effect.amount, duration: effect.duration };
             effectText = `Attack increased by ${effect.amount}!`;
         } else if (effect.type === 'speed_boost') {
             if (!battleState.userBoosts) battleState.userBoosts = {};
-            battleState.userBoosts.speed = (battleState.userBoosts.speed || 0) + effect.amount;
+            battleState.userBoosts.speed_boost = { amount: effect.amount, duration: effect.duration };
             effectText = `Speed increased by ${effect.amount}!`;
         } else if (effect.type === 'defense_boost') {
             if (!battleState.userBoosts) battleState.userBoosts = {};
-            battleState.userBoosts.defense = (battleState.userBoosts.defense || 0) + effect.amount;
+            battleState.userBoosts.defense_boost = { amount: effect.amount, duration: effect.duration };
             effectText = `Defense increased by ${effect.amount}!`;
         }
 
@@ -930,7 +967,7 @@ async function handleEnemyTurn(interaction, user, battleMessage) {
             ? Math.floor(Math.random() * (enemy.atk[1] - enemy.atk[0] + 1)) + enemy.atk[0]
             : enemy.atk;
 
-        const userDefense = (battleState.userBoosts?.defense || 0);
+        const userDefense = battleState.userBoosts?.defense_boost?.amount || 0;
         const finalDamage = Math.max(1, enemyDamage - userDefense);
         
         battleState.userHp = Math.max(0, battleState.userHp - finalDamage);
@@ -939,6 +976,18 @@ async function handleEnemyTurn(interaction, user, battleMessage) {
         if (battleState.userHp <= 0) {
             return await handleBattleDefeat(interaction, user, battleMessage, battleLog);
         }
+    }
+
+    // Reduce boost durations
+    if (battleState.userBoosts) {
+        Object.keys(battleState.userBoosts).forEach(key => {
+            if (battleState.userBoosts[key].duration) {
+                battleState.userBoosts[key].duration--;
+                if (battleState.userBoosts[key].duration <= 0) {
+                    delete battleState.userBoosts[key];
+                }
+            }
+        });
     }
 
     await user.save();
@@ -953,7 +1002,7 @@ async function handleEnemyTurn(interaction, user, battleMessage) {
     const userHpBar = createHpBar(battleState.userHp, battleState.userMaxHp);
     embed.addFields({
         name: `${interaction.user.username} (You)`,
-        value: `${battleState.userHp}/${battleState.userMaxHp} ${userHpBar}`,
+        value: `❤️ ${battleState.userHp}/${battleState.userMaxHp} ${userHpBar}`,
         inline: false
     });
 
@@ -963,7 +1012,7 @@ async function handleEnemyTurn(interaction, user, battleMessage) {
             const enemyHpBar = createHpBar(enemy.currentHp, enemy.maxHp);
             embed.addFields({
                 name: enemy.name,
-                value: `${enemy.currentHp}/${enemy.maxHp} ${enemyHpBar}`,
+                value: `💀 ${enemy.currentHp}/${enemy.maxHp} ${enemyHpBar}`,
                 inline: true
             });
         }
@@ -1028,6 +1077,17 @@ async function handleBattleVictory(interaction, user, battleMessage, battleLog) 
     user.lastExplore = new Date();
     user.stage++;
     
+    // Update quest progress
+    try {
+        const { updateQuestProgress } = require('../utils/questSystem.js');
+        await updateQuestProgress(user, 'explore', 1);
+        if (stageData.type === 'boss') {
+            await updateQuestProgress(user, 'battle_win', 1);
+        }
+    } catch (error) {
+        console.log('Quest system not available');
+    }
+    
     await user.save();
     
     const victoryEmbed = new EmbedBuilder()
@@ -1089,6 +1149,11 @@ async function applyReward(user, reward) {
         for (const subReward of reward.rewards) {
             await applyReward(user, subReward);
         }
+    } else if (reward.type === 'saga_unlock') {
+        if (!user.unlockedSagas) user.unlockedSagas = ['East Blue'];
+        if (!user.unlockedSagas.includes(reward.saga)) {
+            user.unlockedSagas.push(reward.saga);
+        }
     }
 }
 
@@ -1106,6 +1171,8 @@ function getRewardText(reward) {
         return `[${reward.rank}] ${reward.name}`;
     } else if (reward.type === 'multiple') {
         return reward.rewards.map(r => getRewardText(r)).join(', ');
+    } else if (reward.type === 'saga_unlock') {
+        return `${reward.saga} Saga Unlocked!`;
     }
     
     return 'Unknown reward';

@@ -122,6 +122,19 @@ const data = { name: "info", description: "View a card's detailed profile." };
 
 async function execute(message, args) {
   const userId = message.author.id;
+  const username = message.author.username;
+  let user = await User.findOne({ userId });
+
+  if (!user) {
+    return message.reply('Start your journey with `op start` first!');
+  }
+
+  // Ensure username is set if missing
+  if (!user.username) {
+    user.username = username;
+    await user.save();
+  }
+
   const query = args.join(' ').trim();
   if (!query) return message.reply('Usage: `op info <card name or ID>`');
 
@@ -132,7 +145,6 @@ async function execute(message, args) {
   let { prev, next } = getEvolutionChain(card);
 
   // Check user ownership
-  const user = await User.findOne({ userId });
   const ownedCards = user?.cards?.filter(c => c.name === card.name) ?? [];
   const ownCard = ownedCards[0];
   const ownerCount = ownedCards.length;

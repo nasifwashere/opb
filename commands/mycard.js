@@ -41,10 +41,10 @@ function cardEmbed(cardInstance, cardDef, ownerName, index = 0, total = 1, user,
       .setTitle('Card not found')
       .setDescription('This card is missing from the database.');
   }
-  
+
   const level = cardInstance.level || (cardInstance.timesUpgraded ? cardInstance.timesUpgraded + 1 : 1);
   const experience = cardInstance.experience || 0;
-  
+
   // Get stats with level bonuses applied
   let { power, health, speed } = calculateCardStats(cardDef, level);
 
@@ -65,13 +65,13 @@ function cardEmbed(cardInstance, cardDef, ownerName, index = 0, total = 1, user,
   const rankSet = rankSettings[cardDef.rank] || {};
   const lockStatus = cardInstance.locked ? ' <:Padlock_Crown:1388587874084982956>' : '';
   const duplicateText = duplicateCount > 1 ? ` (x${duplicateCount})` : '';
-  
+
   // Calculate XP progress to next level
   const xpForCurrentLevel = (level - 1) * XP_PER_LEVEL;
   const xpForNextLevel = level * XP_PER_LEVEL;
   const xpProgress = experience - xpForCurrentLevel;
   const xpNeeded = xpForNextLevel - xpForCurrentLevel;
-  
+
   let desc = `**${cardDef.name}**${lockStatus}${duplicateText}\n${cardDef.shortDesc}\n\nOwner: ${ownerName}\nLevel: ${level} (${xpProgress}/${xpNeeded} XP)\nPower: ${power}\nHealth: ${health}\nSpeed: ${speed}\nAttack: ${attackLow}–${attackHigh}\nType: Combat${boostText}`;
 
   const embed = new EmbedBuilder()
@@ -105,7 +105,8 @@ async function execute(message, args) {
   }
 
   const userId = message.author.id;
-  const user = await User.findOne({ userId });
+  const username = message.author.username;
+  let user = await User.findOne({ userId });
 
   if (!user || !Array.isArray(user.cards) || user.cards.length === 0) {
     return message.reply("You don't own any cards yet.");

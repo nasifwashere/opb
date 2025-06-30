@@ -50,7 +50,7 @@ function createShopEmbed(category, items) {
     const status = item.available ? '<:sucess:1375872950321811547> Available' : 'Out of Stock';
     const duration = item.duration ? `\nDuration: ${Math.floor(item.duration / 60000)} minutes` : '';
     const category = item.category ? `\n${item.category}` : '';
-    
+
     embed.addFields({
       name: `${index + 1}. ${item.name}`,
       value: `<:Money:1375579299565928499> **${item.price} Beli**\n${status}\n ${item.description}${duration}${category}`,
@@ -88,9 +88,18 @@ const data = { name: 'shop', description: 'Browse and purchase items, cards, and
 
 async function execute(message, args) {
   const userId = message.author.id;
-  const user = await User.findOne({ userId });
+  const username = message.author.username;
+  let user = await User.findOne({ userId });
 
-  if (!user) return message.reply('Start your journey with `op start` first!');
+  if (!user) {
+    return message.reply('Start your journey with `op start` first!');
+  }
+
+  // Ensure username is set if missing
+  if (!user.username) {
+    user.username = username;
+    await user.save();
+  }
 
   const shopData = loadShopData();
   let currentCategory = 'all';
@@ -140,7 +149,7 @@ async function execute(message, args) {
 
       const newEmbed = createShopEmbed(currentCategory, newItems);
       const newComponents = [createShopButtons(currentCategory)];
-      
+
       // Update user's current Beli
       const updatedUser = await User.findOne({ userId });
       newEmbed.addFields({ name: 'Your Beli', value: `<:Money:1375579299565928499> ${updatedUser.beli || 0}`, inline: false });

@@ -1,4 +1,3 @@
-
 const { EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
 
@@ -28,9 +27,18 @@ const data = { name: 'use', description: 'Use consumable items from your invento
 
 async function execute(message, args) {
   const userId = message.author.id;
+  const username = message.author.username;
   let user = await User.findOne({ userId });
-  
-  if (!user) return message.reply("Start your journey with `op start` first!");
+
+  if (!user) {
+    return message.reply('Start your journey with `op start` first!');
+  }
+
+  // Ensure username is set if missing
+  if (!user.username) {
+    user.username = username;
+    await user.save();
+  }
 
   if (!args.length) {
     return message.reply("Usage: `op use <item_name>`\n\nUsable items: Time Crystal, Energy Potion, Speed Boost Food");

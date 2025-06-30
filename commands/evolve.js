@@ -36,14 +36,21 @@ const data = { name: 'evolve', description: 'Evolve a card to its next form.' };
 
 async function execute(message, args) {
   const userId = message.author.id;
+  const username = message.author.username;
   const cardName = args.join(' ').trim();
 
   if (!cardName) {
     return message.reply('Usage: `op evolve <card name>`');
   }
 
-  const user = await User.findOne({ userId });
+  let user = await User.findOne({ userId });
   if (!user) return message.reply('Start your journey with `op start` first!');
+
+  // Ensure username is set if missing
+  if (!user.username) {
+    user.username = username;
+    await user.save();
+  }
 
   // Find the card in user's collection
   const userCard = findUserCard(user, cardName);

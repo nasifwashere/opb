@@ -28,37 +28,50 @@ function fuzzyFindCard(cards, input) {
   return bestMatch;
 }
 
-const data = {
-  name: 'unequip',
-  description: 'Unequip an item from a card.',
-};
+const data = { name: "unequip", description: "Unequip an item from a card." };
 
-// Usage: op unequip luffy
-async function execute(message, args, client) {
+async function execute(message, args) {
   const userId = message.author.id;
-  const cardName = args.join(' ');
-  if (!cardName) return message.reply('Usage: op unequip [card]');
+  const username = message.author.username;
+  let user = await User.findOne({ userId });
 
-  const user = await User.findOne({ userId });
-  if (!user) return message.reply('Start your journey with `op start`!');
-  if (!user.equipped) return message.reply(`You don't have any equipped items!`);
+  if (!user) {
+    return message.reply('Start your journey with `op start` first!');
+  }
 
-  const cardObj = fuzzyFindCard(user.cards || [], cardName);
-  if (!cardObj) return message.reply(`You don't have "${cardName}".`);
+  // Ensure username is set if missing
+  if (!user.username) {
+    user.username = username;
+    await user.save();
+  }
 
-  const normCard = normalize(cardObj.name);
+  if (args.length === 0) {
+    return message.reply('Usage: `op unequip <card name>`');
+  }
 
-  if (!user.equipped[normCard])
-    return message.reply(`No item equipped to ${cardObj.name}.`);
+  const cardInput = args.join(' ');
+  const userCard = fuzzyFindCard(user.cards || [], cardInput);
 
-  const unequippedItem = user.equipped[normCard];
+  if (!userCard) {
+    return message.reply(`You don't own a card named "${cardInput}".`);
+  }
+
+  const normCard = normalize(userCard.name);
+
+  if (!user.equipped || !user.equipped[normCard]) {
+    return message.reply(`${userCard.name} has no equipment to unequip.`);
+  }
+
+  const equippedItem = user.equipped[normCard];
+
+  // Remove from equipped and add back to inventory
   delete user.equipped[normCard];
-
-  if (!user.inventory) user.inventory = [];
-  user.inventory.push(unequippedItem);
+  user.inventory = user.inventory || [];
+  user.inventory.push(equippedItem);
 
   await user.save();
-  return message.reply(`<:sucess:1375872950321811547> Unequipped ${unequippedItem} from ${cardObj.name}!`);
+
+  return message.reply(`<:sucess:1375872950321811547> Unequipped ${equippedItem} from ${userCard.name}!`);
 }
 
 module.exports = { data, execute };

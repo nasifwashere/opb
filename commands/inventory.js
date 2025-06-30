@@ -1,4 +1,3 @@
-
 const { EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
 
@@ -19,9 +18,18 @@ const data = { name: 'inventory', description: 'View your inventory items with d
 
 async function execute(message, args, client) {
   const userId = message.author.id;
-  const user = await User.findOne({ userId });
+  const username = message.author.username;
+  let user = await User.findOne({ userId });
 
-  if (!user) return message.reply('Start your journey with `op start`!');
+  if (!user) {
+    return message.reply('Start your journey with `op start`!');
+  }
+
+  // Ensure username is set if missing
+  if (!user.username) {
+    user.username = username;
+    await user.save();
+  }
 
   const inventory = Array.isArray(user.inventory) ? user.inventory : [];
 
@@ -35,7 +43,7 @@ async function execute(message, args, client) {
         value: '• Complete exploration stages\n• Purchase from shop with `op shop`\n• Complete quests with `op quest`',
         inline: false
       });
-    
+
     return message.reply({ embeds: [embed] });
   }
 
@@ -57,10 +65,10 @@ async function execute(message, args, client) {
       desc: 'Unknown item', 
       usage: 'Check item details' 
     };
-    
+
     const displayName = itemName.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
     const countText = count > 1 ? ` x${count}` : '';
-    
+
     itemsText += `**${displayName}${countText}**\n`;
     itemsText += `${itemInfo.desc}\n`;
     itemsText += `*Usage:* ${itemInfo.usage}\n\n`;

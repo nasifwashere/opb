@@ -14,7 +14,7 @@ function loadShopData() {
 
 function findShopItem(itemName, shopData) {
   const allItems = [...shopData.items, ...shopData.cards, ...shopData.boosts];
-  return allItems.find(item => 
+  return allItems.find(item =>
     item.name.toLowerCase() === itemName.toLowerCase() ||
     item.name.toLowerCase().includes(itemName.toLowerCase())
   );
@@ -30,28 +30,32 @@ async function execute(message, args) {
     return message.reply('Usage: `op buy <item name>`\n\nUse `op shop` to see available items.');
   }
 
-  const user = await User.findOne({ userId });
+  let user = await User.findOne({ userId });
   if (!user) return message.reply('Start your journey with `op start` first!');
+
+  if (!user.username) {
+    user.username = message.author.username;
+    await user.save();
+  }
 
   const shopData = loadShopData();
   const item = findShopItem(itemName, shopData);
 
   if (!item) {
-    return message.reply(` Item "${itemName}" not found in shop. Use \`op shop\` to see available items.`);
+    return message.reply(`Item "${itemName}" not found in shop. Use \`op shop\` to see available items.`);
   }
 
   if (!item.available) {
-    return message.reply(`<:arrow:1375872983029256303> "${item.name}" is currently out of stock.`);
+    return message.reply(`⚠️ "${item.name}" is currently out of stock.`);
   }
 
   if (user.beli < item.price) {
-    return message.reply(`<:arrow:1375872983029256303> You don't have enough Beli! You need ${item.price} but only have ${user.beli}.`);
+    return message.reply(`⚠️ You don't have enough Beli! You need ${item.price}, but you only have ${user.beli}.`);
   }
 
-  // Check if user already owns the item (for unique items)
   const normalizedItemName = item.name.toLowerCase().replace(/\s+/g, '');
   if (item.unique && user.inventory && user.inventory.includes(normalizedItemName)) {
-    return message.reply(`<:arrow:1375872983029256303> You already own "${item.name}". This item can only be purchased once.`);
+    return message.reply(`⚠️ You already own "${item.name}". This item can only be purchased once.`);
   }
 
   // Process purchase
@@ -61,9 +65,8 @@ async function execute(message, args) {
     if (!user.inventory) user.inventory = [];
     user.inventory.push(normalizedItemName);
   } else if (item.type === 'boost') {
-    // Apply boost effects immediately
     if (!user.activeBoosts) user.activeBoosts = [];
-    
+
     switch (item.effect) {
       case 'double_xp':
         user.activeBoosts.push({
@@ -118,14 +121,15 @@ async function execute(message, args) {
   await user.save();
 
   const embed = new EmbedBuilder()
-    .setTitle('<:sucess:1375872950321811547> Purchase Successful!')
-    .setDescription(`You bought **${item.name}** for ${item.price} Beli!`)
+    .setTitle('✅ Purchase Successful')
+    .setDescription(`You bought **${item.name}** for **${item.price} Beli**.`)
     .addFields(
       { name: 'Item', value: item.name, inline: true },
-      { name: 'Price', value: `${item.price} Beli`, inline: true },
-      { name: 'Remaining Beli', value: `${user.beli}`, inline: true }
+      { name: 'Price', value: `${item.price.toLocaleString()} Beli`, inline: true },
+      { name: 'Remaining Beli', value: `${user.beli.toLocaleString()}`, inline: true }
     )
-    .setColor(0x2ecc40);
+    .setColor(0x2c2f33)
+    .setFooter({ text: 'Shop · One Piece Bot', iconURL: 'https://i.imgur.com/KqAB5Mn.png' });
 
   if (item.description) {
     embed.addFields({ name: 'Description', value: item.description, inline: false });
@@ -133,6 +137,5 @@ async function execute(message, args) {
 
   await message.reply({ embeds: [embed] });
 }
-
 
 module.exports = { data, execute };

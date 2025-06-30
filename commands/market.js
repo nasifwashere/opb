@@ -121,9 +121,16 @@ const data = { name: 'market', description: 'Browse the player marketplace to bu
 
 async function execute(message, args) {
     const userId = message.author.id;
-    const user = await User.findOne({ userId });
+    const username = message.author.username;
+    let user = await User.findOne({ userId });
 
     if (!user) return message.reply('Start your journey with `op start` first!');
+
+    // Ensure username is set if missing
+    if (!user.username) {
+        user.username = username;
+        await user.save();
+    }
 
     // Handle subcommands first to avoid recursive market display
     if (args.length > 0) {
@@ -209,6 +216,11 @@ async function execute(message, args) {
 }
 
 async function handleMarketBuy(message, user, args) {
+    // Ensure username is set if missing
+    if (!user.username) {
+        user.username = message.author.username;
+        await user.save();
+    }
     const itemNumber = parseInt(args[0]);
     
     // Get current listings to validate item number
@@ -264,6 +276,11 @@ async function handleMarketBuy(message, user, args) {
 }
 
 async function handleMarketList(message, user, args) {
+    // Ensure username is set if missing
+    if (!user.username) {
+        user.username = message.author.username;
+        await user.save();
+    }
     const [type, ...itemParts] = args;
     
     if (!type || !['card', 'item'].includes(type)) {

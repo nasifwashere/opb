@@ -263,10 +263,17 @@ const data = {
 
 async function execute(message, args, client) {
     const userId = message.author.id;
-    const user = await User.findOne({ userId });
+    const username = message.author.username;
+    let user = await User.findOne({ userId });
     
     if (!user) {
         return message.reply('Start your journey with `op start` first!');
+    }
+
+    // Ensure username is set if missing
+    if (!user.username) {
+        user.username = username;
+        await user.save();
     }
     
     // Check for completed quests and auto-notify

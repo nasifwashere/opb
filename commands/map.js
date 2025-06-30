@@ -182,9 +182,16 @@ const data = { name: 'map', description: 'View the world map and your exploratio
 
 async function execute(message, args) {
   const userId = message.author.id;
-  const user = await User.findOne({ userId });
+  const username = message.author.username;
+  let user = await User.findOne({ userId });
 
   if (!user) return message.reply('Start your journey with `op start` first!');
+
+  // Ensure username is set if missing
+  if (!user.username) {
+    user.username = username;
+    await user.save();
+  }
 
   const unlockedSagas = getUserUnlockedSagas(user);
   let currentSaga = user.saga || 'East Blue';

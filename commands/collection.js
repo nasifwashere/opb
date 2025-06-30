@@ -6,11 +6,11 @@ const User = require('../db/models/User.js');
 const MAX_STORAGE = 250;
 
 const rankSettings = {
-  C: { color: 0x2ecc40, rankName: "C", rankImage: "https://files.catbox.moe/80exn1.png" },
-  B: { color: 0x3498db, rankName: "B", rankImage: "https://files.catbox.moe/ta2g9o.png" },
-  A: { color: 0x9b59b6, rankName: "A", rankImage: "https://files.catbox.moe/hcyso9.png" },
-  S: { color: 0xe67e22, rankName: "S", rankImage: "https://files.catbox.moe/niidag.png" },
-  UR: { color: 0xe74c3c, rankName: "UR", rankImage: "https://via.placeholder.com/32x32/e74c3c/ffffff?text=UR" }
+  C: { color: 0x2C2F33, rankName: "C", rankImage: "https://files.catbox.moe/80exn1.png" },
+  B: { color: 0x2C2F33, rankName: "B", rankImage: "https://files.catbox.moe/ta2g9o.png" },
+  A: { color: 0x2C2F33, rankName: "A", rankImage: "https://files.catbox.moe/hcyso9.png" },
+  S: { color: 0x2C2F33, rankName: "S", rankImage: "https://files.catbox.moe/niidag.png" },
+  UR: { color: 0x2C2F33, rankName: "UR", rankImage: "https://via.placeholder.com/32x32/e74c3c/ffffff?text=UR" }
 };
 
 const cardsPath = path.resolve('data', 'cards.json');
@@ -28,13 +28,14 @@ function cardEmbed(cardInstance, cardDef, ownerName, index, total, user, duplica
   if (!cardDef) {
     return new EmbedBuilder()
       .setTitle('Card not found')
-      .setDescription('This card is missing from the database.');
+      .setDescription('This card is missing from the database.')
+      .setColor(0x2C2F33);
   }
-  
+
   const { calculateCardStats } = require('../utils/levelSystem.js');
   const level = cardInstance.level || (cardInstance.timesUpgraded ? cardInstance.timesUpgraded + 1 : 1);
   const stats = calculateCardStats(cardDef, level);
-  
+
   let { power, health, speed } = stats;
 
   // Stat boost: If this card has strawhat equipped, boost stats regardless of the card
@@ -56,7 +57,7 @@ function cardEmbed(cardInstance, cardDef, ownerName, index, total, user, duplica
     'S': 0.17,
     'UR': 0.20
   };
-  
+
   const multiplier = rankMultipliers[cardDef.rank] || 0.10;
   const baseDamage = power * multiplier;
   const attackLow = Math.floor(baseDamage * 1.0);
@@ -65,12 +66,22 @@ function cardEmbed(cardInstance, cardDef, ownerName, index, total, user, duplica
   const rankSet = rankSettings[cardDef.rank] || {};
   const lockStatus = cardInstance.locked ? ' 🔒' : '';
   const duplicateText = duplicateCount > 1 ? ` (x${duplicateCount})` : '';
-  
-  let desc = `**${cardDef.name}**${lockStatus}${duplicateText}\n${cardDef.shortDesc}\n\nOwner: ${ownerName}\nLevel: ${level}\nPower: ${power}\nHealth: ${health}\nSpeed: ${speed}\nAttack: ${attackLow}–${attackHigh}\nType: Combat${boostText}`;
+
+  let desc =
+    `**${cardDef.name}**${lockStatus}${duplicateText}\n` +
+    `${cardDef.shortDesc}\n\n` +
+    `**Owner:** ${ownerName}\n` +
+    `**Level:** ${level}\n` +
+    `**Power:** ${power}\n` +
+    `**Health:** ${health}\n` +
+    `**Speed:** ${speed}\n` +
+    `**Attack:** ${attackLow}–${attackHigh}\n` +
+    `**Type:** Combat${boostText}`;
 
   const embed = new EmbedBuilder()
     .setDescription(desc)
-    .setFooter({ text: `#- _${ownerName}'s Collection | ${index + 1}/${total} (max is ${MAX_STORAGE} storage)` });
+    .setColor(rankSet.color || 0x2C2F33)
+    .setFooter({ text: `#- _${ownerName}'s Collection | ${index + 1}/${total} (max ${MAX_STORAGE})` });
 
   if (cardDef.image && cardDef.image !== "placeholder" && /^https?:\/\//.test(cardDef.image)) {
     embed.setImage(cardDef.image);
@@ -104,9 +115,20 @@ const data = { name: "collection", description: "View your card collection." };
 
 async function execute(message, args) {
   const userId = message.author.id;
-  const user = await User.findOne({ userId });
+  const username = message.author.username;
+  let user = await User.findOne({ userId });
 
-  if (!user || !Array.isArray(user.cards)) {
+  if (!user) {
+    return message.reply('Start your journey with `op start` first!');
+  }
+
+  // Ensure username is set if missing
+  if (!user.username) {
+    user.username = username;
+    await user.save();
+  }
+
+  if (!Array.isArray(user.cards)) {
     return message.reply("You have no cards!");
   }
 
@@ -169,29 +191,29 @@ async function execute(message, args) {
       const currentGroup = uniqueCards[cardIndex];
       const currentCard = currentGroup.instance;
       const currentCardDef = currentGroup.def;
-      
+
       if (!currentCardDef) {
         await interaction.followUp({ content: 'Card information not found!', ephemeral: true });
         return;
       }
-      
+
       const { calculateCardStats } = require('../utils/levelSystem.js');
       const level = currentCard.level || currentCard.timesUpgraded + 1 || 1;
       const stats = calculateCardStats(currentCardDef, level);
       let { power, health, speed } = stats;
-      
+
       // Apply equipment boosts
       let normCard = normalize(currentCardDef.name);
       let equippedItem = user && user.equipped && user.equipped[normCard];
       let boostText = '';
-      
+
       if (equippedItem === 'strawhat') {
         power = Math.round(power * 1.3);
         health = Math.round(health * 1.3);
         speed = Math.round(speed * 1.3);
         boostText = '\n**Equipment**: Strawhat (+30% all stats)';
       }
-      
+
       const rankMultipliers = {
         'C': 0.08,
         'B': 0.10,
@@ -199,12 +221,12 @@ async function execute(message, args) {
         'S': 0.17,
         'UR': 0.20
       };
-      
+
       const multiplier = rankMultipliers[currentCardDef.rank] || 0.10;
       const baseDamage = power * multiplier;
       const minDamage = Math.floor(baseDamage * 1.0);
       const maxDamage = Math.floor(baseDamage * 1.5);
-      
+
       const infoText = `**${currentCardDef.name}** (${currentCardDef.rank})\n` +
         `${currentCardDef.shortDesc}\n\n` +
         `**Copies Owned**: ${currentGroup.count}\n` +
@@ -215,10 +237,10 @@ async function execute(message, args) {
         `**Combat**\n` +
         `Damage Range: ${minDamage} - ${maxDamage}\n` +
         `Damage Multiplier: ${multiplier}x\n` +
-        `Lock Status: ${currentCard.locked ? '<:Padlock_Crown:1388587874084982956> Locked' : '<:unlocked_IDS:1388596601064390656> Unlocked'}${boostText}\n\n` +
+        `Lock Status: ${currentCard.locked ? '🔒 Locked' : 'Unlocked'}${boostText}\n\n` +
         `**Evolution**\n` +
         `${currentCardDef.evolution ? `Next: ${currentCardDef.evolution.nextId} (Level ${currentCardDef.evolution.requiredLevel})` : 'Max evolution reached'}`;
-      
+
       await interaction.followUp({ content: infoText, ephemeral: true });
       return;
     }
@@ -231,6 +253,5 @@ async function execute(message, args) {
     msg.edit({ components: [] });
   });
 }
-
 
 module.exports = { data, execute };
