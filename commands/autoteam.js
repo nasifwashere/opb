@@ -120,7 +120,5 @@ async function execute(message, args) {
 }
 
 module.exports = { data, execute };
-```
 
-```
-</replit_final_file>
+
