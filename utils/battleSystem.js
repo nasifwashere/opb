@@ -45,14 +45,14 @@ function calculateBattleStats(user, cardDatabase = allCards) {
     const userCard = user.cards?.find(c => 
       c && c.name && c.name.toLowerCase() === cardName.toLowerCase()
     );
-    
+
     if (!userCard) continue;
 
     // Find card definition
     const cardDef = cardDatabase.find(c => 
       c && c.name && c.name.toLowerCase() === cardName.toLowerCase()
     );
-    
+
     if (!cardDef || !cardDef.phs) continue;
 
     // Skip disallowed cards
@@ -85,7 +85,7 @@ function calculateBattleStats(user, cardDatabase = allCards) {
     if (equipped) {
       const normalizedCardName = cardName.replace(/\s+/g, '').toLowerCase();
       const equippedItem = equipped[normalizedCardName];
-      
+
       if (equippedItem && equipmentBonuses[equippedItem]) {
         const bonus = equipmentBonuses[equippedItem];
         power = Math.floor(power * bonus.power);
@@ -125,67 +125,25 @@ function calculateBattleStats(user, cardDatabase = allCards) {
  * @param {string} attackType - 'normal', 'skill', or 'critical'
  * @returns {number} Damage dealt
  */
-function calculateDamage(attacker, defender, attackType = 'normal') {
-  if (!attacker || !attacker.attack || !Array.isArray(attacker.attack) || attacker.attack.length < 2) {
-    console.warn('Invalid attacker data:', attacker);
-    return 1;
-  }
+function calculateDamage(attacker, defender, isBoss = false) {
+    const baseDamage = attacker.power || attacker.atk || 10;
 
-  if (!defender) {
-    console.warn('Invalid defender data:', defender);
-    return 1;
-  }
-
-  let baseAttack = Math.floor(
-    Math.random() * (attacker.attack[1] - attacker.attack[0] + 1)
-  ) + attacker.attack[0];
-
-  // Apply temporary buffs
-  if (attacker.tempBuffs) {
-    attacker.tempBuffs.forEach(buff => {
-      if ((buff.type === 'stat_boost' || buff.type === 'attack_boost') && buff.duration > 0) {
-        baseAttack = Math.floor(baseAttack * buff.multiplier);
-      }
-    });
-  }
-
-  let damage = baseAttack;
-
-  // Apply attack type modifiers
-  switch (attackType) {
-    case 'skill':
-      damage = Math.floor(damage * 1.5);
-      break;
-    case 'critical':
-      damage = Math.floor(damage * 2.0);
-      break;
-    default:
-      // Normal attack, no modifier
-      break;
-  }
-
-  // Speed difference can affect damage (faster = more damage)
-  let attackerSpeed = attacker.speed || 0;
-  let defenderSpeed = defender.speed || 0;
-
-  // Apply temporary speed buffs
-  if (attacker.tempBuffs) {
-    attacker.tempBuffs.forEach(buff => {
-      if ((buff.type === 'stat_boost' || buff.type === 'speed_boost') && buff.duration > 0) {
-        attackerSpeed = Math.floor(attackerSpeed * buff.multiplier);
-      }
-    });
-  }
-
-  if (defenderSpeed > 0) {
-    const speedDiff = attackerSpeed - defenderSpeed;
-    if (speedDiff > 0) {
-      damage += Math.floor(speedDiff * 0.1);
+    // If it's a boss, ensure minimum damage scaling
+    if (isBoss) {
+        const minBossDamage = Math.max(baseDamage * 0.8, 15);
+        const maxBossDamage = baseDamage * 1.2;
+        const damage = Math.floor(Math.random() * (maxBossDamage - minBossDamage) + minBossDamage);
+        return Math.max(damage, 15); // Bosses do minimum 15 damage
     }
-  }
 
-  // Minimum damage is 1
-  return Math.max(1, damage);
+    // Regular damage calculation
+    const variation = Math.random() * 0.4 - 0.2; // ±20% variation
+    let damage = Math.floor(baseDamage * (1 + variation));
+
+    // Minimum damage
+    damage = Math.max(damage, Math.floor(baseDamage * 0.3));
+
+    return damage;
 }
 
 /**
@@ -197,14 +155,14 @@ function calculateDamage(attacker, defender, attackType = 'normal') {
 function calculateTurnOrder(team1, team2) {
   if (!Array.isArray(team1)) team1 = [];
   if (!Array.isArray(team2)) team2 = [];
-  
+
   const allCards = [...team1, ...team2].filter(card => 
     card && 
     typeof card.currentHp === 'number' && 
     card.currentHp > 0 &&
     typeof card.speed === 'number'
   );
-  
+
   return allCards.sort((a, b) => b.speed - a.speed);
 }
 
@@ -256,7 +214,7 @@ function resetTeamHP(team) {
  */
 function processTempBuffs(team) {
   if (!Array.isArray(team)) return;
-  
+
   team.forEach(card => {
     if (card.tempBuffs && Array.isArray(card.tempBuffs)) {
       card.tempBuffs = card.tempBuffs.filter(buff => {

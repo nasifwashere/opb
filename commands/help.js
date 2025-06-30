@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle  } = require('discord.js');
 const User = require('../db/models/User.js'); // adjust path if needed
 
 const commandCategories = {
@@ -140,10 +140,9 @@ function createBackButton() {
   );
 }
 
-const data = {
-  name: 'help',
-  description: 'Display bot commands and help information.'
-};
+const data = new SlashCommandBuilder()
+  .setName('help')
+  .setDescription('Display bot commands and help information.');
 
 async function execute(message, args, client) {
   const userId = message.author.id;

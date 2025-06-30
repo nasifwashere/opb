@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
 
 const ITEM_DESCRIPTIONS = {
@@ -14,7 +14,9 @@ const ITEM_DESCRIPTIONS = {
   'speedboostfood': { desc: 'Temporary speed boost for team', usage: 'op use speedboostfood' }
 };
 
-const data = { name: 'inventory', description: 'View your inventory items with descriptions.' };
+const data = new SlashCommandBuilder()
+  .setName('inventory')
+  .setDescription('View your inventory items with descriptions.');
 
 async function execute(message, args, client) {
   const userId = message.author.id;

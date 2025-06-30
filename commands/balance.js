@@ -1,10 +1,9 @@
-const { EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js'); // Adjust path if needed
 
-const data = {
-  name: 'balance',
-  description: 'Show your current Beli balance.'
-};
+const data = new SlashCommandBuilder()
+  .setName('balance')
+  .setDescription('Show your current Beli balance.');
 
 async function execute(message, args) {
   const userId = message.author.id;

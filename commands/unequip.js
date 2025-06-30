@@ -1,3 +1,4 @@
+const { SlashCommandBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
 
 // Normalize string for fuzzy matching
@@ -28,7 +29,9 @@ function fuzzyFindCard(cards, input) {
   return bestMatch;
 }
 
-const data = { name: "unequip", description: "Unequip an item from a card." };
+const data = new SlashCommandBuilder()
+  .setName('unequip')
+  .setDescription('Unequip an item from a card.');
 
 async function execute(message, args) {
   const userId = message.author.id;

@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle  } = require('discord.js');
 const User = require('../db/models/User.js');
 
 const leaderboardTypes = {
@@ -142,7 +142,9 @@ function createLeaderboardButtons(currentType, page, hasNext) {
     ];
 }
 
-const data = { name: 'leaderboard', description: 'View top players in various categories.' };
+const data = new SlashCommandBuilder()
+  .setName('leaderboard')
+  .setDescription('View top players in various categories.');
 
 async function execute(message, args, client) {
     const userId = message.author.id;

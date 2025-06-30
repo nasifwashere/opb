@@ -1,5 +1,4 @@
-
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle  } = require('discord.js');
 const fs = require('fs').promises;
 const path = require('path');
 const User = require('../../db/models/User.js');
@@ -8,18 +7,42 @@ const OWNER_ID = '1257718161298690119';
 const CONFIG_PATH = path.join(__dirname, '../../config.json');
 const CARDS_PATH = path.join(__dirname, '../../data/cards.json');
 
-const data = { 
-    name: 'setdrops', 
-    description: 'Set the card drop channel (Owner only)' 
+const data = new SlashCommandBuilder()
+  .setName('setdrops')
+  .setDescription('Set the card drop channel (Owner only)')
+  .addChannelOption(option =>
+    option.setName('channel')
+      .setDescription('Channel for card drops')
+      .setRequired(false)
+  );
+
+// Text command data for legacy support
+const textData = {
+  name: 'setdrops',
+  description: 'Set the card drop channel (Owner only)',
+  usage: 'setdrops [#channel]'
 };
 
 async function execute(message, args, client) {
-    if (message.author.id !== OWNER_ID) {
-        return message.reply('❌ This command is restricted to the bot owner.');
+    // Handle both slash commands and text commands
+    const userId = message.author?.id || message.user?.id;
+    const isInteraction = !!message.user;
+
+    if (userId !== OWNER_ID) {
+        const response = '❌ This command is restricted to the bot owner.';
+        return isInteraction ? message.reply({ content: response, ephemeral: true }) : message.reply(response);
     }
 
-    const channel = message.mentions.channels.first() || message.channel;
-    
+    let channel;
+
+    if (isInteraction) {
+        // Slash command
+        channel = message.options.getChannel('channel') || message.channel;
+    } else {
+        // Text command
+        channel = message.mentions.channels.first() || message.channel;
+    }
+
     try {
         // Load existing config
         let config = {};
@@ -32,22 +55,27 @@ async function execute(message, args, client) {
 
         // Update config
         config.dropChannelId = channel.id;
-        
+
         // Save config
         await fs.writeFile(CONFIG_PATH, JSON.stringify(config, null, 2));
-        
+
         const embed = new EmbedBuilder()
             .setTitle('✅ Drop Channel Set')
             .setDescription(`Card drops will now appear in ${channel} every 10 minutes`)
             .setColor(0x00ff00);
-            
-        await message.reply({ embeds: [embed] });
-        
+
+        const response = { embeds: [embed] };
+        if (isInteraction) {
+            await message.reply(response);
+        } else {
+            await message.reply(response);
+        }
+
         // Start the drop timer if not already running
         if (!client.dropTimer) {
             startDropTimer(client);
         }
-        
+
     } catch (error) {
         console.error('Error setting drop channel:', error);
         await message.reply('❌ Failed to set drop channel.');
@@ -58,7 +86,7 @@ function startDropTimer(client) {
     client.dropTimer = setInterval(async () => {
         await dropRandomCard(client);
     }, 10 * 60 * 1000); // 10 minutes
-    
+
     console.log('Card drop timer started - drops every 10 minutes');
 }
 
@@ -66,27 +94,36 @@ async function dropRandomCard(client) {
     try {
         const configData = await fs.readFile(CONFIG_PATH, 'utf8');
         const config = JSON.parse(configData);
-        
+
         if (!config.dropChannelId) return;
-        
+
         const channel = client.channels.cache.get(config.dropChannelId);
         if (!channel) return;
-        
-        // Load cards and select random one
+
+        // Load cards and select random one using weighted rarity (exclude evolution cards)
         const cardsData = await fs.readFile(CARDS_PATH, 'utf8');
         const allCards = JSON.parse(cardsData);
-        const randomCard = allCards[Math.floor(Math.random() * allCards.length)];
-        
+        const baseCards = allCards.filter(card => !card.evolvesFrom);
+
+        // Get weighted random rank
+        const selectedRank = weightedRandomRank();
+
+        // Find cards of the selected rank, fallback to any base card if none found
+        const rankCards = baseCards.filter(card => card.rank === selectedRank);
+        const randomCard = rankCards.length > 0 
+            ? rankCards[Math.floor(Math.random() * rankCards.length)]
+            : baseCards[Math.floor(Math.random() * baseCards.length)];
+
         const embed = new EmbedBuilder()
             .setTitle('💫 Wild Card Appeared!')
             .setDescription(`A **[${randomCard.rank}] ${randomCard.name}** has appeared!\n\n${randomCard.shortDesc}\n\nClick the button below to claim it!`)
             .setColor(getRankColor(randomCard.rank))
             .setTimestamp();
-            
+
         if (randomCard.image && randomCard.image !== "placeholder") {
             embed.setImage(randomCard.image);
         }
-        
+
         const button = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
@@ -94,12 +131,12 @@ async function dropRandomCard(client) {
                     .setLabel('🎯 Claim Card!')
                     .setStyle(ButtonStyle.Primary)
             );
-            
+
         const dropMessage = await channel.send({ 
             embeds: [embed], 
             components: [button] 
         });
-        
+
         // Set up collector for the drop
         const filter = i => i.customId.startsWith('claim_drop_');
         const collector = dropMessage.createMessageComponentCollector({ 
@@ -107,11 +144,11 @@ async function dropRandomCard(client) {
             time: 5 * 60 * 1000, // 5 minutes to claim
             max: 1 
         });
-        
+
         collector.on('collect', async interaction => {
             await claimDrop(interaction, randomCard, client);
         });
-        
+
         collector.on('end', collected => {
             if (collected.size === 0) {
                 // No one claimed it
@@ -119,11 +156,11 @@ async function dropRandomCard(client) {
                     .setTitle('💨 Card Escaped!')
                     .setDescription('The card disappeared into the wind...')
                     .setColor(0x95a5a6);
-                    
+
                 dropMessage.edit({ embeds: [expiredEmbed], components: [] });
             }
         });
-        
+
     } catch (error) {
         console.error('Error dropping card:', error);
     }
@@ -132,16 +169,16 @@ async function dropRandomCard(client) {
 async function claimDrop(interaction, card, client) {
     try {
         await interaction.deferUpdate();
-        
+
         let user = await User.findOne({ userId: interaction.user.id });
-        
+
         if (!user) {
             return interaction.followUp({ 
                 content: '❌ You need to start your journey first with `op start`!', 
                 ephemeral: true 
             });
         }
-        
+
         // Add card to user's collection
         if (!user.cards) user.cards = [];
         user.cards.push({
@@ -151,33 +188,33 @@ async function claimDrop(interaction, card, client) {
             experience: 0,
             timesUpgraded: 0
         });
-        
+
         await user.save();
-        
+
         // Update the drop message
         const claimedEmbed = new EmbedBuilder()
             .setTitle('🎉 Card Claimed!')
             .setDescription(`**${interaction.user.username}** claimed **[${card.rank}] ${card.name}**!`)
             .setColor(0x2ecc71);
-            
+
         await interaction.message.edit({ embeds: [claimedEmbed], components: [] });
-        
+
         // Send DM to the user
         try {
             const dmEmbed = new EmbedBuilder()
                 .setTitle('🎁 You Got a Drop!')
                 .setDescription(`You successfully claimed **[${card.rank}] ${card.name}** from the drop!\n\n${card.shortDesc}`)
                 .setColor(getRankColor(card.rank));
-                
+
             if (card.image && card.image !== "placeholder") {
                 dmEmbed.setImage(card.image);
             }
-            
+
             await interaction.user.send({ embeds: [dmEmbed] });
         } catch (dmError) {
             console.log('Could not send DM to user');
         }
-        
+
     } catch (error) {
         console.error('Error claiming drop:', error);
         await interaction.followUp({ 
@@ -198,4 +235,26 @@ function getRankColor(rank) {
     return colors[rank] || 0x95a5a6;
 }
 
-module.exports = { data, execute, startDropTimer };
+function weightedRandomRank() {
+    const weights = {
+        'C': 0.70,
+        'B': 0.20,
+        'A': 0.07,
+        'S': 0.02,
+        'UR': 0.01
+    };
+
+    let rand = Math.random();
+    let cumulativeWeight = 0;
+
+    for (const rank in weights) {
+        cumulativeWeight += weights[rank];
+        if (rand < cumulativeWeight) {
+            return rank;
+        }
+    }
+
+    return 'C'; // Default to C if something goes wrong
+}
+
+module.exports = { data, textData, execute, startDropTimer };

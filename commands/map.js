@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle  } = require('discord.js');
 const User = require('../db/models/User.js');
 const { sagas } = require('../utils/sagas.js');
 
@@ -178,7 +178,9 @@ function getUserProgressInSaga(user, saga) {
   return 0;
 }
 
-const data = { name: 'map', description: 'View the world map and your exploration progress.' };
+const data = new SlashCommandBuilder()
+  .setName('map')
+  .setDescription('View the world map and your exploration progress.');
 
 async function execute(message, args) {
   const userId = message.author.id;

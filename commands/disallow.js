@@ -1,3 +1,4 @@
+const { SlashCommandBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
 const fs = require('fs');
 const path = require('path');
@@ -5,7 +6,9 @@ const path = require('path');
 const configPath = path.resolve('config.json');
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
-const data = { name: 'disallow', description: 'Disable a card from being used in battles (Admin only).' };
+const data = new SlashCommandBuilder()
+  .setName('disallow')
+  .setDescription('Disable a card from being used in battles (Admin only).');
 
 async function execute(message, args) {
   // Check if user has admin permissions

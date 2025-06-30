@@ -1,4 +1,4 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder  } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const User = require('../db/models/User.js');
@@ -111,7 +111,9 @@ function buildRow(cardIndex, totalCards) {
   );
 }
 
-const data = { name: "collection", description: "View your card collection." };
+const data = new SlashCommandBuilder()
+  .setName('collection')
+  .setDescription('View your card collection.');
 
 async function execute(message, args) {
   const userId = message.author.id;

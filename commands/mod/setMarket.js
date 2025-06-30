@@ -1,22 +1,46 @@
 
-const { EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const fs = require('fs').promises;
 const path = require('path');
 
 const OWNER_ID = '1257718161298690119';
 const CONFIG_PATH = path.join(__dirname, '../../config.json');
 
-const data = { 
-    name: 'setmarket', 
-    description: 'Set the market notification channel (Owner only)' 
+const data = new SlashCommandBuilder()
+  .setName('setmarket')
+  .setDescription('Set the market notification channel (Owner only)')
+  .addChannelOption(option =>
+    option.setName('channel')
+      .setDescription('Channel for market notifications')
+      .setRequired(false)
+  );
+
+// Text command data for legacy support
+const textData = {
+  name: 'setmarket',
+  description: 'Set the market notification channel (Owner only)',
+  usage: 'setmarket [#channel]'
 };
 
 async function execute(message, args, client) {
-    if (message.author.id !== OWNER_ID) {
-        return message.reply('❌ This command is restricted to the bot owner.');
+    // Handle both slash commands and text commands
+    const userId = message.author?.id || message.user?.id;
+    const isInteraction = !!message.user;
+    
+    if (userId !== OWNER_ID) {
+        const response = '❌ This command is restricted to the bot owner.';
+        return isInteraction ? message.reply({ content: response, ephemeral: true }) : message.reply(response);
     }
 
-    const channel = message.mentions.channels.first() || message.channel;
+    let channel;
+    
+    if (isInteraction) {
+        // Slash command
+        channel = message.options.getChannel('channel') || message.channel;
+    } else {
+        // Text command
+        channel = message.mentions.channels.first() || message.channel;
+    }
     
     try {
         // Load existing config
@@ -38,8 +62,13 @@ async function execute(message, args, client) {
             .setTitle('✅ Market Channel Set')
             .setDescription(`New market listings will now be announced in ${channel}`)
             .setColor(0x00ff00);
-            
-        await message.reply({ embeds: [embed] });
+        
+        const response = { embeds: [embed] };
+        if (isInteraction) {
+            await message.reply(response);
+        } else {
+            await message.reply(response);
+        }
         
     } catch (error) {
         console.error('Error setting market channel:', error);
@@ -74,4 +103,4 @@ async function announceMarketListing(client, listing) {
     }
 }
 
-module.exports = { data, execute, announceMarketListing };
+module.exports = { data, textData, execute, announceMarketListing };

@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle  } = require('discord.js');
 const User = require('../db/models/User.js');
 const fs = require('fs');
 const path = require('path');
@@ -77,7 +77,9 @@ function fuzzyFindCard(cards, input) {
   return bestMatch;
 }
 
-const data = { name: 'team', description: 'Manage and view your crew.' };
+const data = new SlashCommandBuilder()
+  .setName('team')
+  .setDescription('Manage and view your crew.');
 
 async function execute(message, args) {
   const userId = message.author.id;

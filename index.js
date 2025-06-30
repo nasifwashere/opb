@@ -15,16 +15,39 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// Load commands
-const commandsPath = path.join(__dirname, 'commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-
-for (const file of commandFiles) {
-    const filePath = path.join(commandsPath, file);
-    const command = require(filePath);
-    const commandName = file.replace('.js', '');
-    client.commands.set(commandName, command);
+// Load commands recursively
+function loadCommands(dir) {
+    const files = fs.readdirSync(dir);
+    
+    for (const file of files) {
+        const filePath = path.join(dir, file);
+        const stat = fs.statSync(filePath);
+        
+        if (stat.isDirectory()) {
+            loadCommands(filePath);
+        } else if (file.endsWith('.js')) {
+            try {
+                const command = require(filePath);
+                
+                // Use the slash command name if available, otherwise filename
+                const commandName = command.data?.name || file.replace('.js', '');
+                client.commands.set(commandName, command);
+                
+                // Also register text command name if different
+                if (command.textData?.name && command.textData.name !== commandName) {
+                    client.commands.set(command.textData.name, command);
+                }
+                
+                console.log(`Loaded command: ${commandName}`);
+            } catch (error) {
+                console.error(`Error loading command ${file}:`, error);
+            }
+        }
+    }
 }
+
+const commandsPath = path.join(__dirname, 'commands');
+loadCommands(commandsPath);
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/onepiece_bot').then(() => {
@@ -45,6 +68,12 @@ client.once('ready', () => {
     } catch (error) {
         console.log('Timers will start when channels are set');
     }
+});
+
+// Handle slash command interactions
+client.on('interactionCreate', async interaction => {
+    const interactionHandler = require('./events/interactionCreate.js');
+    await interactionHandler.execute(interaction, client);
 });
 
 client.on('messageCreate', async message => {

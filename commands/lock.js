@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
 
 function normalize(str) {
@@ -12,7 +12,9 @@ function findUserCard(user, cardName) {
   return user.cards.find(card => normalize(card.name) === normInput);
 }
 
-const data = { name: 'lock', description: 'Lock a card to prevent it from being sold or traded.' };
+const data = new SlashCommandBuilder()
+  .setName('lock')
+  .setDescription('Lock a card to prevent it from being sold or traded.');
 
 async function execute(message, args) {
   const userId = message.author.id;

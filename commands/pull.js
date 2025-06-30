@@ -1,5 +1,5 @@
 const User = require('../db/models/User.js');
-const { EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const path = require('path');
 const fs = require('fs');
 
@@ -13,14 +13,14 @@ const rankSettings = {
 };
 
 const rankWeights = [
-    { rank: 'C', weight: 75 },
-    { rank: 'B', weight: 22 },
-    { rank: 'A', weight: 4.5 },
-    { rank: 'S', weight: 0.5 }
+    { rank: 'C', weight: 80 },
+    { rank: 'B', weight: 17 },
+    { rank: 'A', weight: 2.7 },
+    { rank: 'S', weight: 0.3 }
 ];
 
-const PULLS_PER_WINDOW = 3; // pulls allowed per window
-const PULL_WINDOW = 8 * 60 * 60 * 1000; // 8 hours in ms
+const PULLS_PER_WINDOW = 5; // pulls allowed per window
+const PULL_WINDOW = 5 * 60 * 60 * 1000; // 8 hours in ms
 const TEST_USER_ID = "1257718161298690119";
 
 // --- Helper Functions ---
@@ -146,7 +146,9 @@ async function getUserPullState(userId, username) {
 }
 
 // --- Command Export ---
-const data = { name: "pull", description: "Pull a random card from the East Blue saga." };
+const data = new SlashCommandBuilder()
+  .setName('pull')
+  .setDescription('Pull a random card from the East Blue saga.');
 
 async function execute(message) {
     const userId = message.author.id;
@@ -163,9 +165,10 @@ async function execute(message) {
     const isImmune = userId === TEST_USER_ID;
 
     if (!isImmune && validPulls.length >= PULLS_PER_WINDOW) {
-        const nextResetIn = PULL_WINDOW - (now - validPulls[0]);
+        const oldestPull = Math.min(...validPulls);
+        const nextResetIn = PULL_WINDOW - (now - oldestPull);
         return message.reply(
-            `**${message.author.username}!** You've run out of pulls!\n\nYou can pull more cards after reset!\nNext Reset: \`${prettyTime(nextResetIn)}\``
+            `**${message.author.username}!** You've used all ${PULLS_PER_WINDOW} pulls!\n\nYou can pull more cards after reset!\nNext Reset: \`${prettyTime(nextResetIn)}\``
         );
     }
 

@@ -1,5 +1,4 @@
-
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle  } = require('discord.js');
 const User = require('../db/models/User.js');
 const { calculateBattleStats, calculateDamage, resetTeamHP } = require('../utils/battleSystem.js');
 
@@ -345,12 +344,12 @@ function prettyTime(ms) {
     let hours = Math.floor(minutes / 60);
     minutes = minutes % 60;
     seconds = seconds % 60;
-    
+
     let out = [];
     if (hours > 0) out.push(`${hours} hour${hours !== 1 ? "s" : ""}`);
     if (minutes > 0) out.push(`${minutes} minute${minutes !== 1 ? "s" : ""}`);
     if (out.length === 0) out.push(`${seconds} seconds`);
-    
+
     return out.join(", ");
 }
 
@@ -386,10 +385,9 @@ function getTotalStagesInLocation(location) {
     return LOCATIONS[location] ? LOCATIONS[location].length : 0;
 }
 
-const data = {
-    name: "explore",
-    description: "Begin or continue your adventure in the One Piece world!"
-};
+const data = new SlashCommandBuilder()
+  .setName('explore')
+  .setDescription('Begin or continue your adventure in the One Piece world!');
 
 async function execute(message, args, client) {
     const userId = message.author.id;
@@ -410,20 +408,12 @@ async function execute(message, args, client) {
 
     // Check cooldowns
     const currentLocation = getCurrentLocation(user.stage);
-    
+
     if (currentLocation === 'COMPLETED') {
         return message.reply('🎉 Congratulations! You have completed the East Blue Saga! More adventures await in future updates!');
     }
 
-    // Check explore cooldown using config (immunity for specific user)
-    const config = require('../config.json');
-    const cooldownTime = config.exploreCooldown || 120000; // 2 minutes default
-    const lastExplore = user.lastExplore ? new Date(user.lastExplore).getTime() : 0;
-    const timeLeft = (lastExplore + cooldownTime) - Date.now();
-
-    if (timeLeft > 0 && userId !== IMMUNE_USER_ID) {
-        return message.reply(`⏰ You need to wait ${prettyTime(timeLeft)} before exploring again!`);
-    }
+    // Cooldown removed - users can explore without waiting
 
     // Check defeat cooldown
     if (user.exploreStates.defeatCooldown && user.exploreStates.defeatCooldown > Date.now()) {
@@ -433,13 +423,29 @@ async function execute(message, args, client) {
 
     const localStage = getLocalStage(user.stage);
     const locationData = LOCATIONS[currentLocation];
-    
+
     if (!locationData || localStage >= locationData.length) {
-        return message.reply('❌ No more stages available in this location!');
+        // Move to next location
+        const currentLocationIndex = Object.keys(LOCATIONS).indexOf(currentLocation);
+        if (currentLocationIndex < Object.keys(LOCATIONS).length - 1) {
+            const nextLocation = Object.keys(LOCATIONS)[currentLocationIndex + 1];
+            user.stage = 0;
+            user.lastExplore = new Date();
+            await user.save();
+
+            const nextEmbed = new EmbedBuilder()
+                .setTitle('🗺️ New Location Unlocked!')
+                .setDescription(`You've completed **${currentLocation}**!\n\nYou can now explore **${nextLocation}**!\n\nUse \`op explore\` to continue your adventure.`)
+                .setColor(0x00ff00);
+
+            return message.reply({ embeds: [nextEmbed] });
+        } else {
+            return message.reply("❌ You've completed all locations in the East Blue Saga! More content coming soon!");
+        }
     }
 
     const stageData = locationData[localStage];
-    
+
     // Handle different stage types
     if (stageData.type === 'narrative') {
         await handleNarrative(message, user, stageData, currentLocation);
@@ -453,7 +459,7 @@ async function execute(message, args, client) {
 async function handleNarrative(message, user, stageData, currentLocation) {
     const localStage = getLocalStage(user.stage);
     const totalStages = getTotalStagesInLocation(currentLocation);
-    
+
     const embed = new EmbedBuilder()
         .setTitle(`🗺️ ${currentLocation} - ${stageData.title}`)
         .setDescription(stageData.desc)
@@ -462,7 +468,7 @@ async function handleNarrative(message, user, stageData, currentLocation) {
 
     // Apply rewards
     await applyReward(user, stageData.reward);
-    
+
     // Add reward info to embed
     if (stageData.reward) {
         embed.addFields({ name: 'Reward', value: getRewardText(stageData.reward), inline: false });
@@ -471,7 +477,7 @@ async function handleNarrative(message, user, stageData, currentLocation) {
     // Set cooldown and advance stage
     user.lastExplore = new Date();
     user.stage++;
-    
+
     // Update quest progress for exploration
     try {
         const { updateQuestProgress } = require('../utils/questSystem.js');
@@ -479,16 +485,16 @@ async function handleNarrative(message, user, stageData, currentLocation) {
     } catch (error) {
         console.log('Quest system not available');
     }
-    
+
     await user.save();
-    
+
     await message.reply({ embeds: [embed] });
 }
 
 async function handleChoice(message, user, stageData, currentLocation, client) {
     const localStage = getLocalStage(user.stage);
     const totalStages = getTotalStagesInLocation(currentLocation);
-    
+
     const embed = new EmbedBuilder()
         .setTitle(`🗺️ ${currentLocation} - ${stageData.title}`)
         .setDescription(stageData.desc)
@@ -515,26 +521,26 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
     collector.on('collect', async interaction => {
         try {
             await interaction.deferUpdate();
-            
+
             const choice = interaction.customId === 'choice_yes' ? 'yes' : 'no';
             const reward = stageData.choice[choice];
-            
+
             await applyReward(user, reward);
-            
+
             const resultEmbed = new EmbedBuilder()
                 .setTitle(`✅ Choice Made: ${choice.toUpperCase()}`)
                 .setDescription(`You chose **${choice}**!`)
                 .setColor(choice === 'yes' ? 0x2ecc71 : 0x95a5a6)
                 .setFooter({ text: `Progress: ${localStage + 2}/${totalStages}` });
-            
+
             if (reward) {
                 resultEmbed.addFields({ name: 'Reward', value: getRewardText(reward), inline: false });
             }
-            
+
             // Set cooldown and advance stage
             user.lastExplore = new Date();
             user.stage++;
-            
+
             // Update quest progress for exploration
             try {
                 const { updateQuestProgress } = require('../utils/questSystem.js');
@@ -542,9 +548,9 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
             } catch (error) {
                 console.log('Quest system not available');
             }
-            
+
             await user.save();
-            
+
             await choiceMessage.edit({ embeds: [resultEmbed], components: [] });
         } catch (error) {
             console.error('Choice interaction error:', error);
@@ -564,14 +570,14 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
 async function handleBattle(message, user, stageData, currentLocation, client) {
     // Get user's team using the battle system
     const battleTeam = calculateBattleStats(user);
-    
+
     if (!battleTeam || battleTeam.length === 0) {
         return message.reply('❌ You need to set up your team first! Use `op team add <card>` to add cards to your team.');
     }
 
     // Initialize battle state
     let enemies = [];
-    
+
     if (stageData.type === 'multi_enemy') {
         enemies = stageData.enemies.map(enemy => ({
             ...enemy,
@@ -597,13 +603,13 @@ async function handleBattle(message, user, stageData, currentLocation, client) {
     if (!user.exploreStates) {
         user.exploreStates = {};
     }
-    
+
     // Store battle state
     user.exploreStates.battleState = battleState;
     user.exploreStates.inBossFight = true;
     user.exploreStates.currentStage = stageData;
     user.exploreStates.currentLocation = currentLocation;
-    
+
     await user.save();
 
     return await displayBattleState(message, user, client);
@@ -617,7 +623,7 @@ async function displayBattleState(message, user, client) {
     const battleState = user.exploreStates.battleState;
     const stageData = user.exploreStates.currentStage;
     const currentLocation = user.exploreStates.currentLocation;
-    
+
     if (!battleState || !stageData) {
         // Clean up corrupted state
         user.exploreStates.inBossFight = false;
@@ -697,7 +703,7 @@ async function displayBattleState(message, user, client) {
     collector.on('collect', async interaction => {
         try {
             await interaction.deferUpdate();
-            
+
             if (interaction.customId === 'battle_attack') {
                 await handleBattleAttack(interaction, user, battleMessage);
             } else if (interaction.customId === 'battle_items') {
@@ -716,7 +722,7 @@ async function displayBattleState(message, user, client) {
             } catch (saveError) {
                 console.error('Error cleaning up battle state:', saveError);
             }
-            
+
             if (!interaction.replied && !interaction.deferred) {
                 await interaction.followUp({ content: 'An error occurred during battle. Battle state has been reset.', ephemeral: true });
             }
@@ -730,7 +736,7 @@ async function displayBattleState(message, user, client) {
 
 async function handleBattleAttack(interaction, user, battleMessage) {
     const battleState = user.exploreStates.battleState;
-    
+
     // Get first alive card from team
     const activeCard = battleState.userTeam.find(card => card.currentHp > 0);
     if (!activeCard) {
@@ -742,14 +748,13 @@ async function handleBattleAttack(interaction, user, battleMessage) {
     if (!targetEnemy) return;
 
     let attackDamage = calculateDamage(activeCard, targetEnemy, 'normal');
-    
+
     targetEnemy.currentHp = Math.max(0, targetEnemy.currentHp - attackDamage);
-    
+
     let battleLog = `⚔️ ${activeCard.name} attacks ${targetEnemy.name} for ${attackDamage} damage!`;
-    
+
     if (targetEnemy.currentHp <= 0) {
-        battleLog += `\n💀 ${targetEnemy.name} is defeated!`;
-    }
+        battleLog += `\n💀 ${targetEnemy.name} is defeated!`;    }
 
     // Check if all enemies defeated
     if (battleState.enemies.every(e => e.currentHp <= 0)) {
@@ -763,10 +768,10 @@ async function handleBattleAttack(interaction, user, battleMessage) {
         if (!targetCard) break;
 
         const enemyDamage = calculateDamage(enemy, targetCard, 'normal');
-        
+
         targetCard.currentHp = Math.max(0, targetCard.currentHp - enemyDamage);
         battleLog += `\n💥 ${enemy.name} attacks ${targetCard.name} for ${enemyDamage} damage!`;
-        
+
         if (targetCard.currentHp <= 0) {
             battleLog += `\n💀 ${targetCard.name} is defeated!`;
         }
@@ -855,20 +860,20 @@ async function updateBattleDisplay(interaction, user, battleMessage, battleLog) 
 async function handleBattleItems(interaction, user, battleMessage) {
     const usableItems = ['healthpotion', 'strengthpotion', 'speedboostfood', 'defensepotion'];
     const availableItems = usableItems.filter(item => canUseInventoryItem(user, item));
-    
+
     if (availableItems.length === 0) {
         return await interaction.followUp({ content: 'You have no usable items!', ephemeral: true });
     }
-    
+
     const itemButtons = availableItems.map(item => 
         new ButtonBuilder()
             .setCustomId(`use_${item}`)
             .setLabel(item.charAt(0).toUpperCase() + item.slice(1).replace(/([A-Z])/g, ' $1'))
             .setStyle(ButtonStyle.Primary)
     );
-    
+
     const itemRow = new ActionRowBuilder().addComponents(itemButtons.slice(0, 5));
-    
+
     const itemMessage = await interaction.followUp({ 
         content: 'Choose an item to use:', 
         components: [itemRow], 
@@ -881,10 +886,10 @@ async function handleBattleItems(interaction, user, battleMessage) {
 
     itemCollector.on('collect', async itemInteraction => {
         await itemInteraction.deferUpdate();
-        
+
         const itemName = itemInteraction.customId.replace('use_', '');
         const effect = useInventoryItem(user, itemName);
-        
+
         if (!effect) {
             return await itemInteraction.followUp({ content: 'Item could not be used!', ephemeral: true });
         }
@@ -930,7 +935,7 @@ async function handleEnemyTurn(interaction, user, battleMessage) {
         if (!targetCard) break;
 
         const damage = calculateDamage(enemy, targetCard, 'normal');
-        
+
         targetCard.currentHp = Math.max(0, targetCard.currentHp - damage);
         battleLog += `${enemy.name} attacks ${targetCard.name} for ${damage} damage!\n`;
 
@@ -956,15 +961,15 @@ function canUseInventoryItem(user, itemName) {
 
 function useInventoryItem(user, itemName) {
     if (!canUseInventoryItem(user, itemName)) return null;
-    
+
     const normalizedItem = normalizeItemName(itemName);
     const itemIndex = user.inventory.findIndex(item => normalizeItemName(item) === normalizedItem);
-    
+
     if (itemIndex === -1) return null;
-    
+
     // Remove item from inventory
     user.inventory.splice(itemIndex, 1);
-    
+
     // Return item effects
     const itemEffects = {
         'healthpotion': { type: 'heal', amount: 50 },
@@ -972,7 +977,7 @@ function useInventoryItem(user, itemName) {
         'speedboostfood': { type: 'speed_boost', amount: 15, duration: 3 },
         'defensepotion': { type: 'defense_boost', amount: 15, duration: 3 }
     };
-    
+
     return itemEffects[normalizedItem] || null;
 }
 
@@ -982,17 +987,17 @@ async function handleBattleFlee(interaction, user, battleMessage) {
         user.exploreStates.inBossFight = false;
         user.exploreStates.battleState = null;
         user.exploreStates.currentStage = null;
-        
+
         // Set flee cooldown
         user.exploreStates.defeatCooldown = Date.now() + (30 * 60 * 1000); // 30 minute cooldown for fleeing
-        
+
         await user.save();
-        
+
         const fleeEmbed = new EmbedBuilder()
             .setTitle('🏃‍♂️ Fled from Battle!')
             .setDescription('You successfully escaped from the battle, but you\'ll need to wait before trying again.')
             .setColor(0x95a5a6);
-        
+
         await battleMessage.edit({ embeds: [fleeEmbed], components: [] });
     } catch (error) {
         console.error('Error handling battle flee:', error);
@@ -1003,25 +1008,25 @@ async function handleBattleFlee(interaction, user, battleMessage) {
 async function handleBattleVictory(interaction, user, battleMessage, battleLog) {
     const stageData = user.exploreStates.currentStage;
     const currentLocation = user.exploreStates.currentLocation;
-    
+
     // Clean up battle state
     user.exploreStates.inBossFight = false;
     user.exploreStates.battleState = null;
     user.exploreStates.currentStage = null;
-    
+
     // Apply rewards
     await applyReward(user, stageData.reward);
-    
+
     // Set cooldown and advance stage
     user.lastExplore = new Date();
     user.stage++;
-    
+
     // Reset team HP for next battle
     if (user.team) {
         const battleTeam = calculateBattleStats(user);
         resetTeamHP(battleTeam);
     }
-    
+
     // Update quest progress
     try {
         const { updateQuestProgress } = require('../utils/questSystem.js');
@@ -1032,54 +1037,54 @@ async function handleBattleVictory(interaction, user, battleMessage, battleLog) 
     } catch (error) {
         console.log('Quest system not available');
     }
-    
+
     await user.save();
-    
+
     const localStage = getLocalStage(user.stage - 1); // -1 because we already advanced
     const totalStages = getTotalStagesInLocation(currentLocation);
-    
+
     const victoryEmbed = new EmbedBuilder()
         .setTitle('🎉 Victory!')
         .setDescription(battleLog + '\n\n✅ **You won the battle!**\n*Your team has recovered!*')
         .setColor(0x2ecc71)
         .setFooter({ text: `Progress: ${localStage + 1}/${totalStages}` });
-    
+
     if (stageData.reward) {
         victoryEmbed.addFields({ name: 'Rewards', value: getRewardText(stageData.reward), inline: false });
     }
-    
+
     await battleMessage.edit({ embeds: [victoryEmbed], components: [] });
 }
 
 async function handleBattleDefeat(interaction, user, battleMessage, battleLog) {
     const stageData = user.exploreStates.currentStage;
     const currentLocation = user.exploreStates.currentLocation;
-    
+
     // Clean up battle state
     user.exploreStates.inBossFight = false;
     user.exploreStates.battleState = null;
     user.exploreStates.currentStage = null;
-    
+
     // Set defeat cooldown
     user.exploreStates.defeatCooldown = Date.now() + (stageData.loseCooldown || DEFEAT_COOLDOWN);
-    
+
     await user.save();
-    
+
     const localStage = getLocalStage(user.stage);
     const totalStages = getTotalStagesInLocation(currentLocation);
-    
+
     const defeatEmbed = new EmbedBuilder()
         .setTitle('💀 Defeat!')
         .setDescription(battleLog + '\n\n❌ **You were defeated!**')
         .setColor(0xe74c3c)
         .setFooter({ text: `Progress: ${localStage + 1}/${totalStages}` });
-    
+
     await battleMessage.edit({ embeds: [defeatEmbed], components: [] });
 }
 
 async function applyReward(user, reward) {
     if (!reward) return;
-    
+
     if (reward.type === 'xp') {
         addXP(user, reward.amount);
     } else if (reward.type === 'beli') {
@@ -1113,7 +1118,7 @@ async function applyReward(user, reward) {
 
 function getRewardText(reward) {
     if (!reward) return 'None';
-    
+
     if (reward.type === 'xp') {
         return `+${reward.amount} XP`;
     } else if (reward.type === 'beli') {
@@ -1128,7 +1133,7 @@ function getRewardText(reward) {
     } else if (reward.type === 'saga_unlock') {
         return `${reward.saga} Saga Unlocked!`;
     }
-    
+
     return 'Unknown reward';
 }
 

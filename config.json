@@ -8,8 +8,12 @@
   "exploreCooldown": 120000,
   "battleCooldown": 300000,
   "duelCooldown": 600000,
-  "adminRoles": ["Admin", "Moderator"],
+  "adminRoles": [
+    "Admin",
+    "Moderator"
+  ],
   "defaultCurrency": 500,
   "marketTax": 0.05,
-  "dailyQuestResetHour": 0
+  "dailyQuestResetHour": 0,
+  "resetChannelId": "1389112806321950750"
 }

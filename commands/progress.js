@@ -1,4 +1,7 @@
-const data = { name: 'progress', description: 'View your current saga.' };
+const { SlashCommandBuilder } = require('discord.js');
+const data = new SlashCommandBuilder()
+  .setName('progress')
+  .setDescription('View your current saga.');
 
 const User = require('../db/models/User.js');
 

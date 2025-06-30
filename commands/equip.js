@@ -1,3 +1,4 @@
+const { SlashCommandBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
 
 // Normalize string for fuzzy matching
@@ -53,10 +54,9 @@ function getEquipmentStats(itemName) {
     return itemStats[normalizedItem] || { hp: 0, atk: 0, spd: 0, def: 0 };
 }
 
-const data = {
-    name: 'equip',
-    description: 'Equip an item to a card to boost its stats.',
-};
+const data = new SlashCommandBuilder()
+  .setName('equip')
+  .setDescription('Equip an item to a card to boost its stats.');
 
 // Usage: op equip strawhat luffy
 async function execute(message, args, client) {

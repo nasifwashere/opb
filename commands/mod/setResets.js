@@ -1,22 +1,66 @@
 
-const { EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const fs = require('fs').promises;
 const path = require('path');
 
 const OWNER_ID = '1257718161298690119';
 const CONFIG_PATH = path.join(__dirname, '../../config.json');
 
-const data = { 
-    name: 'setresets', 
-    description: 'Set the reset notification channel (Owner only)' 
+const data = new SlashCommandBuilder()
+  .setName('setresets')
+  .setDescription('Set the reset notification channel (Owner only)')
+  .addStringOption(option =>
+    option.setName('category')
+      .setDescription('Type of reset to configure')
+      .setRequired(true)
+      .addChoices(
+        { name: 'Pull Resets', value: 'pulls' },
+        { name: 'Daily Quests', value: 'daily' },
+        { name: 'Weekly Quests', value: 'weekly' }
+      )
+  )
+  .addChannelOption(option =>
+    option.setName('channel')
+      .setDescription('Channel to send reset notifications')
+      .setRequired(false)
+  );
+
+// Text command data for legacy support
+const textData = {
+  name: 'setresets',
+  description: 'Set the reset notification channel (Owner only)',
+  usage: 'setresets <pulls/daily/weekly> [#channel]'
 };
 
 async function execute(message, args, client) {
-    if (message.author.id !== OWNER_ID) {
-        return message.reply('❌ This command is restricted to the bot owner.');
+    // Handle both slash commands and text commands
+    const userId = message.author?.id || message.user?.id;
+    const isInteraction = !!message.user;
+    
+    if (userId !== OWNER_ID) {
+        const response = '❌ This command is restricted to the bot owner.';
+        return isInteraction ? message.reply({ content: response, ephemeral: true }) : message.reply(response);
     }
 
-    const channel = message.mentions.channels.first() || message.channel;
+    let category, channel;
+    
+    if (isInteraction) {
+        // Slash command
+        category = message.options.getString('category');
+        channel = message.options.getChannel('channel') || message.channel;
+    } else {
+        // Text command - fix argument parsing
+        if (!args || args.length === 0) {
+            return message.reply('❌ Usage: `op setresets <pulls/daily/weekly> [#channel]`');
+        }
+        
+        category = args[0].toLowerCase();
+        if (!['pulls', 'daily', 'weekly'].includes(category)) {
+            return message.reply('❌ Category must be: pulls, daily, or weekly');
+        }
+        
+        channel = message.mentions.channels.first() || message.channel;
+    }
     
     try {
         // Load existing config
@@ -28,18 +72,27 @@ async function execute(message, args, client) {
             console.log('Creating new config file');
         }
 
-        // Update config
-        config.resetChannelId = channel.id;
+        // Update config based on category
+        const configKey = category === 'pulls' ? 'resetChannelId' : 
+                         category === 'daily' ? 'dailyQuestResetChannelId' : 
+                         'weeklyQuestResetChannelId';
+        
+        config[configKey] = channel.id;
         
         // Save config
         await fs.writeFile(CONFIG_PATH, JSON.stringify(config, null, 2));
         
         const embed = new EmbedBuilder()
             .setTitle('✅ Reset Channel Set')
-            .setDescription(`Reset notifications will now be sent to ${channel}`)
+            .setDescription(`${category.charAt(0).toUpperCase() + category.slice(1)} reset notifications will now be sent to ${channel}`)
             .setColor(0x00ff00);
-            
-        await message.reply({ embeds: [embed] });
+        
+        const response = { embeds: [embed] };
+        if (isInteraction) {
+            await message.reply(response);
+        } else {
+            await message.reply(response);
+        }
         
         // Start the reset timer if not already running
         if (!client.resetTimer) {
@@ -110,4 +163,4 @@ async function sendResetNotification(client) {
     }
 }
 
-module.exports = { data, execute, startResetTimer };
+module.exports = { data, textData, execute, startResetTimer };

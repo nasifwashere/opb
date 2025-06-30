@@ -1,4 +1,10 @@
+const { SlashCommandBuilder } = require('discord.js');
 const ownerModule = require('./owner.js');
+
+const data = new SlashCommandBuilder()
+  .setName('cheats')
+  .setDescription('cheats command');
+
 
 module.exports = {
   data: {

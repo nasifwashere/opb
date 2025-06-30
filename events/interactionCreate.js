@@ -68,28 +68,36 @@ async function execute(interaction, client) {
   if (interaction.isChatInputCommand()) {
     const command = client.commands.get(interaction.commandName);
 
-    if (!command) return;
+    if (!command) {
+      return interaction.reply({ content: 'Command not found!', ephemeral: true });
+    }
 
     try {
+      // Defer the reply to give more time for processing
+      await interaction.deferReply();
+
       // Convert slash command to message-like format for existing commands
       const fakeMessage = {
         author: interaction.user,
         channel: interaction.channel,
         guild: interaction.guild,
+        member: interaction.member,
         reply: async (content) => {
-          if (interaction.deferred || interaction.replied) {
-            return interaction.editReply(content);
+          if (typeof content === 'string') {
+            return interaction.editReply({ content });
           } else {
-            return interaction.reply(content);
+            return interaction.editReply(content);
           }
         }
       };
 
       const args = [];
       // Extract arguments from slash command options
-      if (interaction.options && interaction.options.data && interaction.options.data.length > 0) {
+      if (interaction.options) {
         interaction.options.data.forEach(option => {
-          if (option.value !== undefined) args.push(option.value.toString());
+          if (option.value !== undefined) {
+            args.push(option.value.toString());
+          }
         });
       }
 
@@ -98,10 +106,14 @@ async function execute(interaction, client) {
       console.error('Error executing slash command:', error);
       const errorMessage = 'There was an error while executing this command!';
 
-      if (interaction.deferred || interaction.replied) {
-        await interaction.editReply({ content: errorMessage, ephemeral: true });
-      } else {
-        await interaction.reply({ content: errorMessage, ephemeral: true });
+      try {
+        if (interaction.deferred) {
+          await interaction.editReply({ content: errorMessage });
+        } else if (!interaction.replied) {
+          await interaction.reply({ content: errorMessage, ephemeral: true });
+        }
+      } catch (followUpError) {
+        console.error('Error sending error message:', followUpError);
       }
     }
     return;

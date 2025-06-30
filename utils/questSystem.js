@@ -93,6 +93,9 @@ async function getAvailableQuests(user) {
  * @returns {Array} Array of completed quest IDs
  */
 async function updateQuestProgress(user, actionType, amount = 1) {
+  // Check and reset quests if needed
+  await checkAndResetUserQuests(user);
+  
   if (!user.activeQuests) user.activeQuests = [];
   if (!user.completedQuests) user.completedQuests = [];
 
@@ -315,10 +318,58 @@ function getQuestResetPeriod(questType) {
   return '';
 }
 
+/**
+ * Check if user needs quest reset and perform it
+ * @param {Object} user - User document
+ * @returns {boolean} Whether resets were performed
+ */
+async function checkAndResetUserQuests(user) {
+  let resetPerformed = false;
+  const now = new Date();
+  
+  if (!user.questData) {
+    user.questData = {
+      progress: new Map(),
+      completed: [],
+      lastReset: { daily: 0, weekly: 0 }
+    };
+  }
+  
+  // Check daily reset (if it's a new day)
+  const lastDailyReset = new Date(user.questData.lastReset.daily);
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  if (user.questData.lastReset.daily === 0 || lastDailyReset < todayStart) {
+    // Reset daily quests
+    user.completedQuests = user.completedQuests?.filter(qId => !qId.includes('daily_')) || [];
+    user.activeQuests = user.activeQuests?.filter(aq => !aq.questId.startsWith('daily_')) || [];
+    user.questData.lastReset.daily = now.getTime();
+    resetPerformed = true;
+    console.log(`[QUEST] Reset daily quests for user ${user.userId}`);
+  }
+  
+  // Check weekly reset (if it's a new week)
+  const lastWeeklyReset = new Date(user.questData.lastReset.weekly);
+  const weekStart = new Date(todayStart);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Start of this week
+  
+  if (user.questData.lastReset.weekly === 0 || lastWeeklyReset < weekStart) {
+    // Reset weekly quests
+    user.completedQuests = user.completedQuests?.filter(qId => !qId.includes('weekly_')) || [];
+    user.activeQuests = user.activeQuests?.filter(aq => !aq.questId.startsWith('weekly_')) || [];
+    user.questData.lastReset.weekly = now.getTime();
+    resetPerformed = true;
+    console.log(`[QUEST] Reset weekly quests for user ${user.userId}`);
+  }
+  
+  return resetPerformed;
+}
+
 module.exports = {
   getAvailableQuests,
   updateQuestProgress,
   claimQuestReward,
   resetQuests,
-  getQuestProgress
+  getQuestProgress,
+  checkAndResetUserQuests
 };

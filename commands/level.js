@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
 const fs = require('fs');
 const path = require('path');
@@ -19,7 +19,9 @@ function calculateLevelUpCost(currentLevel) {
   return Math.floor(100 * currentLevel * Math.pow(1.5, currentLevel / 10));
 }
 
-const data = { name: 'level', description: 'Level up your cards using duplicates and Beli.' };
+const data = new SlashCommandBuilder()
+  .setName('level')
+  .setDescription('Level up your cards using duplicates and Beli.');
 
 async function execute(message, args) {
   const userId = message.author.id;

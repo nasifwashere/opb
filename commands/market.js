@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle  } = require('discord.js');
 const User = require('../db/models/User.js');
 const MarketListing = require('../db/models/Market.js');
 const fs = require('fs');
@@ -117,7 +117,9 @@ async function getMarketListings(type = 'all', page = 0, limit = 6) {
     return { listings, totalPages };
 }
 
-const data = { name: 'market', description: 'Browse the player marketplace to buy and sell items.' };
+const data = new SlashCommandBuilder()
+  .setName('market')
+  .setDescription('Browse the player marketplace to buy and sell items.');
 
 async function execute(message, args) {
     const userId = message.author.id;
@@ -348,6 +350,31 @@ async function handleMarketList(message, user, args) {
 
     await listing.save();
     await user.save();
+
+    // Announce the listing in the configured channel
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const { EmbedBuilder } = require('discord.js');
+        
+        const configData = fs.readFileSync(path.join(__dirname, '../config.json'), 'utf8');
+        const config = JSON.parse(configData);
+        
+        if (config.marketChannelId) {
+            const marketChannel = message.client.channels.cache.get(config.marketChannelId);
+            if (marketChannel) {
+                const marketEmbed = new EmbedBuilder()
+                    .setTitle('🏪 New Market Listing!')
+                    .setDescription(`**${itemName}** ${itemRank ? `[${itemRank}]` : ''}\n\n**Price:** ${price} Beli\n**Seller:** ${message.author.username}${description ? `\n**Description:** ${description}` : ''}`)
+                    .setColor(0x2ecc40)
+                    .setTimestamp();
+                
+                await marketChannel.send({ embeds: [marketEmbed] });
+            }
+        }
+    } catch (error) {
+        console.error('Error announcing market listing:', error);
+    }
 
     return message.reply(`Listed **${itemName}** for ${price} Beli! It will expire in 7 days.`);
 }

@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
 const fs = require('fs');
 const path = require('path');
@@ -53,7 +53,9 @@ function findUserItem(user, itemName) {
   return user.inventory?.find(i => normalize(i) === normalize(itemName));
 }
 
-const data = { name: 'sell', description: 'Sell cards or items for Beli.' };
+const data = new SlashCommandBuilder()
+  .setName('sell')
+  .setDescription('Sell cards or items for Beli.');
 
 async function execute(message, args) {
   const userId = message.author.id;

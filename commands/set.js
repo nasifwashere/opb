@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
 
 const validSettings = {
@@ -93,7 +93,9 @@ function createSettingsEmbed(user) {
   return embed;
 }
 
-const data = { name: 'set', description: 'Change your bot settings and preferences.' };
+const data = new SlashCommandBuilder()
+  .setName('set')
+  .setDescription('Change your bot settings and preferences.');
 
 async function execute(message, args) {
   const userId = message.author.id;

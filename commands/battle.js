@@ -1,16 +1,14 @@
 
-const {
-  ActionRowBuilder,
+const { SlashCommandBuilder, ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder
-} = require('discord.js');
+ } = require('discord.js');
 const User = require('../db/models/User.js');
 
-const data = {
-  name: 'battle',
-  description: 'Fight boss battles for rewards.'
-};
+const data = new SlashCommandBuilder()
+  .setName('battle')
+  .setDescription('Fight boss battles for rewards.');
 
 async function execute(message) {
   const userId = message.author.id;

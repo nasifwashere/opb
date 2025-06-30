@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle  } = require('discord.js');
 const User = require('../db/models/User.js');
 const fs = require('fs');
 const path = require('path');
@@ -84,7 +84,9 @@ function createShopButtons(currentCategory) {
   return new ActionRowBuilder().addComponents(buttons);
 }
 
-const data = { name: 'shop', description: 'Browse and purchase items, cards, and boosts.' };
+const data = new SlashCommandBuilder()
+  .setName('shop')
+  .setDescription('Browse and purchase items, cards, and boosts.');
 
 async function execute(message, args) {
   const userId = message.author.id;

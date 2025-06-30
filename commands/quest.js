@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle  } = require('discord.js');
 const User = require('../db/models/User.js');
 
 // Quest definitions
@@ -256,10 +256,9 @@ function createQuestButtons(currentType) {
     return [new ActionRowBuilder().addComponents(buttons)];
 }
 
-const data = {
-    name: 'quest',
-    description: 'View and manage your quests.'
-};
+const data = new SlashCommandBuilder()
+  .setName('quest')
+  .setDescription('View and manage your quests.');
 
 async function execute(message, args, client) {
     const userId = message.author.id;

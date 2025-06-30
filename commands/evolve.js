@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
 const fs = require('fs');
 const path = require('path');
@@ -32,7 +32,9 @@ function getEvolutionCost(fromRank, toRank) {
   return evolutionCosts[key] || null;
 }
 
-const data = { name: 'evolve', description: 'Evolve a card to its next form.' };
+const data = new SlashCommandBuilder()
+  .setName('evolve')
+  .setDescription('Evolve a card to its next form.');
 
 async function execute(message, args) {
   const userId = message.author.id;

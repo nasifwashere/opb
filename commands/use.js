@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
 
 const USABLE_ITEMS = {
@@ -23,7 +23,9 @@ const USABLE_ITEMS = {
   }
 };
 
-const data = { name: 'use', description: 'Use consumable items from your inventory.' };
+const data = new SlashCommandBuilder()
+  .setName('use')
+  .setDescription('Use consumable items from your inventory.');
 
 async function execute(message, args) {
   const userId = message.author.id;

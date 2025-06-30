@@ -1,11 +1,10 @@
-const { EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
 const config = require('../config.json');
 
-const data = {
-    name: 'start',
-    description: "Begin your One Piece adventure!"
-};
+const data = new SlashCommandBuilder()
+  .setName('start')
+  .setDescription('Begin your One Piece adventure!');
 
 async function execute(message, args, client) {
     const userId = message.author.id;

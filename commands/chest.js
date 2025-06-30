@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
 
 const CHEST_REWARDS = {
@@ -116,7 +116,9 @@ function openChest(chestType) {
   return { chest, rewards };
 }
 
-const data = { name: 'chest', description: 'Open chests to get rewards!' };
+const data = new SlashCommandBuilder()
+  .setName('chest')
+  .setDescription('Open chests to get rewards!');
 
 async function execute(message, args) {
   const userId = message.author.id;

@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle  } = require('discord.js');
 const User = require('../db/models/User.js');
 const fs = require('fs');
 const path = require('path');
@@ -45,10 +45,9 @@ const ownerCommands = {
   }
 };
 
-const data = {
-  name: 'owner',
-  description: 'Owner commands (owner only).'
-};
+const data = new SlashCommandBuilder()
+  .setName('owner')
+  .setDescription('Owner commands (owner only).');
 
 function createOwnerMainEmbed() {
   const embed = new EmbedBuilder()

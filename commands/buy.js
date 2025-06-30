@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
 const fs = require('fs');
 const path = require('path');
@@ -20,7 +20,9 @@ function findShopItem(itemName, shopData) {
   );
 }
 
-const data = { name: 'buy', description: 'Buy items from the shop using Beli.' };
+const data = new SlashCommandBuilder()
+  .setName('buy')
+  .setDescription('Buy items from the shop using Beli.');
 
 async function execute(message, args) {
   const userId = message.author.id;
