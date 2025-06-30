@@ -7,6 +7,7 @@ const commandCategories = {
       { name: 'start', desc: 'Begin your pirate adventure' },
       { name: 'pull', desc: 'Pull random cards from gacha' },
       { name: 'collection [rank]', desc: 'View your card collection' },
+      { name: 'mycard <name>', desc: 'View detailed info about a specific card' },
       { name: 'info <card>', desc: 'View detailed card information' },
       { name: 'inventory', desc: 'View your items' },
       { name: 'equip <item> <card>', desc: 'Equip items to cards' },
@@ -18,6 +19,7 @@ const commandCategories = {
   'Battle': {
     commands: [
       { name: 'team [add/remove] [card]', desc: 'Manage your battle team' },
+      { name: 'autoteam [preset]', desc: 'Auto-build team with strongest cards' },
       { name: 'duel @user', desc: 'Challenge another player' },
       { name: 'level <card>', desc: 'Level up cards using duplicates' },
       { name: 'evolve <card>', desc: 'Evolve cards to stronger forms' }
@@ -36,11 +38,14 @@ const commandCategories = {
       { name: 'shop', desc: 'Browse items for purchase' },
       { name: 'buy <item>', desc: 'Purchase items with Beli' },
       { name: 'sell <card/item>', desc: 'Sell items for Beli' },
-      { name: 'market', desc: 'Player trading marketplace' }
+      { name: 'market', desc: 'Player trading marketplace' },
+      { name: 'trade @user <your_card> <their_card>', desc: 'Trade cards with other players' }
     ]
   },
   'Social': {
     commands: [
+      { name: 'crew [create/join/leave/info]', desc: 'Manage your pirate crew' },
+      { name: 'daily', desc: 'Claim your daily reward' },
       { name: 'leaderboard', desc: 'View top players' },
       { name: 'set <setting> <value>', desc: 'Change bot settings' }
     ]

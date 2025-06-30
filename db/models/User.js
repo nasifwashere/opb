@@ -72,6 +72,23 @@ const userSchema = new mongoose.Schema({
     pulls: [{ type: Number }],
     lastPull: { type: Number, default: 0 },
     
+    // Crew system
+    crewId: { type: String, default: null },
+    crewData: {
+        name: String,
+        captain: String,
+        members: [String],
+        treasury: { type: Number, default: 0 },
+        level: { type: Number, default: 1 },
+        createdAt: { type: Date, default: Date.now }
+    },
+    
+    // Daily rewards
+    dailyReward: {
+        lastClaimed: { type: Date, default: null },
+        streak: { type: Number, default: 0 }
+    },
+
     // Timestamps
     createdAt: { type: Date, default: Date.now },
     lastActive: { type: Date, default: Date.now }
