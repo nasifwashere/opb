@@ -23,34 +23,28 @@ function calculateCardStats(cardDef, level) {
 }
 
 function buildTeamEmbed(teamCards, username, totalPower) {
-  let fields = [];
-  for (let i = 0; i < teamCards.length; i++) {
+  let teamDisplay = '';
+  
+  for (let i = 0; i < 3; i++) {
+    const slotNumber = i + 1;
     const card = teamCards[i];
-    const lockStatus = card.locked ? ' <:Padlock_Crown:1388587874084982956>' : '';
-
-    fields.push({
-      name: `Lv. ${card.level} ${card.displayName}${lockStatus}`,
-      value: `💪 Power: ${card.power}\n❤️ Health: ${card.health}\n⚡ Speed: ${card.speed}`,
-      inline: true,
-    });
-  }
-  // Fill empty slots if less than 3
-  while (fields.length < 3) {
-    fields.push({
-      name: "\u200b",
-      value: "*(empty)*",
-      inline: true,
-    });
+    
+    if (card) {
+      const lockStatus = card.locked ? ' 🔒' : '';
+      teamDisplay += `**${slotNumber}.** Lv.${card.level} ${card.displayName}${lockStatus}\n`;
+      teamDisplay += `\`\`\`${card.power} PWR • ${card.health} HP • ${card.speed} SPD\`\`\`\n`;
+    } else {
+      teamDisplay += `**${slotNumber}.** *Empty Slot*\n`;
+      teamDisplay += `\`\`\`Use 'op team add <card>' to fill this slot\`\`\`\n`;
+    }
   }
 
   const embed = new EmbedBuilder()
-    .setTitle(`⚔️ ${username}'s Crew`)
-    .addFields(fields)
-    .addFields([
-      { name: "📊 Total Team Power", value: `**${totalPower}**`, inline: false }
-    ])
-    .setColor(0xe67e22)
-    .setFooter({ text: "Use op team add <card> to add crew members." });
+    .setTitle(`${username}'s Team`)
+    .setDescription(teamDisplay)
+    .addFields({ name: "Total Power", value: `${totalPower}`, inline: true })
+    .setColor(0x2f3136)
+    .setFooter({ text: "op team add <card> • op team remove <card>" });
 
   return embed;
 }

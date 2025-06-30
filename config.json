@@ -15,5 +15,7 @@
   "defaultCurrency": 500,
   "marketTax": 0.05,
   "dailyQuestResetHour": 0,
-  "resetChannelId": "1389112806321950750"
+  "resetChannelId": "1389112806321950750",
+  "dropChannelId": "1389092391973027861",
+  "marketChannelId": "1389108615960334357"
 }

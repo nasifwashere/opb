@@ -15,29 +15,36 @@ function normalize(str) {
 
 function createMarketEmbed(listings, page, totalPages, type = 'all') {
     const embed = new EmbedBuilder()
-        .setTitle('Player Marketplace')
-        .setDescription(`Browse and purchase items from other players\n\nShowing: ${type === 'all' ? 'All Items' : type.charAt(0).toUpperCase() + type.slice(1)}`)
-        .setColor(0x2ecc40)
-        .setFooter({ text: `Page ${page + 1}/${totalPages || 1} • Market tax: ${(MARKET_TAX * 100)}%` });
+        .setTitle('Marketplace')
+        .setDescription(`Showing: ${type === 'all' ? 'All Items' : type.charAt(0).toUpperCase() + type.slice(1)}`)
+        .setColor(0x2f3136)
+        .setFooter({ text: `Page ${page + 1}/${totalPages || 1} • Use 'op market buy <number>' to purchase` });
 
     if (listings.length === 0) {
         embed.addFields({ name: 'No Listings', value: 'No items are currently for sale in this category.', inline: false });
         return embed;
     }
 
+    let marketDisplay = '';
     listings.forEach((listing, index) => {
         const itemDisplay = listing.type === 'card'
             ? `[${listing.itemRank}] ${listing.itemName}${listing.itemLevel ? ` (Lv.${listing.itemLevel})` : ''}`
             : listing.itemName;
 
         const timeLeft = Math.max(0, Math.floor((listing.expiresAt - Date.now()) / (1000 * 60 * 60)));
+        const pageOffset = page * 6; // 6 items per page
+        const itemNumber = pageOffset + index + 1;
 
-        embed.addFields({
-            name: `${index + 1}. ${itemDisplay}`,
-            value: `**${listing.price} Beli**\nSeller: ${listing.sellerName}\n${timeLeft}h remaining\n${listing.description ? `${listing.description}` : ''}`,
-            inline: true
-        });
+        marketDisplay += `**${itemNumber}.** ${itemDisplay}\n`;
+        marketDisplay += `\`\`\`${listing.price} Beli • ${listing.sellerName} • ${timeLeft}h left\`\`\``;
+        
+        if (listing.description) {
+            marketDisplay += `*${listing.description}*\n`;
+        }
+        marketDisplay += '\n';
     });
+
+    embed.setDescription(`${embed.data.description}\n\n${marketDisplay}`);
 
     return embed;
 }
@@ -74,11 +81,11 @@ function createMarketButtons(page, totalPages, hasMyListings = false) {
     const actionButtons = [
         new ButtonBuilder()
             .setCustomId('market_buy')
-            .setLabel('Buy Item')
-            .setStyle(ButtonStyle.Success),
+            .setLabel('📋 How to Buy')
+            .setStyle(ButtonStyle.Secondary),
         new ButtonBuilder()
             .setCustomId('market_list')
-            .setLabel('List Item')
+            .setLabel('📦 List Item')
             .setStyle(ButtonStyle.Primary)
     ];
 
@@ -179,7 +186,7 @@ async function execute(message, args) {
             currentPage = 0;
         } else if (interaction.customId === 'market_buy') {
             await interaction.followUp({
-                content: 'To buy an item, use: `op market buy <item number>`\n\nExample: `op market buy 1`',
+                content: '**How to Buy Items:**\n\nUse: `op market buy <item number>`\n\nExample: `op market buy 1` buys the first item shown\n\n*Item numbers are shown next to each listing*',
                 ephemeral: true
             });
             return;
@@ -361,11 +368,27 @@ async function handleMarketList(message, user, args) {
         if (config.marketChannelId) {
             const marketChannel = message.client.channels.cache.get(config.marketChannelId);
             if (marketChannel) {
+                // Get the current market position for this item
+                const { listings } = await getMarketListings('all', 0, 50);
+                const itemPosition = listings.findIndex(listing => 
+                    listing.sellerId === user.userId && 
+                    listing.itemName === itemName && 
+                    listing.price === price
+                ) + 1;
+
                 const marketEmbed = new EmbedBuilder()
-                    .setTitle('🏪 New Market Listing!')
-                    .setDescription(`**${itemName}** ${itemRank ? `[${itemRank}]` : ''}\n\n**Price:** ${price} Beli\n**Seller:** ${message.author.username}${description ? `\n**Description:** ${description}` : ''}`)
-                    .setColor(0x2ecc40)
-                    .setTimestamp();
+                    .setTitle('New Market Listing')
+                    .setDescription(`${itemRank ? `**[${itemRank}]** ` : ''}**${itemName}**${itemLevel ? ` (Lv.${itemLevel})` : ''}\n\n\`\`\`${price} Beli\`\`\``)
+                    .addFields(
+                        { name: 'Seller', value: message.author.username, inline: true },
+                        { name: 'Item Number', value: `${itemPosition > 0 ? itemPosition : 'TBD'}`, inline: true }
+                    )
+                    .setColor(0x2f3136)
+                    .setFooter({ text: `Use 'op market buy ${itemPosition > 0 ? itemPosition : '<number>'}' to purchase` });
+
+                if (description) {
+                    marketEmbed.addFields({ name: 'Description', value: description, inline: false });
+                }
 
                 await marketChannel.send({ embeds: [marketEmbed] });
             }

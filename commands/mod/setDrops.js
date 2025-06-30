@@ -61,7 +61,7 @@ async function execute(message, args, client) {
 
         const embed = new EmbedBuilder()
             .setTitle('✅ Drop Channel Set')
-            .setDescription(`Card drops will now appear in ${channel} every 10 minutes`)
+            .setDescription(`Card drops will now appear in ${channel} every 5 minutes`)
             .setColor(0x00ff00);
 
         const response = { embeds: [embed] };
@@ -83,16 +83,27 @@ async function execute(message, args, client) {
 }
 
 function startDropTimer(client) {
+    // Clear any existing timer
+    if (client.dropTimer) {
+        clearInterval(client.dropTimer);
+    }
+
     // Set global next drop time
-    global.nextCardDrop = new Date(Date.now() + 10 * 60 * 1000);
-    
+    global.nextCardDrop = new Date(Date.now() + 5 * 60 * 1000);
+
+    // Start with immediate drop after 10 seconds, then regular intervals
+    setTimeout(async () => {
+        await dropRandomCard(client);
+        global.nextCardDrop = new Date(Date.now() + 5 * 60 * 1000);
+    }, 10 * 1000);
+
     client.dropTimer = setInterval(async () => {
         await dropRandomCard(client);
         // Update global next drop time
-        global.nextCardDrop = new Date(Date.now() + 10 * 60 * 1000);
-    }, 10 * 60 * 1000); // 10 minutes
+        global.nextCardDrop = new Date(Date.now() + 5 * 60 * 1000);
+    }, 5 * 60 * 1000); // 5 minutes
 
-    console.log('Card drop timer started - drops every 10 minutes');
+    console.log('Card drop timer started - drops every 5 minutes');
 }
 
 async function dropRandomCard(client) {
@@ -146,7 +157,7 @@ async function dropRandomCard(client) {
         const filter = i => i.customId.startsWith('claim_drop_');
         const collector = dropMessage.createMessageComponentCollector({ 
             filter, 
-            time: 5 * 60 * 1000, // 5 minutes to claim
+            time: 60 * 60 * 1000, // 1 hour to claim
             max: 1 
         });
 
@@ -262,4 +273,12 @@ function weightedRandomRank() {
     return 'C'; // Default to C if something goes wrong
 }
 
-module.exports = { data, textData, execute, startDropTimer };
+function stopDropTimer(client) {
+    if (client.dropTimer) {
+        clearInterval(client.dropTimer);
+        client.dropTimer = null;
+        console.log('Card drop timer stopped');
+    }
+}
+
+module.exports = { data, textData, execute, startDropTimer, stopDropTimer };
