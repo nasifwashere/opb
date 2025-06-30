@@ -156,15 +156,36 @@ async function execute(message, args) {
   const collector = duelMessage.createMessageComponentCollector({ filter, time: 60000 });
 
   collector.on('collect', async interaction => {
-    if (interaction.customId === 'duel_accept') {
-      await interaction.deferUpdate();
-      await startDuel(message, user, opponent, message.author, mentionedUser, duelMessage);
-    } else {
-      await interaction.update({
-        content: `${mentionedUser.username} declined the duel challenge.`,
-        embeds: [],
-        components: []
-      });
+    try {
+      if (interaction.customId === 'duel_accept') {
+        await interaction.deferUpdate();
+        
+        // Refresh user data to prevent conflicts
+        user = await User.findOne({ userId });
+        opponent = await User.findOne({ userId: mentionedUser.id });
+        
+        // Double-check that both players can still duel
+        if (user.battleState.inBattle || opponent.battleState.inBattle) {
+          return interaction.followUp({ 
+            content: 'One of the players is already in battle!', 
+            ephemeral: true 
+          });
+        }
+        
+        await startDuel(message, user, opponent, message.author, mentionedUser, duelMessage);
+      } else {
+        await interaction.update({
+          content: `${mentionedUser.username} declined the duel challenge.`,
+          embeds: [],
+          components: []
+        });
+      }
+    } catch (error) {
+      console.error('Duel interaction error:', error);
+      await interaction.followUp({ 
+        content: 'An error occurred while processing the duel request.', 
+        ephemeral: true 
+      }).catch(() => {});
     }
   });
 
@@ -182,6 +203,7 @@ async function execute(message, args) {
 async function startDuel(message, user, opponent, challenger, challenged, duelMessage) {
   // Initialize battle states
   const { calculateCardStats } = require('../utils/levelSystem.js');
+  const fs = require('fs');
 
   // Load cards data
   const cardsPath = path.resolve('data', 'cards.json');

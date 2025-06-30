@@ -1,8 +1,9 @@
+
 [
   {
     "name": "Monkey D. Luffy",
     "shortDesc": "Straw Hat Pirate (East Blue)",
-    "phs": "78 / 70 / 70",
+    "phs": "78 / 70 / 72",
     "rank": "B",
     "image": "https://files.catbox.moe/gi02bo.webp",
     "evolvesFrom": null,
@@ -47,7 +48,7 @@
   {
     "name": "Monkey D. Luffy (Sun God Nika)",
     "shortDesc": "Sun god nika",
-    "phs": "150 / 150 / 150",
+    "phs": "170 / 160 / 170",
     "rank": "UR",
     "image": "https://files.catbox.moe/hd1t4e.jpg",
     "evolvesFrom": "Monkey D. Luffy (Snakeman)",
@@ -56,7 +57,7 @@
   {
     "name": "Roronoa Zoro",
     "shortDesc": "Pirate Hunter (East Blue)",
-    "phs": "90 / 88 / 88",
+    "phs": "90 / 88 / 85",
     "rank": "B",
     "image": "https://files.catbox.moe/1dzd48.jpg",
     "evolvesFrom": null,
@@ -71,7 +72,7 @@
   {
     "name": "Roronoa Zoro (Asura, Enies Lobby)",
     "shortDesc": "Pirate Hunter (Asura Form, Enies Lobby)",
-    "phs": "132 / 125 / 125",
+    "phs": "132 / 125 / 128",
     "rank": "S",
     "image": "https://files.catbox.moe/ujqbw3.webp",
     "evolvesFrom": "Roronoa Zoro",
@@ -86,7 +87,7 @@
   {
     "name": "Roronoa Zoro (King of Hell, Wano)",
     "shortDesc": "Pirate Hunter (King of Hell, Wano)",
-    "phs": "160 / 155 / 155",
+    "phs": "175 / 165 / 170",
     "rank": "UR",
     "image": "https://files.catbox.moe/3kgnfn.jpg",
     "evolvesFrom": "Roronoa Zoro (Asura, Enies Lobby)",
@@ -110,7 +111,7 @@
   {
     "name": "Nami (Climatact, Alabasta)",
     "shortDesc": "Navigator (Climatact, Alabasta)",
-    "phs": "75 / 80 / 85",
+    "phs": "85 / 88 / 92",
     "rank": "B",
     "image": "https://files.catbox.moe/ljuvfe.jpg",
     "evolvesFrom": "Nami",
@@ -125,7 +126,7 @@
   {
     "name": "Nami (Zeus, Wano)",
     "shortDesc": "Navigator (Zeus, Wano)",
-    "phs": "95 / 100 / 105",
+    "phs": "135 / 130 / 140",
     "rank": "S",
     "image": "https://files.catbox.moe/s9qk23.webp",
     "evolvesFrom": "Nami (Climatact, Alabasta)",
@@ -149,7 +150,7 @@
   {
     "name": "Usopp (Sogeking, Enies Lobby)",
     "shortDesc": "Sniper (Sogeking, Enies Lobby)",
-    "phs": "82 / 87 / 90",
+    "phs": "102 / 105 / 110",
     "rank": "A",
     "image": "https://files.catbox.moe/6jaq5i.webp",
     "evolvesFrom": "Usopp",
@@ -164,7 +165,7 @@
   {
     "name": "Usopp (God, Dressrosa)",
     "shortDesc": "God Usopp (Dressrosa)",
-    "phs": "98 / 110 / 110",
+    "phs": "158 / 165 / 175",
     "rank": "UR",
     "image": "https://files.catbox.moe/506yeu.jpg",
     "evolvesFrom": "Usopp (Sogeking, Enies Lobby)",
@@ -173,7 +174,7 @@
   {
     "name": "Sanji",
     "shortDesc": "Cook (East Blue)",
-    "phs": "77 / 82 / 80",
+    "phs": "87 / 92 / 85",
     "rank": "B",
     "image": "https://files.catbox.moe/rocqrh.webp",
     "evolvesFrom": null,
@@ -188,7 +189,7 @@
   {
     "name": "Sanji (Diable Jambe, Enies Lobby)",
     "shortDesc": "Cook (Diable Jambe, Enies Lobby)",
-    "phs": "89 / 93 / 94",
+    "phs": "109 / 113 / 115",
     "rank": "A",
     "image": "https://files.catbox.moe/j2m5lr.jpg",
     "evolvesFrom": "Sanji",
@@ -203,7 +204,7 @@
   {
     "name": "Sanji (Germa Raid Suit, Wano)",
     "shortDesc": "Cook (Germa Raid Suit, Wano)",
-    "phs": "99 / 105 / 110",
+    "phs": "165 / 170 / 185",
     "rank": "UR",
     "image": "https://files.catbox.moe/kayf56.jpg",
     "evolvesFrom": "Sanji (Diable Jambe, Enies Lobby)",
@@ -212,7 +213,7 @@
   {
     "name": "Garp",
     "shortDesc": "Marine Hero (East Blue)",
-    "phs": "95 / 98 / 97",
+    "phs": "135 / 140 / 125",
     "rank": "S",
     "image": "https://files.catbox.moe/6wga1o.webp",
     "evolvesFrom": null,
@@ -227,7 +228,7 @@
   {
     "name": "Garp (Retired, Final Saga)",
     "shortDesc": "Marine Hero (Retired, Final Saga)",
-    "phs": "110 / 120 / 120",
+    "phs": "180 / 190 / 175",
     "rank": "UR",
     "image": "https://files.catbox.moe/te1d2w.jpg",
     "evolvesFrom": "Garp",
@@ -236,7 +237,7 @@
   {
     "name": "Makino",
     "shortDesc": "Barmaid (East Blue)",
-    "phs": "30 / 40 / 35",
+    "phs": "65 / 70 / 68",
     "rank": "C",
     "image": "https://files.catbox.moe/eql81e.webp",
     "evolvesFrom": null,
@@ -245,7 +246,7 @@
   {
     "name": "Shanks",
     "shortDesc": "Red-Haired Pirate (East Blue)",
-    "phs": "90 / 98 / 97",
+    "phs": "130 / 138 / 142",
     "rank": "S",
     "image": "https://files.catbox.moe/a1vuw2.webp",
     "evolvesFrom": null,
@@ -260,7 +261,7 @@
   {
     "name": "Shanks (Emperor, Final Saga)",
     "shortDesc": "Red-Haired Pirate (Emperor, Final Saga)",
-    "phs": "120 / 130 / 130",
+    "phs": "190 / 195 / 200",
     "rank": "UR",
     "image": "https://files.catbox.moe/49otql.jpg",
     "evolvesFrom": "Shanks",
@@ -269,7 +270,7 @@
   {
     "name": "Ben Beckman",
     "shortDesc": "Red-Haired Pirate (East Blue)",
-    "phs": "80 / 88 / 93",
+    "phs": "100 / 108 / 113",
     "rank": "A",
     "image": "https://files.catbox.moe/7zkycz.png",
     "evolvesFrom": null,
@@ -278,7 +279,7 @@
   {
     "name": "Yasopp",
     "shortDesc": "Red-Haired Pirate (East Blue)",
-    "phs": "75 / 85 / 90",
+    "phs": "105 / 115 / 120",
     "rank": "A",
     "image": "https://files.catbox.moe/vzt741.webp",
     "evolvesFrom": null,
@@ -287,7 +288,7 @@
   {
     "name": "Lucky Roux",
     "shortDesc": "Red-Haired Pirate (East Blue)",
-    "phs": "75 / 85 / 90",
+    "phs": "95 / 105 / 110",
     "rank": "A",
     "image": "https://files.catbox.moe/m293ko.webp",
     "evolvesFrom": null,
@@ -296,7 +297,7 @@
   {
     "name": "Woopslap",
     "shortDesc": "Mayor (East Blue)",
-    "phs": "30 / 35 / 30",
+    "phs": "62 / 65 / 68",
     "rank": "C",
     "image": "https://files.catbox.moe/kydhbn.webp",
     "evolvesFrom": null,
@@ -305,7 +306,7 @@
   {
     "name": "Higuma",
     "shortDesc": "Mountain Bandit (East Blue)",
-    "phs": "45 / 48 / 50",
+    "phs": "70 / 72 / 75",
     "rank": "C",
     "image": "https://files.catbox.moe/qtzbtr.webp",
     "evolvesFrom": null,
@@ -314,7 +315,7 @@
   {
     "name": "Rika",
     "shortDesc": "Little Girl (East Blue)",
-    "phs": "10 / 10 / 10",
+    "phs": "60 / 62 / 65",
     "rank": "C",
     "image": "https://files.catbox.moe/66f8zq.webp",
     "evolvesFrom": null,
@@ -323,7 +324,7 @@
   {
     "name": "Coby",
     "shortDesc": "Navy Recruit (East Blue)",
-    "phs": "50 / 55 / 60",
+    "phs": "65 / 68 / 72",
     "rank": "C",
     "image": "https://files.catbox.moe/z2xyhy.webp",
     "evolvesFrom": null,
@@ -332,7 +333,7 @@
   {
     "name": "Kuina",
     "shortDesc": "Swordswoman (East Blue)",
-    "phs": "68 / 72 / 70",
+    "phs": "88 / 92 / 90",
     "rank": "B",
     "image": "https://files.catbox.moe/laqvs9.jpg",
     "evolvesFrom": null,
@@ -341,7 +342,7 @@
   {
     "name": "Axehand Morgan",
     "shortDesc": "Navy Captain (East Blue)",
-    "phs": "70 / 72 / 78",
+    "phs": "85 / 88 / 95",
     "rank": "B",
     "image": "https://files.catbox.moe/hwzr92.webp",
     "evolvesFrom": null,
@@ -350,7 +351,7 @@
   {
     "name": "Helmeppo",
     "shortDesc": "Navy Officer (East Blue)",
-    "phs": "50 / 55 / 60",
+    "phs": "68 / 70 / 72",
     "rank": "C",
     "image": "https://files.catbox.moe/xburym.webp",
     "evolvesFrom": null,
@@ -359,7 +360,7 @@
   {
     "name": "Kaya",
     "shortDesc": "Rich Girl (East Blue)",
-    "phs": "20 / 30 / 20",
+    "phs": "62 / 65 / 60",
     "rank": "C",
     "image": "https://files.catbox.moe/hxa98e.jpg",
     "evolvesFrom": null,
@@ -368,7 +369,7 @@
   {
     "name": "Kuro",
     "shortDesc": "Black Cat Pirate (East Blue)",
-    "phs": "70 / 72 / 78",
+    "phs": "92 / 88 / 98",
     "rank": "B",
     "image": "https://files.catbox.moe/qqzd49.webp",
     "evolvesFrom": null,
@@ -377,7 +378,7 @@
   {
     "name": "Jango",
     "shortDesc": "Hypnotist (East Blue)",
-    "phs": "60 / 65 / 70",
+    "phs": "75 / 78 / 80",
     "rank": "C",
     "image": "https://files.catbox.moe/ph7a6c.webp",
     "evolvesFrom": null,
@@ -386,7 +387,7 @@
   {
     "name": "Onion",
     "shortDesc": "Kid (East Blue)",
-    "phs": "15 / 15 / 15",
+    "phs": "60 / 62 / 65",
     "rank": "C",
     "image": "https://files.catbox.moe/k3b74l.webp",
     "evolvesFrom": null,
@@ -395,7 +396,7 @@
   {
     "name": "Merry",
     "shortDesc": "Butler (East Blue)",
-    "phs": "25 / 30 / 20",
+    "phs": "65 / 68 / 62",
     "rank": "C",
     "image": "https://files.catbox.moe/7umszz.webp",
     "evolvesFrom": null,
@@ -404,7 +405,7 @@
   {
     "name": "Chef Zeff",
     "shortDesc": "Baratie Chef (East Blue)",
-    "phs": "70 / 78 / 70",
+    "phs": "90 / 95 / 85",
     "rank": "B",
     "image": "https://files.catbox.moe/hyfwol.webp",
     "evolvesFrom": null,
@@ -413,7 +414,7 @@
   {
     "name": "Johnny",
     "shortDesc": "Bounty Hunter (East Blue)",
-    "phs": "55 / 60 / 65",
+    "phs": "72 / 75 / 78",
     "rank": "C",
     "image": "https://files.catbox.moe/c9s4l0.webp",
     "evolvesFrom": null,
@@ -422,7 +423,7 @@
   {
     "name": "Yosaku",
     "shortDesc": "Bounty Hunter (East Blue)",
-    "phs": "55 / 60 / 65",
+    "phs": "74 / 76 / 80",
     "rank": "C",
     "image": "https://files.catbox.moe/yz0p9w.webp",
     "evolvesFrom": null,
@@ -431,7 +432,7 @@
   {
     "name": "Fullbody",
     "shortDesc": "Navy Lieutenant (East Blue)",
-    "phs": "60 / 65 / 65",
+    "phs": "78 / 80 / 75",
     "rank": "C",
     "image": "https://files.catbox.moe/72v04c.webp",
     "evolvesFrom": null,
@@ -440,7 +441,7 @@
   {
     "name": "Gin",
     "shortDesc": "Pirate (East Blue)",
-    "phs": "68 / 75 / 70",
+    "phs": "88 / 95 / 90",
     "rank": "B",
     "image": "https://files.catbox.moe/7aru82.webp",
     "evolvesFrom": null,
@@ -449,7 +450,7 @@
   {
     "name": "Don Krieg",
     "shortDesc": "Pirate Fleet Leader (East Blue)",
-    "phs": "82 / 85 / 70",
+    "phs": "112 / 115 / 105",
     "rank": "A",
     "image": "https://files.catbox.moe/vulv8e.webp",
     "evolvesFrom": null,
@@ -458,7 +459,7 @@
   {
     "name": "Dracule Mihawk",
     "shortDesc": "Warlord of the Sea (East Blue)",
-    "phs": "98 / 99 / 99",
+    "phs": "148 / 145 / 150",
     "rank": "S",
     "image": "https://files.catbox.moe/3irsub.webpr",
     "evolvesFrom": null,
@@ -473,7 +474,7 @@
   {
     "name": "Dracule Mihawk (Cross Guild, Final Saga)",
     "shortDesc": "Cross Guild (Final Saga)",
-    "phs": "130 / 140 / 150",
+    "phs": "195 / 185 / 200",
     "rank": "UR",
     "image": "https://files.catbox.moe/w4hqk8.jpg",
     "evolvesFrom": "Dracule Mihawk",
@@ -482,7 +483,7 @@
   {
     "name": "Arlong",
     "shortDesc": "Fishman Pirate (East Blue)",
-    "phs": "85 / 88 / 80",
+    "phs": "115 / 118 / 108",
     "rank": "A",
     "image": "https://files.catbox.moe/si9a7u.webp",
     "evolvesFrom": null,
@@ -491,7 +492,7 @@
   {
     "name": "Nezumi",
     "shortDesc": "Corrupt Marine Captain (East Blue)",
-    "phs": "55 / 60 / 58",
+    "phs": "70 / 75 / 72",
     "rank": "C",
     "image": "https://files.catbox.moe/9q2x5p.webp",
     "evolvesFrom": null,
@@ -500,7 +501,7 @@
   {
     "name": "Hatchan",
     "shortDesc": "Octopus Fishman (East Blue)",
-    "phs": "65 / 70 / 75",
+    "phs": "85 / 90 / 95",
     "rank": "B",
     "image": "https://files.catbox.moe/k8m3r1.webp",
     "evolvesFrom": null,
@@ -509,7 +510,7 @@
   {
     "name": "Kuroobi",
     "shortDesc": "Ray Fishman (East Blue)",
-    "phs": "70 / 75 / 68",
+    "phs": "90 / 95 / 88",
     "rank": "B",
     "image": "https://files.catbox.moe/p7n2x9.webp",
     "evolvesFrom": null,
@@ -518,7 +519,7 @@
   {
     "name": "Chew",
     "shortDesc": "Smelt-Whiting Fishman (East Blue)",
-    "phs": "68 / 72 / 70",
+    "phs": "88 / 92 / 90",
     "rank": "B",
     "image": "https://files.catbox.moe/q5t8m4.webp",
     "evolvesFrom": null,
@@ -527,7 +528,7 @@
   {
     "name": "Smoker",
     "shortDesc": "Marine Captain (East Blue)",
-    "phs": "88 / 85 / 82",
+    "phs": "108 / 105 / 102",
     "rank": "A",
     "image": "https://files.catbox.moe/x1v9b2.webp",
     "evolvesFrom": null,
@@ -542,7 +543,7 @@
   {
     "name": "Tashigi",
     "shortDesc": "Marine Swordswoman (East Blue)",
-    "phs": "65 / 68 / 70",
+    "phs": "85 / 88 / 90",
     "rank": "B",
     "image": "https://files.catbox.moe/m9k7p3.webp",
     "evolvesFrom": null,
@@ -551,7 +552,7 @@
   {
     "name": "Buggy",
     "shortDesc": "Clown Pirate (East Blue)",
-    "phs": "60 / 65 / 68",
+    "phs": "80 / 85 / 88",
     "rank": "B",
     "image": "https://files.catbox.moe/n4x2q8.webp",
     "evolvesFrom": null,
@@ -566,7 +567,7 @@
   {
     "name": "Cabaji",
     "shortDesc": "Acrobat (East Blue)",
-    "phs": "58 / 62 / 72",
+    "phs": "78 / 82 / 92",
     "rank": "C",
     "image": "https://files.catbox.moe/r8t5k1.webp",
     "evolvesFrom": null,
@@ -575,7 +576,7 @@
   {
     "name": "Mohji",
     "shortDesc": "Beast Tamer (East Blue)",
-    "phs": "52 / 58 / 55",
+    "phs": "72 / 78 / 75",
     "rank": "C",
     "image": "https://files.catbox.moe/b3m9x7.webp",
     "evolvesFrom": null,
@@ -584,7 +585,7 @@
   {
     "name": "Richie",
     "shortDesc": "Lion (East Blue)",
-    "phs": "60 / 68 / 65",
+    "phs": "80 / 88 / 85",
     "rank": "C",
     "image": "https://files.catbox.moe/v5k8p2.webp",
     "evolvesFrom": null,
@@ -593,7 +594,7 @@
   {
     "name": "Alvida",
     "shortDesc": "Iron Mace Pirate (East Blue)",
-    "phs": "55 / 62 / 48",
+    "phs": "75 / 82 / 68",
     "rank": "C",
     "image": "https://files.catbox.moe/j7q4m8.webp",
     "evolvesFrom": null,
@@ -608,11 +609,10 @@
   {
     "name": "Alvida (Slip-Slip Fruit, East Blue)",
     "shortDesc": "Beautiful Pirate (East Blue)",
-    "phs": "68 / 72 / 75",
+    "phs": "88 / 92 / 95",
     "rank": "B",
     "image": "https://files.catbox.moe/k2p9v5.webp",
     "evolvesFrom": "Alvida",
     "saga": "East Blue"
   }
-
 ]

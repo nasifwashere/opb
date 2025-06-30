@@ -467,7 +467,7 @@ async function execute(message, args, client) {
                     'More content coming soon'
                 ].join('\n'))
                 .setFooter({ text: 'Adventure Complete' });
-            
+
             return message.reply({ embeds: [completeEmbed] });
         }
     }
@@ -490,7 +490,7 @@ async function handleNarrative(message, user, stageData, currentLocation) {
 
     // Add engaging features
     const features = await generateExploreFeatures(user, stageData);
-    
+
     let description = stageData.desc;
     if (features.cardCommentary) {
         description += `\n\n💭 *${features.cardCommentary}*`;
@@ -517,7 +517,7 @@ async function handleNarrative(message, user, stageData, currentLocation) {
     // Show mini choice if available
     if (features.miniChoice) {
         embed.addFields({ name: '🤔 Quick Decision', value: features.miniChoice.question, inline: false });
-        
+
         const row = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
@@ -703,16 +703,51 @@ async function handleBattle(message, user, stageData, currentLocation, client) {
     let enemies = [];
 
     if (stageData.type === 'multi_enemy') {
-        enemies = stageData.enemies.map(enemy => ({
-            ...enemy,
-            currentHp: enemy.hp,
-            maxHp: enemy.hp
-        }));
+        // Load enemy stats from cards.json if available
+        const path = require('path');
+        const fs = require('fs');
+        const cardsPath = path.resolve('data', 'cards.json');
+        const allCards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
+
+        enemies = stageData.enemies.map(enemy => {
+            const enemyCardDef = allCards.find(c => c.name === enemy.name);
+            let enemyStats = { ...enemy };
+
+            if (enemyCardDef && enemyCardDef.phs) {
+                // Parse PHS stats
+                const [power, health, speed] = enemyCardDef.phs.split('/').map(x => parseInt(x.trim()));
+                enemyStats.hp = health;
+                enemyStats.atk = [Math.floor(power * 0.8), Math.floor(power * 1.2)];
+                enemyStats.spd = speed;
+            }
+
+            return {
+                ...enemyStats,
+                currentHp: enemyStats.hp,
+                maxHp: enemyStats.hp
+            };
+        });
     } else {
+        // Load enemy stats from cards.json if available
+        const fs = require('fs');
+        const cardsPath = path.resolve('data', 'cards.json');
+        const allCards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
+
+        const enemyCardDef = allCards.find(c => c.name === stageData.enemy.name);
+        let enemyStats = { ...stageData.enemy };
+
+        if (enemyCardDef && enemyCardDef.phs) {
+            // Parse PHS stats
+            const [power, health, speed] = enemyCardDef.phs.split('/').map(x => parseInt(x.trim()));
+            enemyStats.hp = health;
+            enemyStats.atk = [Math.floor(power * 0.8), Math.floor(power * 1.2)];
+            enemyStats.spd = speed;
+        }
+
         enemies = [{
-            ...stageData.enemy,
-            currentHp: stageData.enemy.hp,
-            maxHp: stageData.enemy.hp
+            ...enemyStats,
+            currentHp: enemyStats.hp,
+            maxHp: enemyStats.hp
         }];
     }
 
@@ -1273,27 +1308,27 @@ function getRewardText(reward) {
 // Feature generation for engaging exploration
 async function generateExploreFeatures(user, stageData) {
     const features = {};
-    
+
     // 30% chance for card commentary
     if (Math.random() < 0.3 && user.team && user.team.length > 0) {
         features.cardCommentary = generateCardCommentary(user.team[0], stageData);
     }
-    
+
     // 25% chance for fortune message
     if (Math.random() < 0.25) {
         features.fortune = generateFortune();
     }
-    
+
     // 40% chance for hidden event
     if (Math.random() < 0.4) {
         features.hiddenEvent = generateHiddenEvent();
     }
-    
+
     // 20% chance for mini choice (only if no other special events)
     if (Math.random() < 0.2 && !features.hiddenEvent) {
         features.miniChoice = generateMiniChoice();
     }
-    
+
     return features;
 }
 
@@ -1302,36 +1337,36 @@ function generateCardCommentary(cardName, stageData) {
         'Monkey D. Luffy': [
             "Luffy grins: 'This looks fun!'",
             "Luffy sniffs the air: 'I smell adventure!'",
-            "Luffy stretches: 'Let's see what's ahead!'"
+            "Luffy stretches: 'Let's see what's ahead!'",
         ],
         'Roronoa Zoro': [
             "Zoro mutters: 'Tch... smells like trouble.'",
             "Zoro yawns: 'Wake me when there's a fight.'",
-            "Zoro looks around: 'Which way is north again?'"
+            "Zoro looks around: 'Which way is north again?'",
         ],
         'Nami': [
             "Nami checks her map: 'We're making good progress.'",
             "Nami counts coins: 'Hope this is profitable.'",
-            "Nami frowns: 'Something feels off about this place.'"
+            "Nami frowns: 'Something feels off about this place.'",
         ],
         'Usopp': [
             "Usopp nervously looks around: 'I-Is it safe here?'",
             "Usopp boasts: 'I've been to places twice as dangerous!'",
-            "Usopp checks his slingshot: 'Better be prepared.'"
+            "Usopp checks his slingshot: 'Better be prepared.'",
         ],
         'Sanji': [
             "Sanji lights a cigarette: 'What a lovely day for adventure.'",
             "Sanji adjusts his tie: 'Let's handle this with style.'",
-            "Sanji sniffs: 'I could cook something amazing with local ingredients.'"
-        ]
+            "Sanji sniffs: 'I could cook something amazing with local ingredients.'",
+        ],
     };
-    
+
     const cardComments = commentaries[cardName] || [
         "Your crew member stays alert.",
         "They seem ready for whatever comes next.",
-        "You sense their determination."
+        "You sense their determination.",
     ];
-    
+
     return cardComments[Math.floor(Math.random() * cardComments.length)];
 }
 
@@ -1346,9 +1381,9 @@ function generateFortune() {
         "Your next battle will test more than strength.",
         "Friendship will prove more valuable than gold.",
         "The path ahead holds unexpected allies.",
-        "Your courage will be rewarded soon."
+        "Your courage will be rewarded soon.",
     ];
-    
+
     return fortunes[Math.floor(Math.random() * fortunes.length)];
 }
 
@@ -1356,26 +1391,26 @@ function generateHiddenEvent() {
     const events = [
         {
             text: "You spot a glint in the sand and find some buried Beli!",
-            reward: { type: "beli", amount: Math.floor(Math.random() * 50) + 25 }
+            reward: { type: "beli", amount: Math.floor(Math.random() * 50) + 25 },
         },
         {
             text: "A friendly seagull drops a small trinket at your feet.",
-            reward: { type: "xp", amount: Math.floor(Math.random() * 30) + 15 }
+            reward: { type: "xp", amount: Math.floor(Math.random() * 30) + 15 },
         },
         {
             text: "You help a lost merchant and receive a small token of gratitude.",
-            reward: { type: "beli", amount: Math.floor(Math.random() * 40) + 20 }
+            reward: { type: "beli", amount: Math.floor(Math.random() * 40) + 20 },
         },
         {
             text: "Your experience here teaches you something valuable.",
-            reward: { type: "xp", amount: Math.floor(Math.random() * 25) + 20 }
+            reward: { type: "xp", amount: Math.floor(Math.random() * 25) + 20 },
         },
         {
             text: "You find an old bottle with a few coins inside!",
-            reward: { type: "beli", amount: Math.floor(Math.random() * 35) + 15 }
-        }
+            reward: { type: "beli", amount: Math.floor(Math.random() * 35) + 15 },
+        },
     ];
-    
+
     return events[Math.floor(Math.random() * events.length)];
 }
 
@@ -1384,25 +1419,25 @@ function generateMiniChoice() {
         {
             question: "You spot a suspicious barrel floating nearby. What do you do?",
             optionA: { label: "Investigate", reward: { type: "beli", amount: 40 }, risk: 0.3 },
-            optionB: { label: "Ignore it", reward: { type: "xp", amount: 20 }, risk: 0 }
+            optionB: { label: "Ignore it", reward: { type: "xp", amount: 20 }, risk: 0 },
         },
         {
             question: "A wounded pirate asks for help. How do you respond?",
             optionA: { label: "Help them", reward: { type: "xp", amount: 35 }, risk: 0 },
-            optionB: { label: "Be cautious", reward: { type: "beli", amount: 25 }, risk: 0.2 }
+            optionB: { label: "Be cautious", reward: { type: "beli", amount: 25 }, risk: 0.2 },
         },
         {
             question: "You find a locked chest half-buried in the sand.",
             optionA: { label: "Try to open it", reward: { type: "beli", amount: 60 }, risk: 0.4 },
-            optionB: { label: "Leave it alone", reward: { type: "xp", amount: 30 }, risk: 0 }
+            optionB: { label: "Leave it alone", reward: { type: "xp", amount: 30 }, risk: 0 },
         },
         {
             question: "A stranger offers to sell you 'valuable information'.",
             optionA: { label: "Buy it (30 Beli)", cost: 30, reward: { type: "xp", amount: 45 }, risk: 0.3 },
-            optionB: { label: "Decline politely", reward: { type: "xp", amount: 15 }, risk: 0 }
-        }
+            optionB: { label: "Decline politely", reward: { type: "xp", amount: 15 }, risk: 0 },
+        },
     ];
-    
+
     return choices[Math.floor(Math.random() * choices.length)];
 }
 
@@ -1413,12 +1448,12 @@ async function handleMiniChoice(choiceMessage, user, miniChoice, stageData) {
     collector.on('collect', async interaction => {
         try {
             await interaction.deferUpdate();
-            
+
             const choice = interaction.customId === 'choice_a' ? 'optionA' : 'optionB';
             const selectedOption = miniChoice[choice];
-            
+
             let resultText = `You chose: **${selectedOption.label}**\n\n`;
-            
+
             // Handle cost
             if (selectedOption.cost && user.beli >= selectedOption.cost) {
                 user.beli -= selectedOption.cost;
@@ -1429,7 +1464,7 @@ async function handleMiniChoice(choiceMessage, user, miniChoice, stageData) {
                 await choiceMessage.edit({ components: [] });
                 return;
             }
-            
+
             // Check for risk
             const failed = Math.random() < selectedOption.risk;
             if (failed) {
@@ -1441,14 +1476,14 @@ async function handleMiniChoice(choiceMessage, user, miniChoice, stageData) {
                 await applyReward(user, selectedOption.reward);
                 resultText += `✅ ${getRewardText(selectedOption.reward)}`;
             }
-            
+
             // Apply original stage rewards
             await applyReward(user, stageData.reward);
-            
+
             // Advance stage
             user.lastExplore = new Date();
             user.stage++;
-            
+
             // Update quest progress
             try {
                 const { updateQuestProgress } = require('../utils/questSystem.js');
@@ -1456,21 +1491,21 @@ async function handleMiniChoice(choiceMessage, user, miniChoice, stageData) {
             } catch (error) {
                 console.log('Quest system not available');
             }
-            
+
             await user.save();
-            
+
             const resultEmbed = new EmbedBuilder()
                 .setTitle('⚡ Choice Result')
                 .setDescription(resultText)
                 .setColor(failed ? 0xe74c3c : 0x2ecc71);
-            
+
             if (stageData.reward) {
                 resultEmbed.addFields({ name: '🎁 Stage Reward', value: getRewardText(stageData.reward), inline: false });
             }
-            
+
             collector.stop();
             await choiceMessage.edit({ embeds: [resultEmbed], components: [] });
-            
+
         } catch (error) {
             console.error('Mini choice error:', error);
             collector.stop();
@@ -1491,25 +1526,25 @@ async function handleAutoAdvance(choiceMessage, user, stageData) {
         await applyReward(user, stageData.reward);
         user.lastExplore = new Date();
         user.stage++;
-        
+
         try {
             const { updateQuestProgress } = require('../utils/questSystem.js');
             await updateQuestProgress(user, 'explore', 1);
         } catch (error) {
             console.log('Quest system not available');
         }
-        
+
         await user.save();
-        
+
         const timeoutEmbed = new EmbedBuilder()
             .setTitle('⏰ Time\'s Up!')
             .setDescription('You took too long to decide and continued on your journey.')
             .setColor(0x95a5a6);
-        
+
         if (stageData.reward) {
             timeoutEmbed.addFields({ name: '🎁 Reward', value: getRewardText(stageData.reward), inline: false });
         }
-        
+
         await choiceMessage.edit({ embeds: [timeoutEmbed], components: [] });
     } catch (error) {
         console.error('Auto advance error:', error);

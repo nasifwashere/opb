@@ -33,6 +33,7 @@ const equipmentBonuses = {
  * @param {Array} cardDatabase - Array of card definitions
  * @returns {Array} Array of battle-ready card objects
  */
+
 function calculateBattleStats(user, cardDatabase = allCards) {
   if (!user || !user.team || user.team.length === 0) return [];
 

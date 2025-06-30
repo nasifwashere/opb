@@ -158,7 +158,22 @@ async function execute(message) {
         return message.reply("You haven't unlocked any saga beyond East Blue yet!");
     }
 
-    // Unlimited pulls - cooldown removed
+    // Check cooldown
+    const now = Date.now();
+    const timeSinceLastPull = now - (user.lastPull || 0);
+    const timeUntilNextPull = PULL_WINDOW - timeSinceLastPull;
+
+    if (timeUntilNextPull > 0 && user.pulls.length >= PULLS_PER_WINDOW) {
+        // Clean old pulls
+        user.pulls = user.pulls.filter(pullTime => now - pullTime < PULL_WINDOW);
+        
+        if (user.pulls.length >= PULLS_PER_WINDOW) {
+            return message.reply(`⏰ You've used all your pulls! Wait ${prettyTime(timeUntilNextPull)} before pulling again.`);
+        }
+    }
+
+    // Clean old pulls from the array
+    user.pulls = user.pulls.filter(pullTime => now - pullTime < PULL_WINDOW);
 
     // Load cards
     const cards = loadCardsForSaga(user.saga);
@@ -169,6 +184,7 @@ async function execute(message) {
 
     // Add new pull
     user.pulls.push(Date.now());
+    user.lastPull = Date.now();
 
     // Add card to user's collection
     user.cards.push({
