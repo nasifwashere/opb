@@ -523,24 +523,34 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
 
     const filter = i => i.user.id === message.author.id;
     const collector = choiceMessage.createMessageComponentCollector({ filter, time: 60000 });
+    
+    // Set a shorter timeout to prevent Discord API errors
+    setTimeout(() => {
+        if (!collector.ended) {
+            collector.stop('timeout');
+        }
+    }, 50000);
 
     collector.on('collect', async interaction => {
         try {
-            // Check if interaction is still valid
-            if (!interaction.isRepliable()) {
-                console.log('Interaction no longer repliable');
+            // Check if interaction is still valid and not expired
+            if (!interaction.isRepliable() || Date.now() - interaction.createdTimestamp > 13 * 60 * 1000) {
+                console.log('Interaction expired or no longer repliable');
                 collector.stop();
                 return;
             }
 
-            // Check if interaction hasn't expired
-            if (Date.now() - interaction.createdTimestamp > 14 * 60 * 1000) {
-                console.log('Interaction too old, stopping collector');
-                collector.stop();
-                return;
+            // Try to defer update with error handling
+            try {
+                await interaction.deferUpdate();
+            } catch (deferError) {
+                if (deferError.code === 10062) {
+                    console.log('Interaction already expired, stopping collector');
+                    collector.stop();
+                    return;
+                }
+                throw deferError;
             }
-
-            await interaction.deferUpdate();
 
             const choice = interaction.customId === 'choice_yes' ? 'yes' : 'no';
             const reward = stageData.choice[choice];
@@ -577,17 +587,31 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
             await choiceMessage.edit({ embeds: [resultEmbed], components: [] });
         } catch (error) {
             console.error('Choice interaction error:', error);
+            
+            // If it's an expired interaction, don't try to update
+            if (error.code === 10062) {
+                console.log('Interaction expired, cleaning up');
+                collector.stop();
+                return;
+            }
+            
             collector.stop();
             try {
-                await choiceMessage.edit({ components: [] });
+                // Only try to edit if the interaction hasn't expired
+                if (Date.now() - interaction.createdTimestamp < 13 * 60 * 1000) {
+                    await choiceMessage.edit({ components: [] });
+                }
             } catch (editError) {
                 console.error('Error removing components:', editError);
             }
         }
     });
 
-    collector.on('end', collected => {
-        choiceMessage.edit({ components: [] }).catch(() => {});
+    collector.on('end', (collected, reason) => {
+        // Only try to edit if not expired
+        if (reason !== 'time' && reason !== 'timeout') {
+            choiceMessage.edit({ components: [] }).catch(() => {});
+        }
     });
 }
 
