@@ -24,17 +24,15 @@ async function execute(message, args) {
   const beli = user.beli || 0;
 
   const embed = new EmbedBuilder()
-    .setAuthor({ name: `${username}'s Balance`, iconURL: message.author.displayAvatarURL() })
-    .setColor(0x2c2f33)
+    .setColor(0x2C2F33)
     .setDescription([
-      `🪙 **${beli.toLocaleString()} Beli**`,
+      `**${username}'s Balance**`,
       '',
-      'Use `op shop` to spend your Beli.'
+      `**${beli.toLocaleString()}** Beli`,
+      '',
+      'Use `op shop` to spend your Beli'
     ].join('\n'))
-    .setFooter({
-      text: 'Economy · One Piece Bot',
-      iconURL: 'https://i.imgur.com/KqAB5Mn.png'
-    });
+    .setFooter({ text: 'Economy System' });
 
   await message.reply({ embeds: [embed] });
 }

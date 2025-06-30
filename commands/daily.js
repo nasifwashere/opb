@@ -32,7 +32,7 @@ async function execute(message, args) {
     };
   }
 
-  const now = new Date();
+  const now = Date.now();
   const lastClaimed = user.dailyReward.lastClaimed;
   
   // Check if user can claim today
@@ -40,9 +40,14 @@ async function execute(message, args) {
     const timeDiff = now - lastClaimed;
     const hoursDiff = timeDiff / (1000 * 60 * 60);
     
-    if (hoursDiff < 20) { // Must wait 20 hours between claims
-      const hoursLeft = Math.ceil(20 - hoursDiff);
-      return message.reply(`You've already claimed your daily reward! Come back in ${hoursLeft} hours.`);
+    if (hoursDiff < 24) { // Must wait 24 hours between claims
+      const hoursLeft = Math.ceil(24 - hoursDiff);
+      const embed = new EmbedBuilder()
+        .setTitle('⏰ Daily Reward on Cooldown')
+        .setDescription(`You've already claimed your daily reward!\n\nCome back in **${hoursLeft} hours**.`)
+        .setColor(0x95a5a6);
+      
+      return message.reply({ embeds: [embed] });
     }
     
     // Check if streak should continue (claimed within 48 hours)
@@ -68,18 +73,6 @@ async function execute(message, args) {
     user.inventory.push(reward.item);
   }
 
-  // Bonus crew reward
-  let crewBonus = '';
-  if (user.crewId) {
-    const captain = await User.findOne({ userId: user.crewId });
-    if (captain && captain.crewData) {
-      const bonusBeli = Math.floor(reward.beli * 0.1);
-      captain.crewData.treasury = (captain.crewData.treasury || 0) + bonusBeli;
-      await captain.save();
-      crewBonus = `\n+${bonusBeli} Beli added to crew treasury!`;
-    }
-  }
-
   await user.save();
 
   const embed = new EmbedBuilder()
@@ -90,13 +83,13 @@ async function execute(message, args) {
       { name: '⭐ XP', value: `+${reward.xp}`, inline: true },
       { name: '🎒 Item', value: reward.item || 'None', inline: true }
     )
-    .setColor(user.dailyReward.streak === 7 ? 0xffd700 : 0x00ff00)
+    .setColor(user.dailyReward.streak === 7 ? 0xffd700 : 0x2ecc71)
     .setFooter({ 
-      text: `Streak: ${user.dailyReward.streak}/7 days${crewBonus ? ' • Crew bonus applied!' : ''}` 
+      text: `Streak: ${user.dailyReward.streak}/7 days • Next reward in 24 hours` 
     });
 
   if (user.dailyReward.streak === 7) {
-    embed.setDescription(`**Day ${user.dailyReward.streak}** reward collected! 🎉\n*Maximum streak achieved!*`);
+    embed.setDescription(`**Day ${user.dailyReward.streak}** reward collected! ✨\n*Maximum streak achieved!*`);
   }
 
   await message.reply({ embeds: [embed] });

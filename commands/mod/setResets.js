@@ -122,7 +122,7 @@ function startResetTimer(client) {
             sendResetNotification(client);
             global.nextPullReset = new Date(global.nextPullReset.getTime() + 5 * 60 * 60 * 1000);
         }, 5 * 60 * 60 * 1000); // 5 hours
-    }, timeUntilReset)lReset);
+    }, timeUntilReset);
 }
 
 async function sendResetNotification(client) {

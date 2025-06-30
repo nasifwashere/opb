@@ -85,8 +85,8 @@ function cardEmbed(cardInstance, cardDef, ownerName, index, total, user, duplica
 
   const embed = new EmbedBuilder()
     .setDescription(desc)
-    .setColor(rankSet.color || 0x2C2F33)
-    .setFooter({ text: `#- _${ownerName}'s Collection | ${index + 1}/${total} (max ${MAX_STORAGE})` });
+    .setColor(0x2C2F33)
+    .setFooter({ text: `${ownerName}'s Collection • ${index + 1}/${total}` });
 
   if (cardDef.image && cardDef.image !== "placeholder" && /^https?:\/\//.test(cardDef.image)) {
     embed.setImage(cardDef.image);

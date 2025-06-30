@@ -83,8 +83,13 @@ async function execute(message, args, client) {
 }
 
 function startDropTimer(client) {
+    // Set global next drop time
+    global.nextCardDrop = new Date(Date.now() + 10 * 60 * 1000);
+    
     client.dropTimer = setInterval(async () => {
         await dropRandomCard(client);
+        // Update global next drop time
+        global.nextCardDrop = new Date(Date.now() + 10 * 60 * 1000);
     }, 10 * 60 * 1000); // 10 minutes
 
     console.log('Card drop timer started - drops every 10 minutes');

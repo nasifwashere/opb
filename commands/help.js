@@ -1,196 +1,139 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle  } = require('discord.js');
-const User = require('../db/models/User.js'); // adjust path if needed
-
-const commandCategories = {
-  'Collection': {
-    commands: [
-      { name: 'start', desc: 'Begin your pirate adventure' },
-      { name: 'pull', desc: 'Pull random cards from gacha' },
-      { name: 'collection [rank]', desc: 'View your card collection' },
-      { name: 'mycard <name>', desc: 'View detailed info about a specific card' },
-      { name: 'info <card>', desc: 'View detailed card information' },
-      { name: 'inventory', desc: 'View your items' },
-      { name: 'equip <item> <card>', desc: 'Equip items to cards' },
-      { name: 'unequip <card>', desc: 'Unequip items from cards' },
-      { name: 'lock <card>', desc: 'Protect cards from selling/trading' },
-      { name: 'unlock <card>', desc: 'Remove card protection' }
-    ]
-  },
-  'Battle': {
-    commands: [
-      { name: 'team [add/remove] [card]', desc: 'Manage your battle team' },
-      { name: 'autoteam [preset]', desc: 'Auto-build team with strongest cards' },
-      { name: 'duel @user', desc: 'Challenge another player' },
-      { name: 'level <card>', desc: 'Level up cards using duplicates' },
-      { name: 'evolve <card>', desc: 'Evolve cards to stronger forms' }
-    ]
-  },
-  'Adventure': {
-    commands: [
-      { name: 'explore', desc: 'Continue your story adventure and fight bosses' },
-      { name: 'progress', desc: 'View your current saga' },
-      { name: 'map', desc: 'View unlocked islands and sagas' },
-      { name: 'quest', desc: 'Track and complete missions' }
-    ]
-  },
-  'Economy': {
-    commands: [
-      { name: 'shop', desc: 'Browse items for purchase' },
-      { name: 'buy <item>', desc: 'Purchase items with Beli' },
-      { name: 'sell <card/item>', desc: 'Sell items for Beli' },
-      { name: 'market', desc: 'Player trading marketplace' },
-      { name: 'trade @user <your_card> <their_card>', desc: 'Trade cards with other players' }
-    ]
-  },
-  'Social': {
-    commands: [
-      { name: 'crew [create/join/leave/info]', desc: 'Manage your pirate crew' },
-      { name: 'daily', desc: 'Claim your daily reward' },
-      { name: 'leaderboard', desc: 'View top players' },
-      { name: 'set <setting> <value>', desc: 'Change bot settings' }
-    ]
-  }
-};
-
-function createCategoryEmbed(category, categoryData) {
-  const embed = new EmbedBuilder()
-    .setTitle(`${category} Commands`)
-    .setColor(0x1f1f1f)
-    .setDescription('`op` prefix is used for all commands.\n\n**Available Commands:**');
-
-  const commandsList = categoryData.commands
-    .map(cmd => `› **op ${cmd.name}** — ${cmd.desc}`)
-    .join('\n');
-
-  embed.addFields({
-    name: '\u200B',
-    value: commandsList || 'No commands available.',
-    inline: false
-  });
-
-  embed.setFooter({
-    text: `${categoryData.commands.length} commands • Use "op help" to return`,
-    iconURL: 'https://i.imgur.com/KqAB5Mn.png'
-  });
-
-  return embed;
-}
-
-function createMainEmbed() {
-  const embed = new EmbedBuilder()
-    .setTitle('One Piece Bot Help Menu')
-    .setColor(0x2c2f33)
-    .setDescription([
-      'Welcome to the **One Piece Gacha RPG**.',
-      'Use the buttons below to view commands by category.\n',
-      'Start your journey with:',
-      '`op start` — create your pirate profile',
-      '`op pull` — pull cards from the gacha'
-    ].join('\n'));
-
-  Object.keys(commandCategories).forEach(category => {
-    const count = commandCategories[category].commands.length;
-    embed.addFields({
-      name: category,
-      value: `${count} command${count !== 1 ? 's' : ''}`,
-      inline: true
-    });
-  });
-
-  embed.setFooter({
-    text: 'Use the category buttons below to navigate',
-    iconURL: 'https://i.imgur.com/KqAB5Mn.png'
-  });
-
-  return embed;
-}
-
-function createNavigationButtons() {
-  const categories = Object.keys(commandCategories);
-  const buttons = [];
-
-  for (let i = 0; i < Math.min(categories.length, 5); i++) {
-    buttons.push(
-      new ButtonBuilder()
-        .setCustomId(`help_${i}`)
-        .setLabel(categories[i])
-        .setStyle(ButtonStyle.Secondary)
-    );
-  }
-
-  const rows = [new ActionRowBuilder().addComponents(buttons)];
-
-  if (categories.length > 5) {
-    const secondRowButtons = [];
-    for (let i = 5; i < categories.length; i++) {
-      secondRowButtons.push(
-        new ButtonBuilder()
-          .setCustomId(`help_${i}`)
-          .setLabel(categories[i])
-          .setStyle(ButtonStyle.Secondary)
-      );
-    }
-    rows.push(new ActionRowBuilder().addComponents(secondRowButtons));
-  }
-
-  return rows;
-}
-
-function createBackButton() {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('help_back')
-      .setLabel('Back to Categories')
-      .setStyle(ButtonStyle.Primary)
-  );
-}
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
 
 const data = new SlashCommandBuilder()
   .setName('help')
-  .setDescription('Display bot commands and help information.');
+  .setDescription('Get help with bot commands');
 
-async function execute(message, args, client) {
-  const userId = message.author.id;
-  const username = message.author.username;
-  let user = await User.findOne({ userId });
+async function execute(message, args) {
+  const helpEmbed = new EmbedBuilder()
+    .setTitle('🏴‍☠️ One Piece Bot Commands')
+    .setDescription('Select a category to view commands')
+    .setColor(0x3498db);
 
-  if (user && !user.username) {
-    user.username = username;
-    await user.save();
-  }
+  const selectMenu = new StringSelectMenuBuilder()
+    .setCustomId('help_category')
+    .setPlaceholder('Choose a command category')
+    .addOptions([
+      {
+        label: 'Getting Started',
+        description: 'Basic commands to begin your journey',
+        value: 'basics'
+      },
+      {
+        label: 'Cards & Collection',
+        description: 'Card management and viewing',
+        value: 'cards'
+      },
+      {
+        label: 'Adventure & Combat',
+        description: 'Exploration and battle commands',
+        value: 'adventure'
+      },
+      {
+        label: 'Economy & Trading',
+        description: 'Beli, trading, and market commands',
+        value: 'economy'
+      },
+      {
+        label: 'Team & Equipment',
+        description: 'Team setup and item management',
+        value: 'team'
+      }
+    ]);
 
-  const embed = createMainEmbed();
-  const components = createNavigationButtons();
+  const row = new ActionRowBuilder().addComponents(selectMenu);
 
-  const helpMessage = await message.reply({ embeds: [embed], components });
+  const msg = await message.reply({ embeds: [helpEmbed], components: [row] });
 
   const filter = i => i.user.id === message.author.id;
-  const collector = helpMessage.createMessageComponentCollector({ filter, time: 300000 });
+  const collector = msg.createMessageComponentCollector({ filter, time: 60000 });
 
   collector.on('collect', async interaction => {
     await interaction.deferUpdate();
 
-    if (interaction.customId === 'help_back') {
-      const mainEmbed = createMainEmbed();
-      const mainComponents = createNavigationButtons();
-      await helpMessage.edit({ embeds: [mainEmbed], components: mainComponents });
-      return;
+    let categoryEmbed;
+    const category = interaction.values[0];
+
+    switch (category) {
+      case 'basics':
+        categoryEmbed = new EmbedBuilder()
+          .setTitle('🚀 Getting Started')
+          .setDescription('Essential commands to begin your adventure')
+          .addFields(
+            { name: '`op start`', value: 'Start your pirate journey', inline: false },
+            { name: '`op daily`', value: 'Claim daily rewards', inline: false },
+            { name: '`op balance`', value: 'Check your Beli and stats', inline: false },
+            { name: '`op progress`', value: 'View your overall progress', inline: false },
+            { name: '`op timers`', value: 'Check all active cooldowns', inline: false }
+          )
+          .setColor(0x2ecc71);
+        break;
+
+      case 'cards':
+        categoryEmbed = new EmbedBuilder()
+          .setTitle('🃏 Cards & Collection')
+          .setDescription('Manage and view your card collection')
+          .addFields(
+            { name: '`op pull`', value: 'Pull new cards from packs', inline: false },
+            { name: '`op collection`', value: 'Browse your card collection', inline: false },
+            { name: '`op mycard <name>`', value: 'View detailed card info', inline: false },
+            { name: '`op info <name>`', value: 'View any card\'s information', inline: false },
+            { name: '`op lock/unlock <name>`', value: 'Protect cards from being sold', inline: false },
+            { name: '`op evolve <name>`', value: 'Upgrade cards to higher ranks', inline: false }
+          )
+          .setColor(0x9b59b6);
+        break;
+
+      case 'adventure':
+        categoryEmbed = new EmbedBuilder()
+          .setTitle('⚔️ Adventure & Combat')
+          .setDescription('Explore the world and battle enemies')
+          .addFields(
+            { name: '`op explore`', value: 'Continue your story adventure', inline: false },
+            { name: '`op battle @user`', value: 'Challenge another player', inline: false },
+            { name: '`op duel @user`', value: 'Quick 1v1 card battle', inline: false },
+            { name: '`op map`', value: 'View current location and progress', inline: false },
+            { name: '`op quest`', value: 'View and track your quests', inline: false }
+          )
+          .setColor(0xe74c3c);
+        break;
+
+      case 'economy':
+        categoryEmbed = new EmbedBuilder()
+          .setTitle('💰 Economy & Trading')
+          .setDescription('Manage your wealth and trade with others')
+          .addFields(
+            { name: '`op shop`', value: 'Buy items and card packs', inline: false },
+            { name: '`op sell <name>`', value: 'Sell cards for Beli', inline: false },
+            { name: '`op trade @user`', value: 'Trade cards with other players', inline: false },
+            { name: '`op market`', value: 'Browse player market listings', inline: false },
+            { name: '`op buy <listing>`', value: 'Purchase from the market', inline: false },
+            { name: '`op inventory`', value: 'View your items and consumables', inline: false }
+          )
+          .setColor(0xf39c12);
+        break;
+
+      case 'team':
+        categoryEmbed = new EmbedBuilder()
+          .setTitle('👥 Team & Equipment')
+          .setDescription('Set up your team and manage equipment')
+          .addFields(
+            { name: '`op team`', value: 'View and manage your battle team', inline: false },
+            { name: '`op team add <name>`', value: 'Add card to your team', inline: false },
+            { name: '`op team remove <name>`', value: 'Remove card from team', inline: false },
+            { name: '`op equip <item> <card>`', value: 'Equip items to cards', inline: false },
+            { name: '`op unequip <card>`', value: 'Remove equipped items', inline: false },
+            { name: '`op use <item>`', value: 'Use consumable items', inline: false }
+          )
+          .setColor(0x3498db);
+        break;
     }
 
-    if (interaction.customId.startsWith('help_')) {
-      const categories = Object.keys(commandCategories);
-      const categoryIndex = parseInt(interaction.customId.split('_')[1]);
-      const categoryName = categories[categoryIndex];
-
-      if (categoryName && commandCategories[categoryName]) {
-        const categoryEmbed = createCategoryEmbed(categoryName, commandCategories[categoryName]);
-        await helpMessage.edit({ embeds: [categoryEmbed], components: [createBackButton()] });
-      }
-    }
+    await msg.edit({ embeds: [categoryEmbed], components: [row] });
   });
 
   collector.on('end', () => {
-    helpMessage.edit({ components: [] }).catch(() => {});
+    msg.edit({ components: [] }).catch(() => {});
   });
 }
 

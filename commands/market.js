@@ -137,7 +137,7 @@ async function execute(message, args) {
     // Handle subcommands first to avoid recursive market display
     if (args.length > 0) {
         const subcommand = args[0].toLowerCase();
-        
+
         if (subcommand === 'buy') {
             return await handleMarketBuy(message, user, args.slice(1));
         } else if (subcommand === 'list') {
@@ -226,10 +226,10 @@ async function handleMarketBuy(message, user, args) {
         await user.save();
     }
     const itemNumber = parseInt(args[0]);
-    
+
     // Get current listings to validate item number
     const { listings } = await getMarketListings('all', 0, 50); // Get more listings for buy command
-    
+
     if (!itemNumber || itemNumber < 1 || itemNumber > listings.length) {
         return message.reply('Invalid item number. Use the number shown in the market listing.');
     }
@@ -286,7 +286,7 @@ async function handleMarketList(message, user, args) {
         await user.save();
     }
     const [type, ...itemParts] = args;
-    
+
     if (!type || !['card', 'item'].includes(type)) {
         return message.reply('Usage: `op market list <card/item> <name> <price> [description]`');
     }
@@ -357,7 +357,7 @@ async function handleMarketList(message, user, args) {
     try {
         const configPath = path.resolve('config.json');
         const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        
+
         if (config.marketChannelId) {
             const marketChannel = message.client.channels.cache.get(config.marketChannelId);
             if (marketChannel) {
@@ -366,7 +366,7 @@ async function handleMarketList(message, user, args) {
                     .setDescription(`**${itemName}** ${itemRank ? `[${itemRank}]` : ''}\n\n**Price:** ${price} Beli\n**Seller:** ${message.author.username}${description ? `\n**Description:** ${description}` : ''}`)
                     .setColor(0x2ecc40)
                     .setTimestamp();
-                
+
                 await marketChannel.send({ embeds: [marketEmbed] });
             }
         }
@@ -388,7 +388,7 @@ async function handleMarketUnlist(message, user, args) {
     }
 
     const listingNumber = parseInt(args[0]);
-    
+
     if (!listingNumber || listingNumber < 1) {
         return message.reply('Usage: `op market unlist <listing number>`\n\nUse `op market` and check "My Listings" to see your listing numbers.');
     }

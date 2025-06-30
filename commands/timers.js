@@ -1,15 +1,14 @@
-
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
 
 function prettyTime(ms) {
     if (ms <= 0) return "Ready now";
-    
+
     let seconds = Math.floor(ms / 1000);
     let minutes = Math.floor(seconds / 60);
     let hours = Math.floor(minutes / 60);
     let days = Math.floor(hours / 24);
-    
+
     seconds = seconds % 60;
     minutes = minutes % 60;
     hours = hours % 24;
@@ -37,108 +36,86 @@ async function execute(message, args) {
 
     const now = Date.now();
     const embed = new EmbedBuilder()
-        .setTitle('⏰ Bot Timers')
-        .setColor(0x3498db);
+        .setColor(0x2C2F33)
+        .setDescription('**Active Timers**');
 
-    // Global timers
-    let globalTimers = '';
-    
+    let timersText = '';
+
     // Pull reset timer (global for all users)
     if (global.nextPullReset) {
         const pullResetTime = global.nextPullReset.getTime() - now;
-        globalTimers += `🔄 **Pull Reset**: ${prettyTime(pullResetTime)}\n`;
+        timersText += `**Pull Reset** ${prettyTime(pullResetTime)}\n`;
     }
 
-    // Card drop timer (global, every 10 minutes)
-    const cardDropInterval = 10 * 60 * 1000; // 10 minutes
-    const lastCardDrop = global.lastCardDrop || now;
-    const nextCardDrop = lastCardDrop + cardDropInterval - now;
-    globalTimers += `📦 **Card Drop**: ${prettyTime(nextCardDrop)}\n`;
-
-    if (globalTimers) {
-        embed.addFields({
-            name: '🌐 Global Timers',
-            value: globalTimers,
-            inline: false
-        });
+    // Card drop timer
+    if (global.nextCardDrop) {
+        const dropTime = global.nextCardDrop.getTime() - now;
+        timersText += `**Next Card Drop** ${prettyTime(dropTime)}\n`;
     }
-
-    // Personal timers
-    let personalTimers = '';
 
     // Daily reset
-    const dailyReset = user.dailyReset || 0;
-    const nextDaily = dailyReset + (24 * 60 * 60 * 1000) - now;
+    const dailyReset = user.dailyReward?.lastClaimed || 0;
+    const nextDaily = dailyReset + (20 * 60 * 60 * 1000) - now; // 20 hours
     if (nextDaily > 0) {
-        personalTimers += `🎁 **Daily Reset**: ${prettyTime(nextDaily)}\n`;
+        timersText += `**Daily Reward** ${prettyTime(nextDaily)}\n`;
     } else {
-        personalTimers += `🎁 **Daily Reset**: Ready now\n`;
+        timersText += `**Daily Reward** Ready now\n`;
     }
 
-    // Explore cooldown
+    // Quest resets
+    if (user.questData?.lastReset) {
+        // Daily quest reset (every 24 hours)
+        const lastDailyReset = user.questData.lastReset.daily || 0;
+        const nextDailyQuestReset = lastDailyReset + (24 * 60 * 60 * 1000) - now;
+        if (nextDailyQuestReset > 0) {
+            timersText += `**Daily Quests** ${prettyTime(nextDailyQuestReset)}\n`;
+        }
+
+        // Weekly quest reset (every 7 days)
+        const lastWeeklyReset = user.questData.lastReset.weekly || 0;
+        const nextWeeklyQuestReset = lastWeeklyReset + (7 * 24 * 60 * 60 * 1000) - now;
+        if (nextWeeklyQuestReset > 0) {
+            timersText += `**Weekly Quests** ${prettyTime(nextWeeklyQuestReset)}\n`;
+        }
+    }
+
+    // Battle defeat cooldown only
     if (user.exploreStates?.defeatCooldown && user.exploreStates.defeatCooldown > now) {
         const exploreTime = user.exploreStates.defeatCooldown - now;
-        personalTimers += `⚔️ **Explore Cooldown**: ${prettyTime(exploreTime)}\n`;
+        timersText += `**Battle Defeat** ${prettyTime(exploreTime)}\n`;
     }
 
     // Duel cooldown
     if (user.duelCooldown && user.duelCooldown > now) {
         const duelTime = user.duelCooldown - now;
-        personalTimers += `🤺 **Duel Cooldown**: ${prettyTime(duelTime)}\n`;
-    }
-
-    // Battle cooldown
-    if (user.battleCooldown && user.battleCooldown > now) {
-        const battleTime = user.battleCooldown - now;
-        personalTimers += `⚔️ **Battle Cooldown**: ${prettyTime(battleTime)}\n`;
-    }
-
-    // Quest reset timers
-    if (user.questData) {
-        const questResets = user.questData.lastReset || {};
-        
-        // Daily quest reset
-        if (questResets.daily) {
-            const dailyQuestReset = questResets.daily + (24 * 60 * 60 * 1000) - now;
-            if (dailyQuestReset > 0) {
-                personalTimers += `📋 **Daily Quests**: ${prettyTime(dailyQuestReset)}\n`;
-            }
-        }
-        
-        // Weekly quest reset (every Sunday)
-        if (questResets.weekly) {
-            const weeklyQuestReset = questResets.weekly + (7 * 24 * 60 * 60 * 1000) - now;
-            if (weeklyQuestReset > 0) {
-                personalTimers += `📋 **Weekly Quests**: ${prettyTime(weeklyQuestReset)}\n`;
-            }
-        }
+        timersText += `**Duel Cooldown** ${prettyTime(duelTime)}\n`;
     }
 
     // Active boosts
     if (user.activeBoosts && user.activeBoosts.length > 0) {
         const activeBoosts = user.activeBoosts.filter(boost => boost.expiresAt > now);
         if (activeBoosts.length > 0) {
-            personalTimers += `\n🚀 **Active Boosts**:\n`;
+            timersText += `\n**Active Boosts**\n`;
             activeBoosts.forEach(boost => {
                 const boostTime = boost.expiresAt - now;
-                personalTimers += `• ${boost.type}: ${prettyTime(boostTime)}\n`;
+                timersText += `${boost.type} ${prettyTime(boostTime)}\n`;
             });
         }
     }
 
-    if (personalTimers) {
+    if (timersText) {
         embed.addFields({
-            name: '👤 Personal Timers',
-            value: personalTimers,
+            name: ' ',
+            value: timersText,
             inline: false
         });
     }
 
-    if (!globalTimers && !personalTimers) {
+    if (!timersText) {
         embed.setDescription('No active timers found!');
     }
 
-    embed.setFooter({ text: 'Timers update in real-time' });
+    embed.setFooter({ text: 'Timers update automatically' });
 
     await message.reply({ embeds: [embed] });
 }

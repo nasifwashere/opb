@@ -90,22 +90,28 @@ function getEvolutionRequirements(card) {
 
 // Build info embed
 function infoEmbed(card, ownedCount, userCard) {
-  const rankSet = rankSettings[card.rank] || {};
   let level = userCard?.level || userCard?.timesUpgraded + 1 || 1;
   if (!level) level = 1;
-  const lockStatus = userCard?.locked ? ' <:Padlock_Crown:1388587874084982956>' : '';
-  let title = `**[${card.rank}] ${card.name}${lockStatus} - Lv. ${level}**`;
-  let desc = `${card.shortDesc}\n${attackRange(card.phs, card.rank)}`;
-  if (ownedCount === 0) desc += "\n\n*You do not own this card. Use `op pull` or trade to obtain it.*";
+  const lockStatus = userCard?.locked ? ' 🔒' : '';
+  
+  let desc = [
+    `**[${card.rank}] ${card.name}${lockStatus}**`,
+    `*${card.shortDesc}*`,
+    '',
+    `**Level** ${level}`,
+    `${attackRange(card.phs, card.rank)}`,
+    '',
+    ownedCount === 0 ? '*You do not own this card*' : `**Owned** ${ownedCount}`
+  ].filter(Boolean).join('\n');
 
   const embed = new EmbedBuilder()
-    .setColor(rankSet.color)
-    .setTitle(title)
+    .setColor(0x2C2F33)
     .setDescription(desc)
-    .setFooter({ text: `Card: ${card.name} • Owned x${ownedCount || 0}` });
+    .setFooter({ text: `Card Information • ${card.name}` });
 
   if (card.image && card.image !== "placeholder") embed.setImage(card.image);
-  if (rankSet.rankImage) embed.setThumbnail(rankSet.rankImage);
+  const rankSet = rankSettings[card.rank];
+  if (rankSet && rankSet.rankImage) embed.setThumbnail(rankSet.rankImage);
 
   return embed;
 }

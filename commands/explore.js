@@ -27,7 +27,7 @@ const LOCATIONS = {
             type: "boss",
             title: "Fight with Higuma",
             desc: "The mountain bandit Higuma blocks your path!",
-            enemy: { name: "Higuma", hp: 75, atk: [10, 12], spd: 50, rank: "C" },
+            enemy: { name: "Higuma", hp: 60, atk: [8, 12], spd: 45, rank: "C" },
             reward: { type: "multiple", rewards: [
                 { type: "beli", amount: 100 },
                 { type: "xp", amount: 50 }
@@ -117,7 +117,7 @@ const LOCATIONS = {
         },
         {
             type: "narrative",
-            title: "Reached Orange Town",
+            title: "Departure to Orange Town",
             desc: "With Morgan defeated, you sail toward Orange Town where new adventures await.",
             reward: { type: "beli", amount: 100 }
         }
@@ -235,7 +235,7 @@ const LOCATIONS = {
             type: "boss",
             title: "Don Krieg",
             desc: "The armored pirate Don Krieg attacks! His armor reflects damage back to attackers!",
-            enemy: { name: "Don Krieg", hp: 150, atk: [18, 25], spd: 80, rank: "A", ability: "damage_reflection" },
+            enemy: { name: "Don Krieg", hp: 82, atk: [11, 17], spd: 65, rank: "A", ability: "damage_reflection" },
             reward: { type: "beli", amount: 500, xp: 200 },
             loseCooldown: 120 * 60 * 1000
         },
@@ -363,21 +363,21 @@ function createHpBar(current, max) {
 
 function getCurrentLocation(stage) {
     if (stage < 7) return 'WINDMILL VILLAGE';
-    if (stage < 16) return 'SHELLS TOWN';
-    if (stage < 24) return 'ORANGE TOWN';
-    if (stage < 29) return 'SYRUP VILLAGE';
-    if (stage < 34) return 'BARATIE';
-    if (stage < 43) return 'ARLONG PARK';
+    if (stage < 15) return 'SHELLS TOWN';  // Shells Town has 8 stages (7-14)
+    if (stage < 22) return 'ORANGE TOWN';  // Orange Town has 7 stages (15-21)
+    if (stage < 27) return 'SYRUP VILLAGE'; // Syrup Village has 5 stages (22-26)
+    if (stage < 32) return 'BARATIE';      // Baratie has 5 stages (27-31)
+    if (stage < 41) return 'ARLONG PARK';  // Arlong Park has 9 stages (32-40)
     return 'COMPLETED';
 }
 
 function getLocalStage(globalStage) {
     if (globalStage < 7) return globalStage;
-    if (globalStage < 16) return globalStage - 7;
-    if (globalStage < 24) return globalStage - 16;
-    if (globalStage < 29) return globalStage - 24;
-    if (globalStage < 34) return globalStage - 29;
-    if (globalStage < 43) return globalStage - 34;
+    if (globalStage < 15) return globalStage - 7;
+    if (globalStage < 22) return globalStage - 15;
+    if (globalStage < 27) return globalStage - 22;
+    if (globalStage < 32) return globalStage - 27;
+    if (globalStage < 41) return globalStage - 32;
     return 0;
 }
 
@@ -427,32 +427,48 @@ async function execute(message, args, client) {
     if (!locationData || localStage >= locationData.length) {
         // Move to next location
         const currentLocationIndex = Object.keys(LOCATIONS).indexOf(currentLocation);
-        if (currentLocationIndex < Object.keys(LOCATIONS).length - 1) {
+        if (currentLocationIndex >= 0 && currentLocationIndex < Object.keys(LOCATIONS).length - 1) {
             const nextLocation = Object.keys(LOCATIONS)[currentLocationIndex + 1];
-            
+
             // Calculate the starting stage of next location
             let nextLocationStartStage = 0;
             const locationNames = Object.keys(LOCATIONS);
             for (let i = 0; i <= currentLocationIndex; i++) {
-                if (i > 0) {
-                    nextLocationStartStage += LOCATIONS[locationNames[i - 1]].length;
-                }
+                nextLocationStartStage += LOCATIONS[locationNames[i]].length;
             }
-            nextLocationStartStage += locationData.length; // Add current location's length
-            
+
             // Advance to next location's first stage
             user.stage = nextLocationStartStage;
             user.lastExplore = new Date();
             await user.save();
 
             const nextEmbed = new EmbedBuilder()
-                .setTitle('🗺️ New Location Unlocked!')
-                .setDescription(`You've completed **${currentLocation}**!\n\nYou can now explore **${nextLocation}**!\n\nUse \`op explore\` to continue your adventure.`)
-                .setColor(0x00ff00);
+                .setColor(0x2C2F33)
+                .setDescription([
+                    `**Location Complete**`,
+                    '',
+                    `You've completed **${currentLocation}**`,
+                    '',
+                    `**${nextLocation}** is now available`,
+                    '',
+                    'Use `op explore` to continue your adventure'
+                ].join('\n'))
+                .setFooter({ text: 'Adventure Progress' });
 
             return message.reply({ embeds: [nextEmbed] });
         } else {
-            return message.reply("❌ You've completed all locations in the East Blue Saga! More content coming soon!");
+            const completeEmbed = new EmbedBuilder()
+                .setColor(0x2C2F33)
+                .setDescription([
+                    '**East Blue Saga Complete**',
+                    '',
+                    'You have completed all available locations',
+                    '',
+                    'More content coming soon'
+                ].join('\n'))
+                .setFooter({ text: 'Adventure Complete' });
+            
+            return message.reply({ embeds: [completeEmbed] });
         }
     }
 
@@ -472,18 +488,66 @@ async function handleNarrative(message, user, stageData, currentLocation) {
     const localStage = getLocalStage(user.stage);
     const totalStages = getTotalStagesInLocation(currentLocation);
 
+    // Add engaging features
+    const features = await generateExploreFeatures(user, stageData);
+    
+    let description = stageData.desc;
+    if (features.cardCommentary) {
+        description += `\n\n💭 *${features.cardCommentary}*`;
+    }
+    if (features.fortune) {
+        description += `\n\n🔮 **Fortune**: *${features.fortune}*`;
+    }
+
     const embed = new EmbedBuilder()
         .setTitle(`🗺️ ${currentLocation} - ${stageData.title}`)
-        .setDescription(stageData.desc)
-        .setColor(0x3498db)
+        .setDescription(description)
+        .setColor(0x2c2f33)
         .setFooter({ text: `Progress: ${localStage + 1}/${totalStages}` });
 
-    // Apply rewards
+    // Apply original rewards
     await applyReward(user, stageData.reward);
 
+    // Apply hidden event rewards
+    if (features.hiddenEvent) {
+        await applyReward(user, features.hiddenEvent.reward);
+        embed.addFields({ name: '✨ Hidden Event', value: features.hiddenEvent.text, inline: false });
+    }
+
+    // Show mini choice if available
+    if (features.miniChoice) {
+        embed.addFields({ name: '🤔 Quick Decision', value: features.miniChoice.question, inline: false });
+        
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('choice_a')
+                    .setLabel(features.miniChoice.optionA.label)
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId('choice_b')
+                    .setLabel(features.miniChoice.optionB.label)
+                    .setStyle(ButtonStyle.Secondary)
+            );
+
+        const choiceMessage = await message.reply({ embeds: [embed], components: [row] });
+        await handleMiniChoice(choiceMessage, user, features.miniChoice, stageData);
+        return;
+    }
+
     // Add reward info to embed
+    let rewardText = '';
     if (stageData.reward) {
-        embed.addFields({ name: 'Reward', value: getRewardText(stageData.reward), inline: false });
+        rewardText += getRewardText(stageData.reward);
+    }
+    if (features.hiddenEvent && rewardText) {
+        rewardText += '\n' + getRewardText(features.hiddenEvent.reward);
+    } else if (features.hiddenEvent) {
+        rewardText = getRewardText(features.hiddenEvent.reward);
+    }
+
+    if (rewardText) {
+        embed.addFields({ name: '🎁 Rewards', value: rewardText, inline: false });
     }
 
     // Set cooldown and advance stage
@@ -529,7 +593,7 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
 
     const filter = i => i.user.id === message.author.id;
     const collector = choiceMessage.createMessageComponentCollector({ filter, time: 60000 });
-    
+
     // Set a shorter timeout to prevent Discord API errors
     setTimeout(() => {
         if (!collector.ended) {
@@ -593,14 +657,14 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
             await choiceMessage.edit({ embeds: [resultEmbed], components: [] });
         } catch (error) {
             console.error('Choice interaction error:', error);
-            
+
             // If it's an expired interaction, don't try to update
             if (error.code === 10062) {
                 console.log('Interaction expired, cleaning up');
                 collector.stop();
                 return;
             }
-            
+
             collector.stop();
             try {
                 // Only try to edit if the interaction hasn't expired
@@ -628,6 +692,12 @@ async function handleBattle(message, user, stageData, currentLocation, client) {
     if (!battleTeam || battleTeam.length === 0) {
         return message.reply('❌ You need to set up your team first! Use `op team add <card>` to add cards to your team.');
     }
+
+    // Fix HP property - ensure we're using maxHp correctly
+    battleTeam.forEach(card => {
+        card.maxHp = card.hp; // Set maxHp to the calculated hp value
+        card.currentHp = card.hp; // Set current HP to full at start of battle
+    });
 
     // Initialize battle state
     let enemies = [];
@@ -739,11 +809,11 @@ async function displayBattleState(message, user, client) {
             .setStyle(ButtonStyle.Danger),
         new ButtonBuilder()
             .setCustomId('battle_items')
-            .setLabel('Use Item')
-            .setStyle(ButtonStyle.Primary),
+            .setLabel('Items')
+            .setStyle(ButtonStyle.Secondary),
         new ButtonBuilder()
             .setCustomId('battle_flee')
-            .setLabel('Flee')
+            .setLabel('Retreat')
             .setStyle(ButtonStyle.Secondary)
     ];
 
@@ -766,7 +836,7 @@ async function displayBattleState(message, user, client) {
 
             if (interaction.customId === 'battle_attack') {
                 await handleBattleAttack(interaction, user, battleMessage);
-            } else if (interaction.customId === 'battle_items') {
+                        } else if (interaction.customId === 'battle_items') {
                 await handleBattleItems(interaction, user, battleMessage);
             } else if (interaction.customId === 'battle_flee') {
                 await handleBattleFlee(interaction, user, battleMessage);
@@ -908,11 +978,11 @@ async function updateBattleDisplay(interaction, user, battleMessage, battleLog) 
             .setStyle(ButtonStyle.Danger),
         new ButtonBuilder()
             .setCustomId('battle_items')
-            .setLabel('Use Item')
-            .setStyle(ButtonStyle.Primary),
+            .setLabel('Items')
+            .setStyle(ButtonStyle.Secondary),
         new ButtonBuilder()
             .setCustomId('battle_flee')
-            .setLabel('Flee')
+            .setLabel('Retreat')
             .setStyle(ButtonStyle.Secondary)
     ];
 
@@ -1198,6 +1268,252 @@ function getRewardText(reward) {
     }
 
     return 'Unknown reward';
+}
+
+// Feature generation for engaging exploration
+async function generateExploreFeatures(user, stageData) {
+    const features = {};
+    
+    // 30% chance for card commentary
+    if (Math.random() < 0.3 && user.team && user.team.length > 0) {
+        features.cardCommentary = generateCardCommentary(user.team[0], stageData);
+    }
+    
+    // 25% chance for fortune message
+    if (Math.random() < 0.25) {
+        features.fortune = generateFortune();
+    }
+    
+    // 40% chance for hidden event
+    if (Math.random() < 0.4) {
+        features.hiddenEvent = generateHiddenEvent();
+    }
+    
+    // 20% chance for mini choice (only if no other special events)
+    if (Math.random() < 0.2 && !features.hiddenEvent) {
+        features.miniChoice = generateMiniChoice();
+    }
+    
+    return features;
+}
+
+function generateCardCommentary(cardName, stageData) {
+    const commentaries = {
+        'Monkey D. Luffy': [
+            "Luffy grins: 'This looks fun!'",
+            "Luffy sniffs the air: 'I smell adventure!'",
+            "Luffy stretches: 'Let's see what's ahead!'"
+        ],
+        'Roronoa Zoro': [
+            "Zoro mutters: 'Tch... smells like trouble.'",
+            "Zoro yawns: 'Wake me when there's a fight.'",
+            "Zoro looks around: 'Which way is north again?'"
+        ],
+        'Nami': [
+            "Nami checks her map: 'We're making good progress.'",
+            "Nami counts coins: 'Hope this is profitable.'",
+            "Nami frowns: 'Something feels off about this place.'"
+        ],
+        'Usopp': [
+            "Usopp nervously looks around: 'I-Is it safe here?'",
+            "Usopp boasts: 'I've been to places twice as dangerous!'",
+            "Usopp checks his slingshot: 'Better be prepared.'"
+        ],
+        'Sanji': [
+            "Sanji lights a cigarette: 'What a lovely day for adventure.'",
+            "Sanji adjusts his tie: 'Let's handle this with style.'",
+            "Sanji sniffs: 'I could cook something amazing with local ingredients.'"
+        ]
+    };
+    
+    const cardComments = commentaries[cardName] || [
+        "Your crew member stays alert.",
+        "They seem ready for whatever comes next.",
+        "You sense their determination."
+    ];
+    
+    return cardComments[Math.floor(Math.random() * cardComments.length)];
+}
+
+function generateFortune() {
+    const fortunes = [
+        "The winds whisper of treasure nearby...",
+        "A seagull's cry warns of danger ahead.",
+        "The sea speaks of great adventures to come.",
+        "Your destiny shines brighter with each step.",
+        "The stars align in your favor today.",
+        "Ancient spirits watch your journey with interest.",
+        "Your next battle will test more than strength.",
+        "Friendship will prove more valuable than gold.",
+        "The path ahead holds unexpected allies.",
+        "Your courage will be rewarded soon."
+    ];
+    
+    return fortunes[Math.floor(Math.random() * fortunes.length)];
+}
+
+function generateHiddenEvent() {
+    const events = [
+        {
+            text: "You spot a glint in the sand and find some buried Beli!",
+            reward: { type: "beli", amount: Math.floor(Math.random() * 50) + 25 }
+        },
+        {
+            text: "A friendly seagull drops a small trinket at your feet.",
+            reward: { type: "xp", amount: Math.floor(Math.random() * 30) + 15 }
+        },
+        {
+            text: "You help a lost merchant and receive a small token of gratitude.",
+            reward: { type: "beli", amount: Math.floor(Math.random() * 40) + 20 }
+        },
+        {
+            text: "Your experience here teaches you something valuable.",
+            reward: { type: "xp", amount: Math.floor(Math.random() * 25) + 20 }
+        },
+        {
+            text: "You find an old bottle with a few coins inside!",
+            reward: { type: "beli", amount: Math.floor(Math.random() * 35) + 15 }
+        }
+    ];
+    
+    return events[Math.floor(Math.random() * events.length)];
+}
+
+function generateMiniChoice() {
+    const choices = [
+        {
+            question: "You spot a suspicious barrel floating nearby. What do you do?",
+            optionA: { label: "Investigate", reward: { type: "beli", amount: 40 }, risk: 0.3 },
+            optionB: { label: "Ignore it", reward: { type: "xp", amount: 20 }, risk: 0 }
+        },
+        {
+            question: "A wounded pirate asks for help. How do you respond?",
+            optionA: { label: "Help them", reward: { type: "xp", amount: 35 }, risk: 0 },
+            optionB: { label: "Be cautious", reward: { type: "beli", amount: 25 }, risk: 0.2 }
+        },
+        {
+            question: "You find a locked chest half-buried in the sand.",
+            optionA: { label: "Try to open it", reward: { type: "beli", amount: 60 }, risk: 0.4 },
+            optionB: { label: "Leave it alone", reward: { type: "xp", amount: 30 }, risk: 0 }
+        },
+        {
+            question: "A stranger offers to sell you 'valuable information'.",
+            optionA: { label: "Buy it (30 Beli)", cost: 30, reward: { type: "xp", amount: 45 }, risk: 0.3 },
+            optionB: { label: "Decline politely", reward: { type: "xp", amount: 15 }, risk: 0 }
+        }
+    ];
+    
+    return choices[Math.floor(Math.random() * choices.length)];
+}
+
+async function handleMiniChoice(choiceMessage, user, miniChoice, stageData) {
+    const filter = i => i.user.id === user.userId;
+    const collector = choiceMessage.createMessageComponentCollector({ filter, time: 45000 });
+
+    collector.on('collect', async interaction => {
+        try {
+            await interaction.deferUpdate();
+            
+            const choice = interaction.customId === 'choice_a' ? 'optionA' : 'optionB';
+            const selectedOption = miniChoice[choice];
+            
+            let resultText = `You chose: **${selectedOption.label}**\n\n`;
+            
+            // Handle cost
+            if (selectedOption.cost && user.beli >= selectedOption.cost) {
+                user.beli -= selectedOption.cost;
+                resultText += `*Paid ${selectedOption.cost} Beli*\n`;
+            } else if (selectedOption.cost && user.beli < selectedOption.cost) {
+                resultText += "You don't have enough Beli!\n";
+                collector.stop();
+                await choiceMessage.edit({ components: [] });
+                return;
+            }
+            
+            // Check for risk
+            const failed = Math.random() < selectedOption.risk;
+            if (failed) {
+                resultText += "❌ Things didn't go as planned...";
+                const penalty = Math.floor(Math.random() * 20) + 10;
+                user.beli = Math.max(0, (user.beli || 0) - penalty);
+                resultText += ` You lost ${penalty} Beli.`;
+            } else {
+                await applyReward(user, selectedOption.reward);
+                resultText += `✅ ${getRewardText(selectedOption.reward)}`;
+            }
+            
+            // Apply original stage rewards
+            await applyReward(user, stageData.reward);
+            
+            // Advance stage
+            user.lastExplore = new Date();
+            user.stage++;
+            
+            // Update quest progress
+            try {
+                const { updateQuestProgress } = require('../utils/questSystem.js');
+                await updateQuestProgress(user, 'explore', 1);
+            } catch (error) {
+                console.log('Quest system not available');
+            }
+            
+            await user.save();
+            
+            const resultEmbed = new EmbedBuilder()
+                .setTitle('⚡ Choice Result')
+                .setDescription(resultText)
+                .setColor(failed ? 0xe74c3c : 0x2ecc71);
+            
+            if (stageData.reward) {
+                resultEmbed.addFields({ name: '🎁 Stage Reward', value: getRewardText(stageData.reward), inline: false });
+            }
+            
+            collector.stop();
+            await choiceMessage.edit({ embeds: [resultEmbed], components: [] });
+            
+        } catch (error) {
+            console.error('Mini choice error:', error);
+            collector.stop();
+            await choiceMessage.edit({ components: [] });
+        }
+    });
+
+    collector.on('end', (collected, reason) => {
+        if (reason === 'time' && collected.size === 0) {
+            // Auto-advance if no choice made
+            handleAutoAdvance(choiceMessage, user, stageData);
+        }
+    });
+}
+
+async function handleAutoAdvance(choiceMessage, user, stageData) {
+    try {
+        await applyReward(user, stageData.reward);
+        user.lastExplore = new Date();
+        user.stage++;
+        
+        try {
+            const { updateQuestProgress } = require('../utils/questSystem.js');
+            await updateQuestProgress(user, 'explore', 1);
+        } catch (error) {
+            console.log('Quest system not available');
+        }
+        
+        await user.save();
+        
+        const timeoutEmbed = new EmbedBuilder()
+            .setTitle('⏰ Time\'s Up!')
+            .setDescription('You took too long to decide and continued on your journey.')
+            .setColor(0x95a5a6);
+        
+        if (stageData.reward) {
+            timeoutEmbed.addFields({ name: '🎁 Reward', value: getRewardText(stageData.reward), inline: false });
+        }
+        
+        await choiceMessage.edit({ embeds: [timeoutEmbed], components: [] });
+    } catch (error) {
+        console.error('Auto advance error:', error);
+    }
 }
 
 module.exports = { data, execute };

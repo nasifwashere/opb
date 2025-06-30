@@ -1,94 +1,336 @@
-const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
+
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const User = require('../db/models/User.js');
 
-const ITEM_DESCRIPTIONS = {
-  'strawhat': { desc: 'Luffy\'s iconic hat - Equip to Luffy for +30% stats', usage: 'op equip strawhat luffy' },
-  'luckycharm': { desc: 'Increases rare card pull chances', usage: 'Passive effect when owned' },
-  'healingpotion': { desc: 'Restores 50 HP during battle', usage: 'Use during battle' },
-  'powerboost': { desc: 'Temporarily increases attack by 25%', usage: 'Use before battle' },
-  'trainingmanual': { desc: 'Reduces level-up cost by 50%', usage: 'Use before leveling' },
-  'treasuremapfragment': { desc: 'Collect 3 for special reward', usage: 'Collect more fragments' },
-  'speedboost': { desc: 'Increases speed stat by 10%', usage: 'op equip speedboost <card>' },
-  'timecrystal': { desc: 'Removes all exploration cooldowns', usage: 'op use timecrystal' },
-  'energypotion': { desc: 'Removes defeat cooldown', usage: 'op use energypotion' },
-  'speedboostfood': { desc: 'Temporary speed boost for team', usage: 'op use speedboostfood' }
+// Item descriptions and categories
+const itemData = {
+    'strawhat': { category: 'Treasures', description: 'Shanks\' precious straw hat, a symbol of dreams' },
+    'marinesword': { category: 'Weapons', description: 'A standard Marine-issued sword' },
+    'townmap': { category: 'Tools', description: 'A detailed map of the local area' },
+    'battlebanner': { category: 'Treasures', description: 'A rallying banner from an epic battle' },
+    'healthpotion': { category: 'Consumables', description: 'Restores 50 HP to a crew member' },
+    'strengthpotion': { category: 'Consumables', description: 'Temporarily boosts attack power' },
+    'speedboostfood': { category: 'Consumables', description: 'Enhances speed for a short time' },
+    'defensepotion': { category: 'Consumables', description: 'Increases defensive capabilities' },
+    'treasurechest': { category: 'Containers', description: 'A mysterious chest that may contain rewards' },
+    'goldcoin': { category: 'Currency', description: 'A valuable gold coin' },
+    'silvercoin': { category: 'Currency', description: 'A standard silver coin' }
 };
 
-const data = new SlashCommandBuilder()
-  .setName('inventory')
-  .setDescription('View your inventory items with descriptions.');
+function normalizeItemName(item) {
+    return item.replace(/\s+/g, '').toLowerCase();
+}
 
-async function execute(message, args, client) {
-  const userId = message.author.id;
-  const username = message.author.username;
-  let user = await User.findOne({ userId });
-
-  if (!user) {
-    return message.reply('Start your journey with `op start`!');
-  }
-
-  // Ensure username is set if missing
-  if (!user.username) {
-    user.username = username;
-    await user.save();
-  }
-
-  const inventory = Array.isArray(user.inventory) ? user.inventory : [];
-
-  if (!inventory.length) {
-    const embed = new EmbedBuilder()
-      .setTitle('<:emptybox:1388587415018410177> Empty Inventory')
-      .setDescription('Your inventory is empty! Collect items on your adventure.')
-      .setColor(0x95a5a6)
-      .addFields({
-        name: ' How to get items:',
-        value: '• Complete exploration stages\n• Purchase from shop with `op shop`\n• Complete quests with `op quest`',
-        inline: false
-      });
-
-    return message.reply({ embeds: [embed] });
-  }
-
-  // Count duplicates
-  const itemCounts = {};
-  inventory.forEach(item => {
-    itemCounts[item] = (itemCounts[item] || 0) + 1;
-  });
-
-  const embed = new EmbedBuilder()
-    .setTitle(`<:emptybox:1388587415018410177> ${message.author.username}'s Inventory`)
-    .setDescription(`You have ${inventory.length} items in your inventory`)
-    .setColor(0x3498db)
-    .setThumbnail(message.author.displayAvatarURL());
-
-  let itemsText = '';
-  for (const [itemName, count] of Object.entries(itemCounts)) {
-    const itemInfo = ITEM_DESCRIPTIONS[itemName.toLowerCase()] || { 
-      desc: 'Unknown item', 
-      usage: 'Check item details' 
+function getItemInfo(itemName) {
+    const normalized = normalizeItemName(itemName);
+    return itemData[normalized] || { 
+        category: 'Miscellaneous', 
+        description: 'A mysterious item from your adventures' 
     };
+}
 
-    const displayName = itemName.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-    const countText = count > 1 ? ` x${count}` : '';
+function groupItemsByCategory(inventory) {
+    const grouped = {};
+    
+    inventory.forEach(item => {
+        const info = getItemInfo(item);
+        if (!grouped[info.category]) {
+            grouped[info.category] = {};
+        }
+        
+        const normalizedName = normalizeItemName(item);
+        if (!grouped[info.category][normalizedName]) {
+            grouped[info.category][normalizedName] = {
+                name: item,
+                count: 0,
+                description: info.description
+            };
+        }
+        grouped[info.category][normalizedName].count++;
+    });
+    
+    return grouped;
+}
 
-    itemsText += `**${displayName}${countText}**\n`;
-    itemsText += `${itemInfo.desc}\n`;
-    itemsText += `*Usage:* ${itemInfo.usage}\n\n`;
-  }
+const data = new SlashCommandBuilder()
+    .setName('inventory')
+    .setDescription('View your inventory and items');
 
-  embed.addFields({ 
-    name: '<:emptybox:1388587415018410177> Your Items:', 
-    value: itemsText || 'No items found', 
-    inline: false 
-  });
+async function execute(message, args) {
+    const userId = message.author.id;
+    let user = await User.findOne({ userId });
 
-  embed.addFields({
-    name: ' Equipment Tips:',
-    value: '• Use `op equip <item> <card>` to equip items\n• Use `op use <item>` for consumables\n• Some items work automatically when owned',
-    inline: false
-  });
+    if (!user) {
+        return message.reply('Start your journey with `op start` first!');
+    }
 
-  await message.reply({ embeds: [embed] });
+    if (!user.inventory || user.inventory.length === 0) {
+        const embed = new EmbedBuilder()
+            .setColor(0x2C2F33)
+            .setDescription([
+                '**Your Inventory**',
+                '',
+                '*No items yet*',
+                '',
+                'Explore the world to find treasures and useful items!'
+            ].join('\n'))
+            .setFooter({ text: 'Inventory Management' });
+
+        return message.reply({ embeds: [embed] });
+    }
+
+    const groupedItems = groupItemsByCategory(user.inventory);
+    const categories = Object.keys(groupedItems);
+    let currentCategory = 0;
+
+    async function generateInventoryEmbed(categoryIndex) {
+        const embed = new EmbedBuilder()
+            .setColor(0x2C2F33)
+            .setDescription(`**${user.username || message.author.username}'s Inventory**`);
+
+        if (categories.length === 0) {
+            embed.addFields({
+                name: ' ',
+                value: '*No items found*',
+                inline: false
+            });
+            return embed;
+        }
+
+        const categoryName = categories[categoryIndex];
+        const items = groupedItems[categoryName];
+
+        let itemText = '';
+        Object.values(items).forEach(item => {
+            const displayName = item.name.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+            itemText += `**${displayName}** ×${item.count}\n*${item.description}*\n\n`;
+        });
+
+        embed.addFields({
+            name: `${getCategoryIcon(categoryName)} ${categoryName}`,
+            value: itemText || '*No items in this category*',
+            inline: false
+        });
+
+        // Add summary
+        const totalItems = user.inventory.length;
+        const uniqueItems = Object.values(groupedItems).reduce((acc, category) => 
+            acc + Object.keys(category).length, 0);
+
+        embed.addFields({
+            name: '📊 Summary',
+            value: `**Total Items:** ${totalItems} • **Unique Items:** ${uniqueItems}`,
+            inline: false
+        });
+
+        embed.setFooter({ 
+            text: `Category ${categoryIndex + 1}/${categories.length} • Use items with "op use <item>"` 
+        });
+
+        return embed;
+    }
+
+    const embed = await generateInventoryEmbed(currentCategory);
+    const components = [];
+
+    if (categories.length > 1) {
+        const navigationRow = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('inv_first')
+                    .setLabel('⏮️')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(currentCategory === 0),
+                new ButtonBuilder()
+                    .setCustomId('inv_prev')
+                    .setLabel('◀️')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(currentCategory === 0),
+                new ButtonBuilder()
+                    .setCustomId('inv_next')
+                    .setLabel('▶️')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(currentCategory === categories.length - 1),
+                new ButtonBuilder()
+                    .setCustomId('inv_last')
+                    .setLabel('⏭️')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(currentCategory === categories.length - 1)
+            );
+        components.push(navigationRow);
+    }
+
+    const actionRow = new ActionRowBuilder()
+        .addComponents(
+            new ButtonBuilder()
+                .setCustomId('inv_consumables')
+                .setLabel('Quick Use')
+                .setStyle(ButtonStyle.Primary)
+                .setDisabled(!groupedItems.Consumables),
+            new ButtonBuilder()
+                .setCustomId('inv_search')
+                .setLabel('Search Items')
+                .setStyle(ButtonStyle.Secondary)
+        );
+    components.push(actionRow);
+
+    const inventoryMessage = await message.reply({ embeds: [embed], components });
+
+    const filter = i => i.user.id === userId;
+    const collector = inventoryMessage.createMessageComponentCollector({ filter, time: 300000 });
+
+    collector.on('collect', async interaction => {
+        await interaction.deferUpdate();
+
+        switch (interaction.customId) {
+            case 'inv_first':
+                currentCategory = 0;
+                break;
+            case 'inv_prev':
+                currentCategory = Math.max(0, currentCategory - 1);
+                break;
+            case 'inv_next':
+                currentCategory = Math.min(categories.length - 1, currentCategory + 1);
+                break;
+            case 'inv_last':
+                currentCategory = categories.length - 1;
+                break;
+            case 'inv_consumables':
+                await showConsumables(interaction, user);
+                return;
+            case 'inv_search':
+                await showSearchHelp(interaction);
+                return;
+        }
+
+        const newEmbed = await generateInventoryEmbed(currentCategory);
+        const newComponents = [];
+
+        if (categories.length > 1) {
+            const navigationRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('inv_first')
+                        .setLabel('⏮️')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setDisabled(currentCategory === 0),
+                    new ButtonBuilder()
+                        .setCustomId('inv_prev')
+                        .setLabel('◀️')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setDisabled(currentCategory === 0),
+                    new ButtonBuilder()
+                        .setCustomId('inv_next')
+                        .setLabel('▶️')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setDisabled(currentCategory === categories.length - 1),
+                    new ButtonBuilder()
+                        .setCustomId('inv_last')
+                        .setLabel('⏭️')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setDisabled(currentCategory === categories.length - 1)
+                );
+            newComponents.push(navigationRow);
+        }
+
+        const actionRow = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('inv_consumables')
+                    .setLabel('Quick Use')
+                    .setStyle(ButtonStyle.Primary)
+                    .setDisabled(!groupedItems.Consumables),
+                new ButtonBuilder()
+                    .setCustomId('inv_search')
+                    .setLabel('Search Items')
+                    .setStyle(ButtonStyle.Secondary)
+            );
+        newComponents.push(actionRow);
+
+        await interaction.editReply({ embeds: [newEmbed], components: newComponents });
+    });
+
+    collector.on('end', () => {
+        inventoryMessage.edit({ components: [] }).catch(() => {});
+    });
+}
+
+async function showConsumables(interaction, user) {
+    const consumables = user.inventory.filter(item => {
+        const info = getItemInfo(item);
+        return info.category === 'Consumables';
+    });
+
+    const embed = new EmbedBuilder()
+        .setColor(0x2C2F33)
+        .setDescription('**Usable Items**');
+
+    if (consumables.length === 0) {
+        embed.addFields({
+            name: ' ',
+            value: '*No consumable items*\n\nFind potions and food during your adventures!',
+            inline: false
+        });
+    } else {
+        const grouped = {};
+        consumables.forEach(item => {
+            const normalized = normalizeItemName(item);
+            if (!grouped[normalized]) {
+                grouped[normalized] = { name: item, count: 0 };
+            }
+            grouped[normalized].count++;
+        });
+
+        let consumableText = '';
+        Object.values(grouped).forEach(item => {
+            const info = getItemInfo(item.name);
+            const displayName = item.name.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+            consumableText += `**${displayName}** ×${item.count}\n*${info.description}*\n\n`;
+        });
+
+        embed.addFields({
+            name: ' ',
+            value: consumableText,
+            inline: false
+        });
+    }
+
+    embed.setFooter({ text: 'Use items with "op use <item name>"' });
+
+    await interaction.followUp({ embeds: [embed], ephemeral: true });
+}
+
+async function showSearchHelp(interaction) {
+    const embed = new EmbedBuilder()
+        .setColor(0x2C2F33)
+        .setDescription([
+            '**Item Search Help**',
+            '',
+            '**Commands:**',
+            '• `op use <item>` - Use a consumable item',
+            '• `op info <item>` - Get detailed item information',
+            '',
+            '**Tips:**',
+            '• Item names are case-insensitive',
+            '• You can use partial names',
+            '• Check different categories for organization'
+        ].join('\n'))
+        .setFooter({ text: 'Inventory Help' });
+
+    await interaction.followUp({ embeds: [embed], ephemeral: true });
+}
+
+function getCategoryIcon(category) {
+    const icons = {
+        'Treasures': '💎',
+        'Weapons': '⚔️',
+        'Tools': '🔧',
+        'Consumables': '🧪',
+        'Containers': '📦',
+        'Currency': '💰',
+        'Miscellaneous': '📋'
+    };
+    return icons[category] || '📋';
 }
 
 module.exports = { data, execute };

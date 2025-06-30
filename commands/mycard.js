@@ -88,12 +88,25 @@ function cardEmbed(cardInstance, cardDef, ownerName, index = 0, total = 1, user,
   const xpProgress = experience - xpForCurrentLevel;
   const xpNeeded = xpForNextLevel - xpForCurrentLevel;
 
-  let desc = `**${cardDef.name}**${lockStatus}${duplicateText}\n${cardDef.shortDesc}\n\nOwner: ${ownerName}\nLevel: ${level} (${xpProgress}/${xpNeeded} XP)\nPower: ${power}\nHealth: ${health}\nSpeed: ${speed}\nAttack: ${attackLow}–${attackHigh}\nType: Combat${boostText}`;
+  let desc = [
+    `**${cardDef.name}**${lockStatus}${duplicateText}`,
+    `*${cardDef.shortDesc}*`,
+    '',
+    `**Owner** ${ownerName}`,
+    `**Level** ${level} (${xpProgress}/${xpNeeded} XP)`,
+    '',
+    `**Stats**`,
+    `Power: ${power}`,
+    `Health: ${health}`,
+    `Speed: ${speed}`,
+    `Attack: ${attackLow}–${attackHigh}`,
+    boostText ? boostText.replace('\n**', '\n*').replace('**', '*') : ''
+  ].filter(Boolean).join('\n');
 
   const embed = new EmbedBuilder()
     .setDescription(desc)
-    .setFooter({ text: `#- _${ownerName}'s Card | ${index + 1}/${total} (max is ${MAX_STORAGE} storage)` })
-    .setColor(rankSet.color || 0x5865f2);
+    .setFooter({ text: `${ownerName}'s Card • ${index + 1}/${total}` })
+    .setColor(0x2C2F33);
 
   if (cardDef.image && cardDef.image !== "placeholder" && /^https?:\/\//.test(cardDef.image)) {
     embed.setImage(cardDef.image);
