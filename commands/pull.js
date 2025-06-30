@@ -161,11 +161,16 @@ async function execute(message) {
     const now = Date.now();
     
     // Clean up old pulls first
-    user.pulls = user.pulls.filter(ts => now - ts < PULL_WINDOW);
+    const validPulls = user.pulls.filter(ts => now - ts < PULL_WINDOW);
+    user.pulls = validPulls;
     
     if (user.pulls.length >= PULLS_PER_WINDOW) {
         const oldestPull = Math.min(...user.pulls);
         const nextResetIn = PULL_WINDOW - (now - oldestPull);
+        
+        // Save the cleaned pulls before returning
+        await user.save();
+        
         return message.reply(
             `**${message.author.username}!** You've used all ${PULLS_PER_WINDOW} pulls!\n\nYou can pull more cards after reset!\nNext Reset: \`${prettyTime(nextResetIn)}\``
         );

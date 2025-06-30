@@ -68,6 +68,10 @@ const userSchema = new mongoose.Schema({
         multiplier: Number
     }],
     
+    // Pull tracking
+    pulls: [{ type: Number }],
+    lastPull: { type: Number, default: 0 },
+    
     // Timestamps
     createdAt: { type: Date, default: Date.now },
     lastActive: { type: Date, default: Date.now }

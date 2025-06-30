@@ -49,8 +49,11 @@ function distributeXPToTeam(user, totalXP) {
  * @param {number} level - Card level
  */
 function calculateStatWithLevel(baseStat, level) {
-  const boost = 1 + ((level - 1) * 0.01); // 1% per level above 1
-  return Math.ceil(baseStat * boost); // Always round up
+  const stat = Number(baseStat);
+  if (isNaN(stat)) return 10;
+
+  const levelBonus = (level - 1) * 0.01; // 1% per level above 1
+  return Math.floor(stat * (1 + levelBonus));
 }
 
 /**
@@ -75,34 +78,32 @@ function getCardStatsWithLevel(cardDef, level = 1) {
  * @param {Object} cardDef - Card definition from cards.json
  * @param {number} level - Card level
  */
-function calculateCardStats(card, level = 1) {
-    const basePhs = card.phs || 50;
+function calculateCardStats(cardDef, level = 1) {
+  if (!cardDef || !cardDef.phs) {
+    return { power: 10, health: 50, speed: 30 };
+  }
 
-    // Different stat distributions based on rank
-    const rankMultipliers = {
-        'C': { power: 0.8, health: 1.0, speed: 0.9 },
-        'B': { power: 0.9, health: 1.1, speed: 1.0 },
-        'A': { power: 1.1, health: 1.2, speed: 1.1 },
-        'S': { power: 1.3, health: 1.4, speed: 1.2 },
-        'UR': { power: 1.5, health: 1.6, speed: 1.4 }
-    };
+  let basePower, baseHealth, baseSpeed;
+  try {
+    const stats = cardDef.phs.split('/').map(x => {
+      const parsed = parseInt(x.trim());
+      return isNaN(parsed) ? null : parsed;
+    });
 
-    const multiplier = rankMultipliers[card.rank] || rankMultipliers['C'];
+    if (stats.length !== 3 || stats.some(s => s === null)) {
+      return { power: 10, health: 50, speed: 30 };
+    }
 
-    const baseStats = {
-        power: Math.floor(basePhs * multiplier.power),
-        health: Math.floor(basePhs * multiplier.health),
-        speed: Math.floor(basePhs * multiplier.speed)
-    };
+    [basePower, baseHealth, baseSpeed] = stats;
+  } catch (error) {
+    return { power: 10, health: 50, speed: 30 };
+  }
 
-    // Level scaling (10% per level)
-    const levelMultiplier = 1 + (level - 1) * 0.1;
-
-    return {
-        power: Math.floor(baseStats.power * levelMultiplier),
-        health: Math.floor(baseStats.health * levelMultiplier),
-        speed: Math.floor(baseStats.speed * levelMultiplier)
-    };
+  return {
+    power: calculateStatWithLevel(basePower, level),
+    health: calculateStatWithLevel(baseHealth, level),
+    speed: calculateStatWithLevel(baseSpeed, level)
+  };
 }
 
 /**

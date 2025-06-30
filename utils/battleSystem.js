@@ -61,14 +61,24 @@ function calculateBattleStats(user, cardDatabase = allCards) {
     // Parse base stats with error handling
     let basePower, baseHealth, baseSpeed;
     try {
-      [basePower, baseHealth, baseSpeed] = cardDef.phs.split('/').map(x => parseInt(x.trim()));
-      if (isNaN(basePower) || isNaN(baseHealth) || isNaN(baseSpeed)) {
-        console.warn(`Invalid stats for card: ${cardDef.name}`);
-        continue;
+      const stats = cardDef.phs.split('/').map(x => {
+        const parsed = parseInt(x.trim());
+        return isNaN(parsed) ? null : parsed;
+      });
+      
+      if (stats.length !== 3 || stats.some(s => s === null)) {
+        console.warn(`Invalid stats format for card: ${cardDef.name}, phs: ${cardDef.phs}`);
+        basePower = 10;
+        baseHealth = 50;
+        baseSpeed = 30;
+      } else {
+        [basePower, baseHealth, baseSpeed] = stats;
       }
     } catch (error) {
       console.warn(`Error parsing stats for card: ${cardDef.name}`, error);
-      continue;
+      basePower = 10;
+      baseHealth = 50;
+      baseSpeed = 30;
     }
 
     const level = userCard.level || (userCard.timesUpgraded ? userCard.timesUpgraded + 1 : 1);
@@ -130,26 +140,30 @@ function calculateDamage(attacker, defender, attackType = 'normal') {
     let baseDamage;
     
     if (attacker.atk && Array.isArray(attacker.atk)) {
-        // Enemy with attack range
-        baseDamage = Math.floor(Math.random() * (attacker.atk[1] - attacker.atk[0] + 1)) + attacker.atk[0];
+        // Enemy with attack range - ensure valid numbers
+        const minAtk = Math.max(1, Number(attacker.atk[0]) || 10);
+        const maxAtk = Math.max(minAtk, Number(attacker.atk[1]) || 15);
+        baseDamage = Math.floor(Math.random() * (maxAtk - minAtk + 1)) + minAtk;
     } else if (attacker.power) {
         // Player card with power stat
+        const power = Math.max(1, Number(attacker.power) || 10);
         const damageMultiplier = damageMultipliers[attacker.rank] || 0.10;
-        const rawDamage = attacker.power * damageMultiplier;
-        const minDamage = Math.floor(rawDamage * 1.0);
-        const maxDamage = Math.floor(rawDamage * 1.5);
+        const rawDamage = power * damageMultiplier;
+        const minDamage = Math.max(1, Math.floor(rawDamage * 1.0));
+        const maxDamage = Math.max(minDamage, Math.floor(rawDamage * 1.5));
         baseDamage = Math.floor(Math.random() * (maxDamage - minDamage + 1)) + minDamage;
     } else {
-        // Fallback
-        baseDamage = attacker.atk || attacker.power || 10;
+        // Fallback - ensure we have a valid attack value
+        const fallbackAtk = Number(attacker.atk) || Number(attacker.power) || 10;
+        baseDamage = Math.max(5, fallbackAtk);
     }
 
     // Apply variation for more dynamic combat
     const variation = Math.random() * 0.2 - 0.1; // ±10% variation
     let finalDamage = Math.floor(baseDamage * (1 + variation));
 
-    // Ensure minimum damage
-    finalDamage = Math.max(finalDamage, 1);
+    // Ensure minimum damage (bosses should do significant damage)
+    finalDamage = Math.max(finalDamage, attackType === 'boss' ? 8 : 3);
 
     return finalDamage;
 }

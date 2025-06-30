@@ -48,6 +48,11 @@ function cardEmbed(cardInstance, cardDef, ownerName, index = 0, total = 1, user,
   // Get stats with level bonuses applied
   let { power, health, speed } = calculateCardStats(cardDef, level);
 
+  // Ensure stats are valid numbers
+  power = (isNaN(power) || power === null || power === undefined) ? 10 : Math.floor(Number(power));
+  health = (isNaN(health) || health === null || health === undefined) ? 50 : Math.floor(Number(health));
+  speed = (isNaN(speed) || speed === null || speed === undefined) ? 30 : Math.floor(Number(speed));
+
   // Stat boost from equipped items
   let boostText = '';
   let normCard = normalize(cardDef.name);
@@ -160,7 +165,19 @@ async function execute(message, args) {
 
     if (interaction.customId === 'mycard_info') {
       const level = Math.max(1, cardInstance.level || (cardInstance.timesUpgraded ? cardInstance.timesUpgraded + 1 : 1));
-      let [power, health, speed] = cardDef.phs.split('/').map(x => Number(x.trim()));
+      
+      // Parse stats safely
+      let power, health, speed;
+      try {
+        [power, health, speed] = cardDef.phs.split('/').map(x => {
+          const parsed = Number(x.trim());
+          return isNaN(parsed) ? 10 : parsed;
+        });
+      } catch (error) {
+        power = 10;
+        health = 50;
+        speed = 30;
+      }
 
       let normCard = normalize(cardDef.name);
       let equippedItem = user && user.equipped && user.equipped[normCard];
