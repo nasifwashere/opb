@@ -1,4 +1,3 @@
-
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const User = require('../db/models/User.js');
 const fs = require('fs');
@@ -28,7 +27,7 @@ const data = new SlashCommandBuilder()
 async function execute(message, args, client) {
   const userId = message.author.id;
   const targetUser = message.mentions.users.first();
-  
+
   if (!targetUser) {
     return message.reply('Please mention a user to trade with!');
   }
@@ -49,7 +48,7 @@ async function execute(message, args, client) {
 
   // Get everything after the mention
   const cardArgs = args.slice(mentionIndex + 1);
-  
+
   if (cardArgs.length < 2) {
     return message.reply('Please specify both cards! Usage: `op trade @user "Your Card Name" "Their Card Name"`');
   }
@@ -79,19 +78,19 @@ async function execute(message, args, client) {
   // Fuzzy matching function
   function fuzzyFindCard(cards, searchName) {
     if (!cards || !searchName) return null;
-    
+
     const search = searchName.toLowerCase().replace(/[^a-z0-9]/g, '');
-    
+
     // Exact match first
     let match = cards.find(c => c.name.toLowerCase() === searchName.toLowerCase());
     if (match) return match;
-    
+
     // Fuzzy match
     match = cards.find(c => {
       const cardName = c.name.toLowerCase().replace(/[^a-z0-9]/g, '');
       return cardName.includes(search) || search.includes(cardName);
     });
-    
+
     return match;
   }
 
@@ -200,7 +199,7 @@ async function execute(message, args, client) {
         await Promise.all([freshUser1.save(), freshUser2.save()]);
 
         trade.status = 'completed';
-        
+
         const successEmbed = new EmbedBuilder()
           .setTitle('✅ Trade Completed!')
           .setDescription('The trade has been successfully completed!')
@@ -219,7 +218,7 @@ async function execute(message, args, client) {
           .setColor(0x00ff00);
 
         await tradeMessage.edit({ embeds: [successEmbed], components: [] });
-        
+
       } catch (error) {
         console.error('Trade execution error:', error);
         const errorEmbed = new EmbedBuilder()
@@ -232,7 +231,7 @@ async function execute(message, args, client) {
     } else {
       // Decline trade
       trade.status = 'declined';
-      
+
       const declineEmbed = new EmbedBuilder()
         .setTitle('❌ Trade Declined')
         .setDescription(`${targetUser.username} declined the trade offer.`)
@@ -250,7 +249,7 @@ async function execute(message, args, client) {
     if (trade && trade.status === 'pending') {
       trade.status = 'expired';
       activeTrades.delete(tradeId);
-      
+
       const expiredEmbed = new EmbedBuilder()
         .setTitle('⏰ Trade Expired')
         .setDescription('This trade offer has expired.')

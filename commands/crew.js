@@ -1,4 +1,3 @@
-
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const User = require('../db/models/User.js');
 
@@ -105,7 +104,7 @@ async function handleCreate(message, user, args) {
     level: 1,
     createdAt: new Date()
   };
-  
+
   await user.save();
 
   const embed = new EmbedBuilder()
@@ -275,7 +274,7 @@ async function handleLeave(message, user) {
   }
 
   const captain = await User.findOne({ userId: user.crewId });
-  
+
   if (user.userId === captain.userId) {
     return message.reply('Captains cannot leave their crew! Transfer leadership or disband the crew first.');
   }
@@ -313,7 +312,7 @@ async function handleKick(message, user) {
 
   // Remove from crew
   user.crewData.members = user.crewData.members.filter(id => id !== targetUser.id);
-  
+
   const kickedUser = await User.findOne({ userId: targetUser.id });
   if (kickedUser) {
     kickedUser.crewId = null;

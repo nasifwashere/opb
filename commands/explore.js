@@ -429,13 +429,8 @@ async function execute(message, args, client) {
         const currentLocationIndex = Object.keys(LOCATIONS).indexOf(currentLocation);
         if (currentLocationIndex < Object.keys(LOCATIONS).length - 1) {
             const nextLocation = Object.keys(LOCATIONS)[currentLocationIndex + 1];
-            // Calculate correct stage for next location
-            let nextStage = 0;
-            for (let i = 0; i <= currentLocationIndex; i++) {
-                const locationName = Object.keys(LOCATIONS)[i];
-                nextStage += LOCATIONS[locationName].length;
-            }
-            user.stage = nextStage;
+            // Set stage to start of next location
+            user.stage = user.stage; // Keep current stage, don't reset
             user.lastExplore = new Date();
             await user.save();
 

@@ -1,4 +1,3 @@
-
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
 const fs = require('fs');
@@ -15,10 +14,10 @@ function calculateCardPower(cardDef, cardInstance) {
   const { calculateCardStats } = require('../utils/levelSystem.js');
   const level = cardInstance.level || 1;
   const stats = calculateCardStats(cardDef, level);
-  
+
   const rankMultipliers = { C: 0.8, B: 1.0, A: 1.2, S: 1.4, UR: 1.6 };
   const rankBonus = rankMultipliers[cardDef.rank] || 1.0;
-  
+
   return (stats.power + stats.health + stats.speed) * rankBonus;
 }
 
@@ -48,7 +47,7 @@ async function execute(message, args) {
   }
 
   const preset = args[0] || 'strongest';
-  
+
   // Get all user's cards with their definitions
   const availableCards = user.cards
     .map(cardInstance => {
@@ -64,7 +63,7 @@ async function execute(message, args) {
   }
 
   let sortedCards;
-  
+
   switch (preset) {
     case 'speed':
       sortedCards = availableCards.sort((a, b) => {
@@ -74,7 +73,7 @@ async function execute(message, args) {
         return statsB.speed - statsA.speed;
       });
       break;
-      
+
     case 'tank':
       sortedCards = availableCards.sort((a, b) => {
         const { calculateCardStats } = require('../utils/levelSystem.js');
@@ -83,7 +82,7 @@ async function execute(message, args) {
         return statsB.health - statsA.health;
       });
       break;
-      
+
     case 'balanced':
       sortedCards = availableCards.sort((a, b) => {
         const { calculateCardStats } = require('../utils/levelSystem.js');
@@ -94,7 +93,7 @@ async function execute(message, args) {
         return balanceB - balanceA;
       });
       break;
-      
+
     default: // strongest
       sortedCards = availableCards.sort((a, b) => {
         return calculateCardPower(b.def, b.instance) - calculateCardPower(a.def, a.instance);
@@ -121,3 +120,7 @@ async function execute(message, args) {
 }
 
 module.exports = { data, execute };
+```
+
+```
+</replit_final_file>

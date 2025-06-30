@@ -130,10 +130,7 @@ async function execute(interaction, client) {
       return;
     }
 
-    if (interaction.customId.startsWith('choice_')) {
-      await handleChoiceInteraction(interaction, client);
-      return;
-    }
+    
 
     if (interaction.customId.startsWith('help_')) {
       await handleHelpInteraction(interaction, client);
@@ -204,62 +201,7 @@ async function handleBattleItemInteraction(interaction, client) {
   });
 }
 
-async function handleChoiceInteraction(interaction, client) {
-  const choiceData = client.choices?.get(interaction.message.id);
-  if (!choiceData || choiceData.userId !== interaction.user.id) {
-    return interaction.reply({ content: 'This choice is not for you or has expired.', ephemeral: true });
-  }
 
-  const { stageData, stage } = choiceData;
-  const choice = interaction.customId.split('_')[1];
-
-  let user = await User.findOne({ userId: interaction.user.id });
-  if (!user) return interaction.reply({ content: 'User not found!', ephemeral: true });
-
-  // Apply reward based on choice
-  const reward = choice === 'yes' ? stageData.choice.yes : stageData.choice.no;
-
-  let rewardText = '';
-  if (reward.type === 'card') {
-    if (!user.cards) user.cards = [];
-    // Allow duplicate cards
-    user.cards.push({
-      name: reward.name,
-      rank: reward.rank,
-      timesUpgraded: 0
-    });
-    rewardText = `🎴 You obtained **${reward.name}** (${reward.rank} rank)!`;
-  } else if (reward.type === 'beli') {
-    user.beli = (user.beli || 0) + reward.amount;
-    rewardText = `💰 You gained **${reward.amount}** Beli!`;
-  }
-
-  // Progress to next stage
-  user.exploreStage = stage + 1;
-  user.exploreLast = Date.now();
-  await user.save();
-
-  // Remove choice from memory
-  client.choices.delete(interaction.message.id);
-
-  const resultEmbed = new EmbedBuilder()
-    .setTitle(`✅ Choice Made: ${choice === 'yes' ? 'Yes' : 'No'}`)
-    .setDescription(`${stageData.desc}\n\n**Result:** ${rewardText}`)
-    .setColor(choice === 'yes' ? 0x27ae60 : 0xe74c3c);
-
-  try {
-    await interaction.update({
-      embeds: [resultEmbed],
-      components: []
-    });
-  } catch (error) {
-    // If interaction expired, send a new message
-    await interaction.followUp({
-      embeds: [resultEmbed],
-      components: []
-    });
-  }
-}
 
 async function handleBossInteraction(interaction, client) {
   const battleData = client.battles?.get(interaction.message.id);
