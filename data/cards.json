@@ -2,61 +2,61 @@
   {
     "name": "Monkey D. Luffy",
     "shortDesc": "Straw Hat Pirate (East Blue)",
-    "phs": "78 / 85 / 90",
+    "phs": "78 / 70 / 70",
     "rank": "B",
     "image": "https://files.catbox.moe/gi02bo.webp",
     "evolvesFrom": null,
     "saga": "East Blue",
     "evolution": {
-      "nextId": "Monkey D. Luffy (Gear Second, Water 7)",
+      "nextId": "Monkey D. Luffy (Gear Second)",
       "requiredLevel": 25,
       "cost": 1000,
       "requiredSaga": "Water 7"
     }
   },
   {
-    "name": "Monkey D. Luffy (Gear Second, Water 7)",
-    "shortDesc": "Straw Hat Pirate (Gear Second, Water 7)",
-    "phs": "92 / 97 / 99",
+    "name": "Monkey D. Luffy (Gear Second)",
+    "shortDesc": "Straw Hat Pirate (Gear Second)",
+    "phs": "115 / 110 / 118",
     "rank": "A",
     "image": "https://files.catbox.moe/rekpfw.jpg",
     "evolvesFrom": "Monkey D. Luffy",
-    "saga": "Water 7",
+    "saga": "East Blue",
     "evolution": {
-      "nextId": "Monkey D. Luffy (Snakeman, Dressrosa)",
+      "nextId": "Monkey D. Luffy (Snakeman)",
       "requiredLevel": 30,
       "cost": 2500,
-      "requiredSaga": "Dressrosa"
+      "requiredSaga": "East Blue"
     }
   },
   {
-    "name": "Monkey D. Luffy (Snakeman, Dressrosa)",
+    "name": "Monkey D. Luffy (Snakeman)",
     "shortDesc": "Snakeman",
-    "phs": "98 / 100 / 100",
+    "phs": "140 / 125 / 142",
     "rank": "S",
     "image": "https://files.catbox.moe/5rwtpi.jpg",
-    "evolvesFrom": "Monkey D. Luffy (Gear Second, Water 7)",
-    "saga": "Dressrosa",
+    "evolvesFrom": "Monkey D. Luffy (Gear Second)",
+    "saga": "East Blue",
     "evolution": {
-      "nextId": "Monkey D. Luffy (Sun God Nika, Wano)",
+      "nextId": "Monkey D. Luffy (Sun God Nika)",
       "requiredLevel": 90,
       "cost": 30000,
-      "requiredSaga": "Wano"
+      "requiredSaga": "East Blue"
     }
   },
   {
-    "name": "Monkey D. Luffy (Sun God Nika, Wano)",
+    "name": "Monkey D. Luffy (Sun God Nika)",
     "shortDesc": "Sun god nika",
-    "phs": "110 / 120 / 120",
+    "phs": "150 / 150 / 150",
     "rank": "UR",
     "image": "https://files.catbox.moe/hd1t4e.jpg",
-    "evolvesFrom": "Monkey D. Luffy (Snakeman, Dressrosa)",
-    "saga": "Wano"
+    "evolvesFrom": "Monkey D. Luffy (Snakeman)",
+    "saga": "East Blue"
   },
   {
     "name": "Roronoa Zoro",
     "shortDesc": "Pirate Hunter (East Blue)",
-    "phs": "76 / 82 / 85",
+    "phs": "90 / 88 / 88",
     "rank": "B",
     "image": "https://files.catbox.moe/1dzd48.jpg",
     "evolvesFrom": null,
@@ -71,7 +71,7 @@
   {
     "name": "Roronoa Zoro (Asura, Enies Lobby)",
     "shortDesc": "Pirate Hunter (Asura Form, Enies Lobby)",
-    "phs": "92 / 98 / 100",
+    "phs": "132 / 125 / 125",
     "rank": "S",
     "image": "https://files.catbox.moe/ujqbw3.webp",
     "evolvesFrom": "Roronoa Zoro",
@@ -86,7 +86,7 @@
   {
     "name": "Roronoa Zoro (King of Hell, Wano)",
     "shortDesc": "Pirate Hunter (King of Hell, Wano)",
-    "phs": "110 / 120 / 120",
+    "phs": "160 / 155 / 155",
     "rank": "UR",
     "image": "https://files.catbox.moe/3kgnfn.jpg",
     "evolvesFrom": "Roronoa Zoro (Asura, Enies Lobby)",
