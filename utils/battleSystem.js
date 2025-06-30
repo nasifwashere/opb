@@ -85,10 +85,11 @@ function calculateBattleStats(user, cardDatabase = allCards) {
     const rankMultiplier = rankMultipliers[cardDef.rank] || 1.0;
 
     // Calculate base stats with level boost (1% per level above 1) and rank
-    const { calculateStatWithLevel } = require('./levelSystem.js');
-    let power = Math.floor(calculateStatWithLevel(basePower, level) * rankMultiplier);
-    let health = Math.floor(calculateStatWithLevel(baseHealth, level) * rankMultiplier);
-    let speed = Math.floor(calculateStatWithLevel(baseSpeed, level) * rankMultiplier);
+    const { calculateCardStats } = require('./levelSystem.js');
+    const stats = calculateCardStats(cardDef, level);
+    let power = Math.floor(stats.power * rankMultiplier);
+    let health = Math.floor(stats.health * rankMultiplier);
+    let speed = Math.floor(stats.speed * rankMultiplier);
 
     // Apply equipment bonuses
     const equipped = user.equipped;
