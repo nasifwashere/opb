@@ -35,11 +35,21 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/onepiece_bo
 
 client.once('ready', () => {
     console.log(`Ready! Logged in as ${client.user.tag}`);
+
+    // Start reset and drop timers
+    try {
+        const { startResetTimer } = require('./commands/mod/setResets.js');
+        const { startDropTimer } = require('./commands/mod/setDrops.js');
+        startResetTimer(client);
+        startDropTimer(client);
+    } catch (error) {
+        console.log('Timers will start when channels are set');
+    }
 });
 
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
-    
+
     const config = require('./config.json');
     const prefix = config.prefix;
     if (!message.content.startsWith(prefix)) return;

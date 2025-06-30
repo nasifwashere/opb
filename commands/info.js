@@ -46,11 +46,25 @@ function getEvolutionChain(card) {
   return { prev, next };
 }
 
-// Compute attack range from power stat
-function attackRange(phs) {
+// Compute attack range from power stat using battle system
+function attackRange(phs, rank) {
   let power = parseInt((phs || "0").split('/')[0].trim(), 10);
   if (isNaN(power)) power = 0;
-  return `🗡️ Attack: ${Math.floor(power / 5)} ~ ${Math.floor(power / 3)} (Power: ${power})`;
+  
+  const damageMultipliers = {
+    C: 0.08,
+    B: 0.10,
+    A: 0.14,
+    S: 0.17,
+    UR: 0.20
+  };
+  
+  const damageMultiplier = damageMultipliers[rank] || 0.10;
+  const baseDamage = power * damageMultiplier;
+  const attackLow = Math.floor(baseDamage * 1.0);
+  const attackHigh = Math.floor(baseDamage * 1.5);
+  
+  return `🗡️ Attack: ${attackLow} ~ ${attackHigh} (Power: ${power})`;
 }
 
 // Compute evolution requirements from matrix and data
@@ -81,7 +95,7 @@ function infoEmbed(card, ownedCount, userCard) {
   if (!level) level = 1;
   const lockStatus = userCard?.locked ? ' <:Padlock_Crown:1388587874084982956>' : '';
   let title = `**[${card.rank}] ${card.name}${lockStatus} - Lv. ${level}**`;
-  let desc = `${card.shortDesc}\n${attackRange(card.phs)}`;
+  let desc = `${card.shortDesc}\n${attackRange(card.phs, card.rank)}`;
   if (ownedCount === 0) desc += "\n\n*You do not own this card. Use `op pull` or trade to obtain it.*";
 
   const embed = new EmbedBuilder()

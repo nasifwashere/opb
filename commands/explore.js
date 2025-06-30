@@ -1,6 +1,7 @@
 
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const User = require('../db/models/User.js');
+const { calculateBattleStats, calculateDamage, resetTeamHP } = require('../utils/battleSystem.js');
 
 // Location data based on your specifications
 const LOCATIONS = {
@@ -316,7 +317,7 @@ const LOCATION_COOLDOWNS = {
 };
 
 const DEFEAT_COOLDOWN = 5 * 60 * 1000; // 5 minutes on defeat
-const IMMUNE_USER_ID = "1257718161298690119";
+const IMMUNE_USER_ID = 1257718161298690119; // Set to your user ID for immunity
 
 function normalizeItemName(item) {
     return item.replace(/\s+/g, '').toLowerCase();
@@ -381,89 +382,8 @@ function getLocalStage(globalStage) {
     return 0;
 }
 
-// Calculate equipped item bonuses
-function calculateEquippedBonuses(user) {
-    const bonuses = { hp: 0, atk: 0, spd: 0, def: 0 };
-    
-    if (!user.equipped) return bonuses;
-    
-    // Item stat bonuses - normalized item names
-    const itemBonuses = {
-        'strawhat': { hp: 10, atk: 5, spd: 5 },
-        'marinesword': { atk: 15, spd: 5 },
-        'townmap': { spd: 10 },
-        'battlebanner': { hp: 20, atk: 10 },
-        'speedboostfood': { spd: 25 }
-    };
-    
-    // Handle both Map and Object types for equipped items
-    const equippedEntries = user.equipped instanceof Map ? 
-        Array.from(user.equipped.entries()) : 
-        Object.entries(user.equipped);
-    
-    for (const [cardName, itemName] of equippedEntries) {
-        // Ensure itemName is a string before normalizing
-        if (itemName && typeof itemName === 'string') {
-            const normalizedItem = normalizeItemName(itemName);
-            if (itemBonuses[normalizedItem]) {
-                const bonus = itemBonuses[normalizedItem];
-                bonuses.hp += bonus.hp || 0;
-                bonuses.atk += bonus.atk || 0;
-                bonuses.spd += bonus.spd || 0;
-                bonuses.def += bonus.def || 0;
-            }
-        }
-    }
-    
-    return bonuses;
-}
-
-// Get user's battle stats including equipped item bonuses
-function getUserBattleStats(user) {
-    const baseStats = {
-        hp: 100 + (user.level || 1) * 10,
-        atk: 15 + (user.level || 1) * 2,
-        spd: 50 + (user.level || 1) * 3
-    };
-    
-    const equipped = calculateEquippedBonuses(user);
-    
-    return {
-        hp: baseStats.hp + equipped.hp,
-        atk: baseStats.atk + equipped.atk,
-        spd: baseStats.spd + equipped.spd,
-        def: equipped.def
-    };
-}
-
-// Check if user can use inventory items in battle
-function canUseInventoryItem(user, itemName) {
-    if (!user.inventory) return false;
-    const normalizedItem = normalizeItemName(itemName);
-    return user.inventory.some(item => normalizeItemName(item) === normalizedItem);
-}
-
-// Use inventory item in battle
-function useInventoryItem(user, itemName) {
-    if (!canUseInventoryItem(user, itemName)) return null;
-    
-    const normalizedItem = normalizeItemName(itemName);
-    const itemIndex = user.inventory.findIndex(item => normalizeItemName(item) === normalizedItem);
-    
-    if (itemIndex === -1) return null;
-    
-    // Remove item from inventory
-    user.inventory.splice(itemIndex, 1);
-    
-    // Return item effects
-    const itemEffects = {
-        'healthpotion': { type: 'heal', amount: 50 },
-        'strengthpotion': { type: 'attack_boost', amount: 20, duration: 3 },
-        'speedboostfood': { type: 'speed_boost', amount: 15, duration: 3 },
-        'defensepotion': { type: 'defense_boost', amount: 15, duration: 3 }
-    };
-    
-    return itemEffects[normalizedItem] || null;
+function getTotalStagesInLocation(location) {
+    return LOCATIONS[location] ? LOCATIONS[location].length : 0;
 }
 
 const data = {
@@ -495,7 +415,7 @@ async function execute(message, args, client) {
         return message.reply('🎉 Congratulations! You have completed the East Blue Saga! More adventures await in future updates!');
     }
 
-    // Check explore cooldown using config
+    // Check explore cooldown using config (immunity for specific user)
     const config = require('../config.json');
     const cooldownTime = config.exploreCooldown || 120000; // 2 minutes default
     const lastExplore = user.lastExplore ? new Date(user.lastExplore).getTime() : 0;
@@ -531,10 +451,14 @@ async function execute(message, args, client) {
 }
 
 async function handleNarrative(message, user, stageData, currentLocation) {
+    const localStage = getLocalStage(user.stage);
+    const totalStages = getTotalStagesInLocation(currentLocation);
+    
     const embed = new EmbedBuilder()
         .setTitle(`🗺️ ${currentLocation} - ${stageData.title}`)
         .setDescription(stageData.desc)
-        .setColor(0x3498db);
+        .setColor(0x3498db)
+        .setFooter({ text: `Progress: ${localStage + 1}/${totalStages}` });
 
     // Apply rewards
     await applyReward(user, stageData.reward);
@@ -562,10 +486,14 @@ async function handleNarrative(message, user, stageData, currentLocation) {
 }
 
 async function handleChoice(message, user, stageData, currentLocation, client) {
+    const localStage = getLocalStage(user.stage);
+    const totalStages = getTotalStagesInLocation(currentLocation);
+    
     const embed = new EmbedBuilder()
         .setTitle(`🗺️ ${currentLocation} - ${stageData.title}`)
         .setDescription(stageData.desc)
-        .setColor(0xe67e22);
+        .setColor(0xe67e22)
+        .setFooter({ text: `Progress: ${localStage + 1}/${totalStages}` });
 
     const row = new ActionRowBuilder()
         .addComponents(
@@ -596,7 +524,8 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
             const resultEmbed = new EmbedBuilder()
                 .setTitle(`✅ Choice Made: ${choice.toUpperCase()}`)
                 .setDescription(`You chose **${choice}**!`)
-                .setColor(choice === 'yes' ? 0x2ecc71 : 0x95a5a6);
+                .setColor(choice === 'yes' ? 0x2ecc71 : 0x95a5a6)
+                .setFooter({ text: `Progress: ${localStage + 2}/${totalStages}` });
             
             if (reward) {
                 resultEmbed.addFields({ name: 'Reward', value: getRewardText(reward), inline: false });
@@ -633,8 +562,14 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
 }
 
 async function handleBattle(message, user, stageData, currentLocation, client) {
+    // Get user's team using the battle system
+    const battleTeam = calculateBattleStats(user);
+    
+    if (!battleTeam || battleTeam.length === 0) {
+        return message.reply('❌ You need to set up your team first! Use `op team add <card>` to add cards to your team.');
+    }
+
     // Initialize battle state
-    const userStats = getUserBattleStats(user);
     let enemies = [];
     
     if (stageData.type === 'multi_enemy') {
@@ -652,11 +587,9 @@ async function handleBattle(message, user, stageData, currentLocation, client) {
     }
 
     const battleState = {
-        userHp: userStats.hp,
-        userMaxHp: userStats.hp,
+        userTeam: battleTeam,
         enemies: enemies,
         turn: 1,
-        userBoosts: {},
         isBossFight: stageData.type === 'boss'
     };
 
@@ -683,6 +616,7 @@ async function handleBossFight(message, user, client) {
 async function displayBattleState(message, user, client) {
     const battleState = user.exploreStates.battleState;
     const stageData = user.exploreStates.currentStage;
+    const currentLocation = user.exploreStates.currentLocation;
     
     if (!battleState || !stageData) {
         // Clean up corrupted state
@@ -693,29 +627,48 @@ async function displayBattleState(message, user, client) {
         return message.reply('❌ Battle state corrupted. Please try exploring again.');
     }
 
+    const localStage = getLocalStage(user.stage);
+    const totalStages = getTotalStagesInLocation(currentLocation);
+
     const embed = new EmbedBuilder()
         .setTitle(`⚔️ ${stageData.title}`)
         .setDescription(stageData.desc)
-        .setColor(battleState.isBossFight ? 0xe74c3c : 0xf39c12);
+        .setColor(battleState.isBossFight ? 0xe74c3c : 0xf39c12)
+        .setFooter({ text: `Progress: ${localStage + 1}/${totalStages}` });
 
-    // User HP bar
-    const userHpBar = createHpBar(battleState.userHp, battleState.userMaxHp);
+    // Display your team
+    let teamDisplay = '';
+    battleState.userTeam.forEach((card, index) => {
+        if (card.currentHp > 0) {
+            const hpBar = createHpBar(card.currentHp, card.maxHp);
+            const lockStatus = card.locked ? ' 🔒' : '';
+            teamDisplay += `**Lv.${card.level} ${card.name}${lockStatus}**\n❤️ ${card.currentHp}/${card.maxHp} ${hpBar}\n`;
+        } else {
+            teamDisplay += `**${card.name}** - 💀 *Defeated*\n`;
+        }
+    });
+
     embed.addFields({
-        name: `${message.author.username} (You)`,
-        value: `❤️ ${battleState.userHp}/${battleState.userMaxHp} ${userHpBar}`,
+        name: `🏴‍☠️ Your Crew`,
+        value: teamDisplay || 'No active crew members',
         inline: false
     });
 
     // Enemy HP bars
+    let enemyDisplay = '';
     battleState.enemies.forEach((enemy, index) => {
         if (enemy.currentHp > 0) {
             const enemyHpBar = createHpBar(enemy.currentHp, enemy.maxHp);
-            embed.addFields({
-                name: `${enemy.name}`,
-                value: `💀 ${enemy.currentHp}/${enemy.maxHp} ${enemyHpBar}`,
-                inline: true
-            });
+            enemyDisplay += `**${enemy.name}**\n💀 ${enemy.currentHp}/${enemy.maxHp} ${enemyHpBar}\n`;
+        } else {
+            enemyDisplay += `**${enemy.name}** - ☠️ *Defeated*\n`;
         }
+    });
+
+    embed.addFields({
+        name: `👹 Enemies`,
+        value: enemyDisplay || 'No enemies remaining',
+        inline: false
     });
 
     // Create battle buttons
@@ -777,26 +730,22 @@ async function displayBattleState(message, user, client) {
 
 async function handleBattleAttack(interaction, user, battleMessage) {
     const battleState = user.exploreStates.battleState;
-    const userStats = getUserBattleStats(user);
     
+    // Get first alive card from team
+    const activeCard = battleState.userTeam.find(card => card.currentHp > 0);
+    if (!activeCard) {
+        return await handleBattleDefeat(interaction, user, battleMessage, 'All your crew members are defeated!');
+    }
+
     // User attacks first enemy alive
     const targetEnemy = battleState.enemies.find(e => e.currentHp > 0);
     if (!targetEnemy) return;
 
-    let attackDamage = Math.floor(Math.random() * (userStats.atk - 10) + 10);
-    
-    // Apply user boosts
-    if (battleState.userBoosts.attack_boost) {
-        attackDamage += battleState.userBoosts.attack_boost.amount;
-        battleState.userBoosts.attack_boost.duration--;
-        if (battleState.userBoosts.attack_boost.duration <= 0) {
-            delete battleState.userBoosts.attack_boost;
-        }
-    }
+    let attackDamage = calculateDamage(activeCard, targetEnemy, 'normal');
     
     targetEnemy.currentHp = Math.max(0, targetEnemy.currentHp - attackDamage);
     
-    let battleLog = `⚔️ You attack ${targetEnemy.name} for ${attackDamage} damage!`;
+    let battleLog = `⚔️ ${activeCard.name} attacks ${targetEnemy.name} for ${attackDamage} damage!`;
     
     if (targetEnemy.currentHp <= 0) {
         battleLog += `\n💀 ${targetEnemy.name} is defeated!`;
@@ -810,23 +759,22 @@ async function handleBattleAttack(interaction, user, battleMessage) {
     // Enemy attacks back
     const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
     for (const enemy of aliveEnemies) {
-        const enemyAttack = Array.isArray(enemy.atk) ? 
-            Math.floor(Math.random() * (enemy.atk[1] - enemy.atk[0] + 1)) + enemy.atk[0] :
-            enemy.atk;
+        const targetCard = battleState.userTeam.find(card => card.currentHp > 0);
+        if (!targetCard) break;
+
+        const enemyDamage = calculateDamage(enemy, targetCard, 'normal');
         
-        let damage = enemyAttack;
+        targetCard.currentHp = Math.max(0, targetCard.currentHp - enemyDamage);
+        battleLog += `\n💥 ${enemy.name} attacks ${targetCard.name} for ${enemyDamage} damage!`;
         
-        // Apply defense from equipment
-        if (userStats.def > 0) {
-            damage = Math.max(1, damage - userStats.def);
+        if (targetCard.currentHp <= 0) {
+            battleLog += `\n💀 ${targetCard.name} is defeated!`;
         }
-        
-        battleState.userHp = Math.max(0, battleState.userHp - damage);
-        battleLog += `\n💥 ${enemy.name} attacks you for ${damage} damage!`;
-        
-        if (battleState.userHp <= 0) {
-            return await handleBattleDefeat(interaction, user, battleMessage, battleLog);
-        }
+    }
+
+    // Check if all team defeated
+    if (battleState.userTeam.every(card => card.currentHp <= 0)) {
+        return await handleBattleDefeat(interaction, user, battleMessage, battleLog);
     }
 
     battleState.turn++;
@@ -834,29 +782,55 @@ async function handleBattleAttack(interaction, user, battleMessage) {
     await user.save();
 
     // Update battle display
+    await updateBattleDisplay(interaction, user, battleMessage, battleLog);
+}
+
+async function updateBattleDisplay(interaction, user, battleMessage, battleLog) {
+    const battleState = user.exploreStates.battleState;
+    const stageData = user.exploreStates.currentStage;
+    const currentLocation = user.exploreStates.currentLocation;
+    const localStage = getLocalStage(user.stage);
+    const totalStages = getTotalStagesInLocation(currentLocation);
+
     const embed = new EmbedBuilder()
         .setTitle(`⚔️ Turn ${battleState.turn}`)
         .setDescription(battleLog)
-        .setColor(0xf39c12);
+        .setColor(0xf39c12)
+        .setFooter({ text: `Progress: ${localStage + 1}/${totalStages}` });
 
-    // User HP
-    const userHpBar = createHpBar(battleState.userHp, battleState.userMaxHp);
+    // Display your team
+    let teamDisplay = '';
+    battleState.userTeam.forEach((card, index) => {
+        if (card.currentHp > 0) {
+            const hpBar = createHpBar(card.currentHp, card.maxHp);
+            const lockStatus = card.locked ? ' 🔒' : '';
+            teamDisplay += `**Lv.${card.level} ${card.name}${lockStatus}**\n❤️ ${card.currentHp}/${card.maxHp} ${hpBar}\n`;
+        } else {
+            teamDisplay += `**${card.name}** - 💀 *Defeated*\n`;
+        }
+    });
+
     embed.addFields({
-        name: `${interaction.user.username} (You)`,
-        value: `❤️ ${battleState.userHp}/${battleState.userMaxHp} ${userHpBar}`,
+        name: `🏴‍☠️ Your Crew`,
+        value: teamDisplay || 'No active crew members',
         inline: false
     });
 
-    // Enemy HP
-    battleState.enemies.forEach(enemy => {
+    // Enemy HP bars
+    let enemyDisplay = '';
+    battleState.enemies.forEach((enemy, index) => {
         if (enemy.currentHp > 0) {
             const enemyHpBar = createHpBar(enemy.currentHp, enemy.maxHp);
-            embed.addFields({
-                name: enemy.name,
-                value: `💀 ${enemy.currentHp}/${enemy.maxHp} ${enemyHpBar}`,
-                inline: true
-            });
+            enemyDisplay += `**${enemy.name}**\n💀 ${enemy.currentHp}/${enemy.maxHp} ${enemyHpBar}\n`;
+        } else {
+            enemyDisplay += `**${enemy.name}** - ☠️ *Defeated*\n`;
         }
+    });
+
+    embed.addFields({
+        name: `👹 Enemies`,
+        value: enemyDisplay || 'No enemies remaining',
+        inline: false
     });
 
     const battleButtons = [
@@ -875,7 +849,6 @@ async function handleBattleAttack(interaction, user, battleMessage) {
     ];
 
     const row = new ActionRowBuilder().addComponents(battleButtons);
-
     await battleMessage.edit({ embeds: [embed], components: [row] });
 }
 
@@ -919,23 +892,14 @@ async function handleBattleItems(interaction, user, battleMessage) {
         const battleState = user.exploreStates.battleState;
         let effectText = '';
 
-        // Apply item effects
-        if (effect.type === 'heal') {
-            const healAmount = Math.min(effect.amount, battleState.userMaxHp - battleState.userHp);
-            battleState.userHp += healAmount;
-            effectText = `Healed ${healAmount} HP!`;
-        } else if (effect.type === 'attack_boost') {
-            if (!battleState.userBoosts) battleState.userBoosts = {};
-            battleState.userBoosts.attack_boost = { amount: effect.amount, duration: effect.duration };
-            effectText = `Attack increased by ${effect.amount}!`;
-        } else if (effect.type === 'speed_boost') {
-            if (!battleState.userBoosts) battleState.userBoosts = {};
-            battleState.userBoosts.speed_boost = { amount: effect.amount, duration: effect.duration };
-            effectText = `Speed increased by ${effect.amount}!`;
-        } else if (effect.type === 'defense_boost') {
-            if (!battleState.userBoosts) battleState.userBoosts = {};
-            battleState.userBoosts.defense_boost = { amount: effect.amount, duration: effect.duration };
-            effectText = `Defense increased by ${effect.amount}!`;
+        // Apply item effects to first alive card
+        const activeCard = battleState.userTeam.find(card => card.currentHp > 0);
+        if (activeCard && effect.type === 'heal') {
+            const healAmount = Math.min(effect.amount, activeCard.maxHp - activeCard.currentHp);
+            activeCard.currentHp += healAmount;
+            effectText = `${activeCard.name} healed ${healAmount} HP!`;
+        } else {
+            effectText = `Used ${itemName}!`;
         }
 
         await user.save();
@@ -956,85 +920,60 @@ async function handleBattleItems(interaction, user, battleMessage) {
 
 async function handleEnemyTurn(interaction, user, battleMessage) {
     const battleState = user.exploreStates.battleState;
-    const userStats = getUserBattleStats(user);
     let battleLog = '';
 
     // Each alive enemy attacks
     for (const enemy of battleState.enemies) {
         if (enemy.currentHp <= 0) continue;
 
-        const enemyDamage = Array.isArray(enemy.atk) 
-            ? Math.floor(Math.random() * (enemy.atk[1] - enemy.atk[0] + 1)) + enemy.atk[0]
-            : enemy.atk;
+        const targetCard = battleState.userTeam.find(card => card.currentHp > 0);
+        if (!targetCard) break;
 
-        const userDefense = battleState.userBoosts?.defense_boost?.amount || 0;
-        const finalDamage = Math.max(1, enemyDamage - userDefense);
+        const damage = calculateDamage(enemy, targetCard, 'normal');
         
-        battleState.userHp = Math.max(0, battleState.userHp - finalDamage);
-        battleLog += `${enemy.name} attacks for ${finalDamage} damage!\n`;
+        targetCard.currentHp = Math.max(0, targetCard.currentHp - damage);
+        battleLog += `${enemy.name} attacks ${targetCard.name} for ${damage} damage!\n`;
 
-        if (battleState.userHp <= 0) {
-            return await handleBattleDefeat(interaction, user, battleMessage, battleLog);
+        if (targetCard.currentHp <= 0) {
+            battleLog += `${targetCard.name} is defeated!\n`;
         }
     }
 
-    // Reduce boost durations
-    if (battleState.userBoosts) {
-        Object.keys(battleState.userBoosts).forEach(key => {
-            if (battleState.userBoosts[key].duration) {
-                battleState.userBoosts[key].duration--;
-                if (battleState.userBoosts[key].duration <= 0) {
-                    delete battleState.userBoosts[key];
-                }
-            }
-        });
+    // Check if all team defeated
+    if (battleState.userTeam.every(card => card.currentHp <= 0)) {
+        return await handleBattleDefeat(interaction, user, battleMessage, battleLog);
     }
 
     await user.save();
+    await updateBattleDisplay(interaction, user, battleMessage, battleLog);
+}
 
-    // Update battle display
-    const embed = new EmbedBuilder()
-        .setTitle(`Turn ${battleState.turn}`)
-        .setDescription(battleLog)
-        .setColor(0xf39c12);
+function canUseInventoryItem(user, itemName) {
+    if (!user.inventory) return false;
+    const normalizedItem = normalizeItemName(itemName);
+    return user.inventory.some(item => normalizeItemName(item) === normalizedItem);
+}
 
-    // User HP
-    const userHpBar = createHpBar(battleState.userHp, battleState.userMaxHp);
-    embed.addFields({
-        name: `${interaction.user.username} (You)`,
-        value: `❤️ ${battleState.userHp}/${battleState.userMaxHp} ${userHpBar}`,
-        inline: false
-    });
-
-    // Enemy HP
-    battleState.enemies.forEach(enemy => {
-        if (enemy.currentHp > 0) {
-            const enemyHpBar = createHpBar(enemy.currentHp, enemy.maxHp);
-            embed.addFields({
-                name: enemy.name,
-                value: `💀 ${enemy.currentHp}/${enemy.maxHp} ${enemyHpBar}`,
-                inline: true
-            });
-        }
-    });
-
-    const battleButtons = [
-        new ButtonBuilder()
-            .setCustomId('battle_attack')
-            .setLabel('Attack')
-            .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-            .setCustomId('battle_items')
-            .setLabel('Use Item')
-            .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-            .setCustomId('battle_flee')
-            .setLabel('Flee')
-            .setStyle(ButtonStyle.Secondary)
-    ];
-
-    const row = new ActionRowBuilder().addComponents(battleButtons);
-    await battleMessage.edit({ embeds: [embed], components: [row] });
+function useInventoryItem(user, itemName) {
+    if (!canUseInventoryItem(user, itemName)) return null;
+    
+    const normalizedItem = normalizeItemName(itemName);
+    const itemIndex = user.inventory.findIndex(item => normalizeItemName(item) === normalizedItem);
+    
+    if (itemIndex === -1) return null;
+    
+    // Remove item from inventory
+    user.inventory.splice(itemIndex, 1);
+    
+    // Return item effects
+    const itemEffects = {
+        'healthpotion': { type: 'heal', amount: 50 },
+        'strengthpotion': { type: 'attack_boost', amount: 20, duration: 3 },
+        'speedboostfood': { type: 'speed_boost', amount: 15, duration: 3 },
+        'defensepotion': { type: 'defense_boost', amount: 15, duration: 3 }
+    };
+    
+    return itemEffects[normalizedItem] || null;
 }
 
 async function handleBattleFlee(interaction, user, battleMessage) {
@@ -1077,6 +1016,12 @@ async function handleBattleVictory(interaction, user, battleMessage, battleLog) 
     user.lastExplore = new Date();
     user.stage++;
     
+    // Reset team HP for next battle
+    if (user.team) {
+        const battleTeam = calculateBattleStats(user);
+        resetTeamHP(battleTeam);
+    }
+    
     // Update quest progress
     try {
         const { updateQuestProgress } = require('../utils/questSystem.js');
@@ -1090,10 +1035,14 @@ async function handleBattleVictory(interaction, user, battleMessage, battleLog) 
     
     await user.save();
     
+    const localStage = getLocalStage(user.stage - 1); // -1 because we already advanced
+    const totalStages = getTotalStagesInLocation(currentLocation);
+    
     const victoryEmbed = new EmbedBuilder()
         .setTitle('🎉 Victory!')
-        .setDescription(battleLog + '\n\n✅ **You won the battle!**')
-        .setColor(0x2ecc71);
+        .setDescription(battleLog + '\n\n✅ **You won the battle!**\n*Your team has recovered!*')
+        .setColor(0x2ecc71)
+        .setFooter({ text: `Progress: ${localStage + 1}/${totalStages}` });
     
     if (stageData.reward) {
         victoryEmbed.addFields({ name: 'Rewards', value: getRewardText(stageData.reward), inline: false });
@@ -1104,6 +1053,7 @@ async function handleBattleVictory(interaction, user, battleMessage, battleLog) 
 
 async function handleBattleDefeat(interaction, user, battleMessage, battleLog) {
     const stageData = user.exploreStates.currentStage;
+    const currentLocation = user.exploreStates.currentLocation;
     
     // Clean up battle state
     user.exploreStates.inBossFight = false;
@@ -1115,10 +1065,14 @@ async function handleBattleDefeat(interaction, user, battleMessage, battleLog) {
     
     await user.save();
     
+    const localStage = getLocalStage(user.stage);
+    const totalStages = getTotalStagesInLocation(currentLocation);
+    
     const defeatEmbed = new EmbedBuilder()
         .setTitle('💀 Defeat!')
         .setDescription(battleLog + '\n\n❌ **You were defeated!**')
-        .setColor(0xe74c3c);
+        .setColor(0xe74c3c)
+        .setFooter({ text: `Progress: ${localStage + 1}/${totalStages}` });
     
     await battleMessage.edit({ embeds: [defeatEmbed], components: [] });
 }

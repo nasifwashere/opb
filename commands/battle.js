@@ -1,10 +1,11 @@
-import {
+
+const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder
-} from 'discord.js';
-import User from '../db/models/User.js';
+} = require('discord.js');
+const User = require('../db/models/User.js');
 
 const data = {
   name: 'battle',
@@ -34,4 +35,4 @@ async function execute(message) {
   return message.reply({ embeds: [embed] });
 }
 
-export { data, execute };
+module.exports = { data, execute };

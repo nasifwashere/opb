@@ -60,8 +60,19 @@ function cardEmbed(cardInstance, cardDef, ownerName, index = 0, total = 1, user,
     boostText = "\n**Strawhat equipped! Stats boosted by 30%.**";
   }
 
-  const attackLow = Math.floor(power / 5);
-  const attackHigh = Math.floor(power / 3);
+  // Calculate attack range using damage multiplier system from battle
+  const damageMultipliers = {
+    C: 0.08,
+    B: 0.10,
+    A: 0.14,
+    S: 0.17,
+    UR: 0.20
+  };
+  
+  const damageMultiplier = damageMultipliers[cardDef.rank] || 0.10;
+  const baseDamage = power * damageMultiplier;
+  const attackLow = Math.floor(baseDamage * 1.0);
+  const attackHigh = Math.floor(baseDamage * 1.5);
   const rankSet = rankSettings[cardDef.rank] || {};
   const lockStatus = cardInstance.locked ? ' <:Padlock_Crown:1388587874084982956>' : '';
   const duplicateText = duplicateCount > 1 ? ` (x${duplicateCount})` : '';
