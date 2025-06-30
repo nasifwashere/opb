@@ -84,10 +84,6 @@ client.on('messageCreate', async message => {
     if (!message.content.startsWith(prefix)) return;
 
     const args = message.content.slice(prefix.length).trim().split(/ +/);
-    const commandName = args.shift().toLowerCase();
-
-    const command = client.commands.get(commandName);
-    if (!command) return;
 
     try {
         const { handleCommand } = require('./utils/commandHandler.js');

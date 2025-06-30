@@ -1,4 +1,5 @@
 
+
 const User = require('../db/models/User.js');
 
 // Commands that don't require starting journey
@@ -34,3 +35,4 @@ async function handleCommand(message, args, client) {
 }
 
 module.exports = { handleCommand };
+
