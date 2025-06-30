@@ -159,11 +159,12 @@ async function execute(message) {
     }
 
     const now = Date.now();
-    const pulls = user.pulls || [];
-    const validPulls = pulls.filter(ts => now - ts < PULL_WINDOW);
-
-    if (validPulls.length >= PULLS_PER_WINDOW) {
-        const oldestPull = Math.min(...validPulls);
+    
+    // Clean up old pulls first
+    user.pulls = user.pulls.filter(ts => now - ts < PULL_WINDOW);
+    
+    if (user.pulls.length >= PULLS_PER_WINDOW) {
+        const oldestPull = Math.min(...user.pulls);
         const nextResetIn = PULL_WINDOW - (now - oldestPull);
         return message.reply(
             `**${message.author.username}!** You've used all ${PULLS_PER_WINDOW} pulls!\n\nYou can pull more cards after reset!\nNext Reset: \`${prettyTime(nextResetIn)}\``
@@ -177,8 +178,7 @@ async function execute(message) {
     const rank = weightedRandomRank();
     const card = pickCard(cards, rank);
 
-    // Clean old pulls and add new one
-    user.pulls = user.pulls.filter(ts => now - ts < PULL_WINDOW);
+    // Add new pull
     user.pulls.push(now);
 
     // Add card to user's collection

@@ -520,6 +520,12 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
 
     collector.on('collect', async interaction => {
         try {
+            // Check if interaction is still valid
+            if (!interaction.isRepliable()) {
+                console.log('Interaction no longer repliable');
+                return;
+            }
+
             await interaction.deferUpdate();
 
             const choice = interaction.customId === 'choice_yes' ? 'yes' : 'no';
@@ -551,19 +557,23 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
 
             await user.save();
 
+            // Disable collector to prevent further interactions
+            collector.stop();
+
             await choiceMessage.edit({ embeds: [resultEmbed], components: [] });
         } catch (error) {
             console.error('Choice interaction error:', error);
-            if (!interaction.replied && !interaction.deferred) {
-                await interaction.reply({ content: 'An error occurred while processing your choice.', ephemeral: true });
+            collector.stop();
+            try {
+                await choiceMessage.edit({ components: [] });
+            } catch (editError) {
+                console.error('Error removing components:', editError);
             }
         }
     });
 
     collector.on('end', collected => {
-        if (collected.size === 0) {
-            choiceMessage.edit({ components: [] }).catch(() => {});
-        }
+        choiceMessage.edit({ components: [] }).catch(() => {});
     });
 }
 
@@ -702,6 +712,12 @@ async function displayBattleState(message, user, client) {
 
     collector.on('collect', async interaction => {
         try {
+            // Check if interaction is still valid
+            if (!interaction.isRepliable()) {
+                console.log('Battle interaction no longer repliable');
+                return;
+            }
+
             await interaction.deferUpdate();
 
             if (interaction.customId === 'battle_attack') {
@@ -723,8 +739,11 @@ async function displayBattleState(message, user, client) {
                 console.error('Error cleaning up battle state:', saveError);
             }
 
-            if (!interaction.replied && !interaction.deferred) {
-                await interaction.followUp({ content: 'An error occurred during battle. Battle state has been reset.', ephemeral: true });
+            collector.stop();
+            try {
+                await battleMessage.edit({ components: [] });
+            } catch (editError) {
+                console.error('Error removing battle components:', editError);
             }
         }
     });

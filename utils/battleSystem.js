@@ -125,25 +125,33 @@ function calculateBattleStats(user, cardDatabase = allCards) {
  * @param {string} attackType - 'normal', 'skill', or 'critical'
  * @returns {number} Damage dealt
  */
-function calculateDamage(attacker, defender, isBoss = false) {
-    const baseDamage = attacker.power || attacker.atk || 10;
-
-    // If it's a boss, ensure minimum damage scaling
-    if (isBoss) {
-        const minBossDamage = Math.max(baseDamage * 0.8, 15);
-        const maxBossDamage = baseDamage * 1.2;
-        const damage = Math.floor(Math.random() * (maxBossDamage - minBossDamage) + minBossDamage);
-        return Math.max(damage, 15); // Bosses do minimum 15 damage
+function calculateDamage(attacker, defender, attackType = 'normal') {
+    // Get base damage from attacker
+    let baseDamage;
+    
+    if (attacker.atk && Array.isArray(attacker.atk)) {
+        // Enemy with attack range
+        baseDamage = Math.floor(Math.random() * (attacker.atk[1] - attacker.atk[0] + 1)) + attacker.atk[0];
+    } else if (attacker.power) {
+        // Player card with power stat
+        const damageMultiplier = damageMultipliers[attacker.rank] || 0.10;
+        const rawDamage = attacker.power * damageMultiplier;
+        const minDamage = Math.floor(rawDamage * 1.0);
+        const maxDamage = Math.floor(rawDamage * 1.5);
+        baseDamage = Math.floor(Math.random() * (maxDamage - minDamage + 1)) + minDamage;
+    } else {
+        // Fallback
+        baseDamage = attacker.atk || attacker.power || 10;
     }
 
-    // Regular damage calculation
-    const variation = Math.random() * 0.4 - 0.2; // ±20% variation
-    let damage = Math.floor(baseDamage * (1 + variation));
+    // Apply variation for more dynamic combat
+    const variation = Math.random() * 0.2 - 0.1; // ±10% variation
+    let finalDamage = Math.floor(baseDamage * (1 + variation));
 
-    // Minimum damage
-    damage = Math.max(damage, Math.floor(baseDamage * 0.3));
+    // Ensure minimum damage
+    finalDamage = Math.max(finalDamage, 1);
 
-    return damage;
+    return finalDamage;
 }
 
 /**

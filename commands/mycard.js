@@ -42,7 +42,7 @@ function cardEmbed(cardInstance, cardDef, ownerName, index = 0, total = 1, user,
       .setDescription('This card is missing from the database.');
   }
 
-  const level = cardInstance.level || (cardInstance.timesUpgraded ? cardInstance.timesUpgraded + 1 : 1);
+  const level = Math.max(1, cardInstance.level || (cardInstance.timesUpgraded ? cardInstance.timesUpgraded + 1 : 1));
   const experience = cardInstance.experience || 0;
 
   // Get stats with level bonuses applied
@@ -68,7 +68,7 @@ function cardEmbed(cardInstance, cardDef, ownerName, index = 0, total = 1, user,
     S: 0.17,
     UR: 0.20
   };
-  
+
   const damageMultiplier = damageMultipliers[cardDef.rank] || 0.10;
   const baseDamage = power * damageMultiplier;
   const attackLow = Math.floor(baseDamage * 1.0);
@@ -159,7 +159,7 @@ async function execute(message, args) {
     await interaction.deferUpdate();
 
     if (interaction.customId === 'mycard_info') {
-      const level = cardInstance.level || (cardInstance.timesUpgraded ? cardInstance.timesUpgraded + 1 : 1);
+      const level = Math.max(1, cardInstance.level || (cardInstance.timesUpgraded ? cardInstance.timesUpgraded + 1 : 1));
       let [power, health, speed] = cardDef.phs.split('/').map(x => Number(x.trim()));
 
       let normCard = normalize(cardDef.name);

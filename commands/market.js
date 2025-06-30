@@ -185,7 +185,7 @@ async function execute(message, args) {
             return;
         } else if (interaction.customId === 'market_list') {
             await interaction.followUp({
-                content: 'To list an item for sale, use: `op market list <type> <item name> <price> [description]`\n\nExamples:\n• `op market list card Luffy 1000 Great starter card!`\n• `op market list item strawhat 500`\n\nTo remove a listing, use: `op market unlist <listing number>`',
+                content: 'To list an item for sale, use: `op market list <type> <item name> <price> [description]`\n\nExamples:\n• `op market list card Luffy 1000 Great starter card!`\n• `op market list item strawhat 500`\n\n**To remove a listing:**\n1. Use `op market` and click "My Listings" to see your listing numbers\n2. Use `op market unlist <listing number>` to remove it\n\nExample: `op market unlist 1` removes your first listing',
                 ephemeral: true
             });
             return;
@@ -422,7 +422,7 @@ async function handleMarketUnlist(message, user, args) {
         });
     } else {
         if (!user.inventory) user.inventory = [];
-        user.inventory.push(listing.itemName.toLowerCase().replace(/\s+/g, ''));
+        user.inventory.push(normalize(listing.itemName));
     }
 
     // Remove listing

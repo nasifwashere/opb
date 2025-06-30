@@ -38,6 +38,11 @@ function cardEmbed(cardInstance, cardDef, ownerName, index, total, user, duplica
 
   let { power, health, speed } = stats;
 
+  // Ensure stats are numbers
+  power = isNaN(power) ? 10 : Math.floor(power);
+  health = isNaN(health) ? 50 : Math.floor(health);
+  speed = isNaN(speed) ? 30 : Math.floor(speed);
+
   // Stat boost: If this card has strawhat equipped, boost stats regardless of the card
   let boostText = '';
   let normCard = normalize(cardDef.name);
@@ -203,6 +208,11 @@ async function execute(message, args) {
       const level = currentCard.level || (currentCard.timesUpgraded >= 0 ? currentCard.timesUpgraded + 1 : 1);
       const stats = calculateCardStats(currentCardDef, level);
       let { power, health, speed } = stats;
+
+      // Ensure stats are numbers
+      power = isNaN(power) ? 10 : Math.floor(power);
+      health = isNaN(health) ? 50 : Math.floor(health);
+      speed = isNaN(speed) ? 30 : Math.floor(speed);
 
       // Apply equipment boosts
       let normCard = normalize(currentCardDef.name);
