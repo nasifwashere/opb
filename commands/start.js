@@ -69,14 +69,34 @@ async function execute(message, args, client) {
         await user.save();
         
         const embed = new EmbedBuilder()
-            .setTitle('Welcome to the Grand Line!')
-            .setDescription(`${username}, your journey begins now! You've received:\n\n💰 ${config.defaultCurrency} Beli\n🧪 3 Basic Potions\n\nUse \`op explore\` to start your adventure!\nUse \`op quest\` to see available quests!`)
-            .setColor(0x3498db)
+            .setTitle('🏴‍☠️ Welcome to the Grand Line!')
+            .setDescription(`**${username}**, your legendary journey begins now!\n\n*"I'm gonna be King of the Pirates!"* - Monkey D. Luffy`)
+            .setColor(0xFF6B35)
             .setThumbnail(message.author.displayAvatarURL())
             .addFields(
-                { name: 'Stats', value: `HP: ${user.hp}/${user.maxHp}\nATK: ${user.atk}\nDEF: ${user.def}\nSPD: ${user.spd}`, inline: true },
-                { name: 'Level', value: `${user.level} (${user.xp} XP)`, inline: true }
-            );
+                { 
+                    name: '💰 Starting Resources', 
+                    value: `**${config.defaultCurrency}** Beli\n**3** Basic Potions`, 
+                    inline: true 
+                },
+                { 
+                    name: '⚔️ Your Stats', 
+                    value: `**HP:** ${user.hp}/${user.maxHp}\n**ATK:** ${user.atk}\n**DEF:** ${user.def}\n**SPD:** ${user.spd}`, 
+                    inline: true 
+                },
+                { 
+                    name: '📊 Progress', 
+                    value: `**Level:** ${user.level}\n**XP:** ${user.xp}`, 
+                    inline: true 
+                },
+                {
+                    name: '🗺️ Get Started',
+                    value: '• Use `op explore` to begin your adventure\n• Use `op quest` to see available quests\n• Use `op help` for all commands',
+                    inline: false
+                }
+            )
+            .setFooter({ text: 'Your adventure awaits in the East Blue!' })
+            .setImage('https://i.imgur.com/YourOnePieceImage.png') // You can add a One Piece themed image URL here
 
         await message.reply({ embeds: [embed] });
         

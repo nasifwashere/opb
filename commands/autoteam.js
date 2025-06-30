@@ -101,8 +101,8 @@ async function execute(message, args) {
       });
   }
 
-  // Build team with top 5 cards
-  const newTeam = sortedCards.slice(0, 5).map(card => card.def.name);
+  // Build team with top 3 cards (max team size)
+  const newTeam = sortedCards.slice(0, 3).map(card => card.def.name);
   user.team = newTeam;
   await user.save();
 

@@ -429,7 +429,13 @@ async function execute(message, args, client) {
         const currentLocationIndex = Object.keys(LOCATIONS).indexOf(currentLocation);
         if (currentLocationIndex < Object.keys(LOCATIONS).length - 1) {
             const nextLocation = Object.keys(LOCATIONS)[currentLocationIndex + 1];
-            user.stage = 0;
+            // Calculate correct stage for next location
+            let nextStage = 0;
+            for (let i = 0; i <= currentLocationIndex; i++) {
+                const locationName = Object.keys(LOCATIONS)[i];
+                nextStage += LOCATIONS[locationName].length;
+            }
+            user.stage = nextStage;
             user.lastExplore = new Date();
             await user.save();
 
@@ -523,6 +529,14 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
             // Check if interaction is still valid
             if (!interaction.isRepliable()) {
                 console.log('Interaction no longer repliable');
+                collector.stop();
+                return;
+            }
+
+            // Check if interaction hasn't expired
+            if (Date.now() - interaction.createdTimestamp > 14 * 60 * 1000) {
+                console.log('Interaction too old, stopping collector');
+                collector.stop();
                 return;
             }
 

@@ -1,32 +1,35 @@
-const fs = require('fs');
-const path = require('path');
+
 const User = require('../db/models/User.js');
 
-const config = JSON.parse(fs.readFileSync(path.join(__dirname, '../config.json')));
+// Commands that don't require starting journey
+const NO_START_REQUIRED = ['start', 'help', 'info'];
 
-async function handleCommand(message, client) {
-  if (!message.content.startsWith(config.prefix)) return;
-  const args = message.content.slice(config.prefix.length).trim().split(/ +/);
-  const commandName = args.shift().toLowerCase();
+async function handleCommand(message, args, client) {
+  const commandName = args[0]?.toLowerCase();
+  
+  if (!commandName) return;
 
-  const command = client.commands.get(commandName);
-  if (!command) return;
-
-  // Check if user needs to run start command first (except for help and start commands)
-  if (commandName !== 'start' && commandName !== 'help') {
+  // Check if user needs to start their journey first
+  if (!NO_START_REQUIRED.includes(commandName)) {
     const userId = message.author.id;
     const user = await User.findOne({ userId });
     
     if (!user) {
-      return message.reply('❌ You need to start your pirate adventure first! Use `op start` to begin.');
+      return message.reply('🏴‍☠️ **Start your adventure first!**\n\nUse `op start` to begin your One Piece journey!');
     }
   }
 
+  const command = client.commands.get(commandName);
+  
+  if (!command) {
+    return message.reply(`Unknown command: ${commandName}`);
+  }
+
   try {
-    await command.execute(message, args, client);
+    await command.execute(message, args.slice(1), client);
   } catch (error) {
-    console.error(error);
-    message.reply('❌ There was an error executing that command.');
+    console.error('Error executing command:', error);
+    await message.reply('There was an error executing that command.');
   }
 }
 

@@ -18,26 +18,26 @@ client.commands = new Collection();
 // Load commands recursively
 function loadCommands(dir) {
     const files = fs.readdirSync(dir);
-    
+
     for (const file of files) {
         const filePath = path.join(dir, file);
         const stat = fs.statSync(filePath);
-        
+
         if (stat.isDirectory()) {
             loadCommands(filePath);
         } else if (file.endsWith('.js')) {
             try {
                 const command = require(filePath);
-                
+
                 // Use the slash command name if available, otherwise filename
                 const commandName = command.data?.name || file.replace('.js', '');
                 client.commands.set(commandName, command);
-                
+
                 // Also register text command name if different
                 if (command.textData?.name && command.textData.name !== commandName) {
                     client.commands.set(command.textData.name, command);
                 }
-                
+
                 console.log(`Loaded command: ${commandName}`);
             } catch (error) {
                 console.error(`Error loading command ${file}:`, error);
@@ -90,10 +90,11 @@ client.on('messageCreate', async message => {
     if (!command) return;
 
     try {
-        await command.execute(message, args, client);
+        const { handleCommand } = require('./utils/commandHandler.js');
+        await handleCommand(message, args, client);
     } catch (error) {
         console.error('Error executing command:', error);
-        await message.reply('There was an error while executing this command!');
+        await message.reply('There was an error executing that command.');
     }
 });
 

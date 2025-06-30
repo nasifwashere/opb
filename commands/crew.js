@@ -96,11 +96,11 @@ async function handleCreate(message, user, args) {
   }
 
   // Create crew
-  user.crewId = userId; // Captain's ID becomes crew ID
+  user.crewId = user.userId; // Captain's ID becomes crew ID
   user.crewData = {
     name: crewName,
-    captain: userId,
-    members: [userId],
+    captain: user.userId,
+    members: [user.userId],
     treasury: 0,
     level: 1,
     createdAt: new Date()

@@ -41,11 +41,25 @@ async function execute(message, args, client) {
     return message.reply('You cannot trade with bots!');
   }
 
-  const yourCardName = args.slice(1, -1).join(' ');
-  const theirCardName = args[args.length - 1];
+  // Find the @ mention position to properly split the arguments
+  const mentionIndex = args.findIndex(arg => arg.startsWith('<@'));
+  if (mentionIndex === -1) {
+    return message.reply('Please mention a user! Usage: `op trade @user "Your Card Name" "Their Card Name"`');
+  }
+
+  // Get everything after the mention
+  const cardArgs = args.slice(mentionIndex + 1);
+  
+  if (cardArgs.length < 2) {
+    return message.reply('Please specify both cards! Usage: `op trade @user "Your Card Name" "Their Card Name"`');
+  }
+
+  // Split arguments - everything except last word is your card, last word is their card
+  const yourCardName = cardArgs.slice(0, -1).join(' ');
+  const theirCardName = cardArgs[cardArgs.length - 1];
 
   if (!yourCardName || !theirCardName) {
-    return message.reply('Please specify both cards! Usage: `op trade @user Your Card Name Their Card Name`');
+    return message.reply('Please specify both cards! Usage: `op trade @user "Your Card Name" "Their Card Name"`');
   }
 
   // Get both users from database
@@ -62,9 +76,28 @@ async function execute(message, args, client) {
     return message.reply('The other user needs to start their journey first!');
   }
 
+  // Fuzzy matching function
+  function fuzzyFindCard(cards, searchName) {
+    if (!cards || !searchName) return null;
+    
+    const search = searchName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    
+    // Exact match first
+    let match = cards.find(c => c.name.toLowerCase() === searchName.toLowerCase());
+    if (match) return match;
+    
+    // Fuzzy match
+    match = cards.find(c => {
+      const cardName = c.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return cardName.includes(search) || search.includes(cardName);
+    });
+    
+    return match;
+  }
+
   // Check if users have the cards
-  const user1Card = user1.cards?.find(c => c.name.toLowerCase() === yourCardName.toLowerCase());
-  const user2Card = user2.cards?.find(c => c.name.toLowerCase() === theirCardName.toLowerCase());
+  const user1Card = fuzzyFindCard(user1.cards, yourCardName);
+  const user2Card = fuzzyFindCard(user2.cards, theirCardName);
 
   if (!user1Card) {
     return message.reply(`You don't have **${yourCardName}**!`);
