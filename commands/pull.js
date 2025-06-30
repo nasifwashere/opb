@@ -20,8 +20,7 @@ const rankWeights = [
 ];
 
 const PULLS_PER_WINDOW = 5; // pulls allowed per window
-const PULL_WINDOW = 5 * 60 * 60 * 1000; // 8 hours in ms
-const TEST_USER_ID = "1257718161298690119";
+const PULL_WINDOW = 5 * 60 * 60 * 1000; // 5 hours in ms
 
 // --- Helper Functions ---
 function prettyTime(ms) {
@@ -162,9 +161,8 @@ async function execute(message) {
     const now = Date.now();
     const pulls = user.pulls || [];
     const validPulls = pulls.filter(ts => now - ts < PULL_WINDOW);
-    const isImmune = userId === TEST_USER_ID;
 
-    if (!isImmune && validPulls.length >= PULLS_PER_WINDOW) {
+    if (validPulls.length >= PULLS_PER_WINDOW) {
         const oldestPull = Math.min(...validPulls);
         const nextResetIn = PULL_WINDOW - (now - oldestPull);
         return message.reply(
@@ -179,7 +177,9 @@ async function execute(message) {
     const rank = weightedRandomRank();
     const card = pickCard(cards, rank);
 
-    if (!isImmune) user.pulls.push(now);
+    // Clean old pulls and add new one
+    user.pulls = user.pulls.filter(ts => now - ts < PULL_WINDOW);
+    user.pulls.push(now);
 
     // Add card to user's collection
     user.cards.push({

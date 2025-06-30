@@ -17,10 +17,11 @@ const userSchema = new mongoose.Schema({
     
     // Collections
     cards: [{
-        name: String,
-        rank: String,
-        level: { type: Number, default: 1 },
-        timesUpgraded: { type: Number, default: 0 }
+        name: { type: String, required: true },
+        rank: { type: String, required: true },
+        level: { type: Number, default: 1, min: 1 },
+        timesUpgraded: { type: Number, default: 0, min: 0 },
+        locked: { type: Boolean, default: false }
     }],
     
     inventory: [String],

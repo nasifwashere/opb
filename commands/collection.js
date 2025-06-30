@@ -33,7 +33,7 @@ function cardEmbed(cardInstance, cardDef, ownerName, index, total, user, duplica
   }
 
   const { calculateCardStats } = require('../utils/levelSystem.js');
-  const level = cardInstance.level || (cardInstance.timesUpgraded ? cardInstance.timesUpgraded + 1 : 1);
+  const level = cardInstance.level || (cardInstance.timesUpgraded >= 0 ? cardInstance.timesUpgraded + 1 : 1);
   const stats = calculateCardStats(cardDef, level);
 
   let { power, health, speed } = stats;
@@ -200,7 +200,7 @@ async function execute(message, args) {
       }
 
       const { calculateCardStats } = require('../utils/levelSystem.js');
-      const level = currentCard.level || currentCard.timesUpgraded + 1 || 1;
+      const level = currentCard.level || (currentCard.timesUpgraded >= 0 ? currentCard.timesUpgraded + 1 : 1);
       const stats = calculateCardStats(currentCardDef, level);
       let { power, health, speed } = stats;
 

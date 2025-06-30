@@ -142,6 +142,8 @@ async function execute(message, args) {
             return await handleMarketBuy(message, user, args.slice(1));
         } else if (subcommand === 'list') {
             return await handleMarketList(message, user, args.slice(1));
+        } else if (subcommand === 'unlist') {
+            return await handleMarketUnlist(message, user, args.slice(1));
         }
     }
 
@@ -183,7 +185,7 @@ async function execute(message, args) {
             return;
         } else if (interaction.customId === 'market_list') {
             await interaction.followUp({
-                content: 'To list an item for sale, use: `op market list <type> <item name> <price> [description]`\n\nExamples:\n• `op market list card Luffy 1000 Great starter card!`\n• `op market list item strawhat 500`',
+                content: 'To list an item for sale, use: `op market list <type> <item name> <price> [description]`\n\nExamples:\n• `op market list card Luffy 1000 Great starter card!`\n• `op market list item strawhat 500`\n\nTo remove a listing, use: `op market unlist <listing number>`',
                 ephemeral: true
             });
             return;
@@ -353,12 +355,8 @@ async function handleMarketList(message, user, args) {
 
     // Announce the listing in the configured channel
     try {
-        const fs = require('fs');
-        const path = require('path');
-        const { EmbedBuilder } = require('discord.js');
-        
-        const configData = fs.readFileSync(path.join(__dirname, '../config.json'), 'utf8');
-        const config = JSON.parse(configData);
+        const configPath = path.resolve('config.json');
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
         
         if (config.marketChannelId) {
             const marketChannel = message.client.channels.cache.get(config.marketChannelId);
@@ -380,3 +378,56 @@ async function handleMarketList(message, user, args) {
 }
 
 module.exports = { data, execute };
+
+
+async function handleMarketUnlist(message, user, args) {
+    // Ensure username is set if missing
+    if (!user.username) {
+        user.username = message.author.username;
+        await user.save();
+    }
+
+    const listingNumber = parseInt(args[0]);
+    
+    if (!listingNumber || listingNumber < 1) {
+        return message.reply('Usage: `op market unlist <listing number>`\n\nUse `op market` and check "My Listings" to see your listing numbers.');
+    }
+
+    // Get user's active listings
+    const userListings = await MarketListing.find({ 
+        sellerId: user.userId, 
+        active: true,
+        expiresAt: { $gt: new Date() }
+    }).sort({ createdAt: -1 });
+
+    if (userListings.length === 0) {
+        return message.reply('You have no active listings to remove.');
+    }
+
+    if (listingNumber > userListings.length) {
+        return message.reply(`Invalid listing number. You only have ${userListings.length} active listings.`);
+    }
+
+    const listing = userListings[listingNumber - 1];
+
+    // Return item to user
+    if (listing.type === 'card') {
+        if (!user.cards) user.cards = [];
+        user.cards.push({
+            name: listing.itemName,
+            rank: listing.itemRank,
+            level: listing.itemLevel || 1,
+            timesUpgraded: 0,
+            locked: false
+        });
+    } else {
+        if (!user.inventory) user.inventory = [];
+        user.inventory.push(listing.itemName.toLowerCase().replace(/\s+/g, ''));
+    }
+
+    // Remove listing
+    await MarketListing.findByIdAndUpdate(listing._id, { active: false });
+    await user.save();
+
+    return message.reply(`Successfully removed listing for **${listing.itemName}** and returned it to your ${listing.type === 'card' ? 'collection' : 'inventory'}.`);
+}
