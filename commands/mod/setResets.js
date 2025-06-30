@@ -106,33 +106,23 @@ async function execute(message, args, client) {
 }
 
 function startResetTimer(client) {
-    // Calculate time until next 5-hour mark from midnight UTC
+    // Use global synchronized reset time
+    const nextReset = global.nextPullReset;
     const now = new Date();
-    const utcMidnight = new Date(now);
-    utcMidnight.setUTCHours(0, 0, 0, 0);
-    
-    const hoursSinceMidnight = (now - utcMidnight) / (1000 * 60 * 60);
-    const nextResetHour = Math.ceil(hoursSinceMidnight / 5) * 5;
-    
-    const nextReset = new Date(utcMidnight);
-    nextReset.setUTCHours(nextResetHour);
-    
-    // If next reset is in the past, add 24 hours
-    if (nextReset <= now) {
-        nextReset.setUTCDate(nextReset.getUTCDate() + 1);
-    }
-    
     const timeUntilReset = nextReset - now;
     
     console.log(`Next pull reset in ${timeUntilReset / 1000 / 60} minutes`);
     
     client.resetTimer = setTimeout(async () => {
         await sendResetNotification(client);
+        // Update global reset time for next reset
+        global.nextPullReset = new Date(global.nextPullReset.getTime() + 5 * 60 * 60 * 1000);
         // Set up next reset (5 hours later)
         client.resetTimer = setInterval(() => {
             sendResetNotification(client);
+            global.nextPullReset = new Date(global.nextPullReset.getTime() + 5 * 60 * 60 * 1000);
         }, 5 * 60 * 60 * 1000); // 5 hours
-    }, timeUntilReset);
+    }, timeUntilReset)lReset);
 }
 
 async function sendResetNotification(client) {

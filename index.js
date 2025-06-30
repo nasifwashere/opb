@@ -59,11 +59,36 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/onepiece_bo
 client.once('ready', () => {
     console.log(`Ready! Logged in as ${client.user.tag}`);
 
-    // Start reset and drop timers
+    // Load pull reset system - synchronized for all users
+    const { startResetTimer } = require('./commands/mod/setResets.js');
+
+    // Calculate synchronized reset times (every 5 hours from UTC midnight)
+    function getNextResetTime() {
+        const now = new Date();
+        const utcMidnight = new Date(now);
+        utcMidnight.setUTCHours(0, 0, 0, 0);
+
+        const hoursSinceMidnight = (now - utcMidnight) / (1000 * 60 * 60);
+        const nextResetHour = Math.ceil(hoursSinceMidnight / 5) * 5;
+
+        const nextReset = new Date(utcMidnight);
+        nextReset.setUTCHours(nextResetHour);
+
+        // If next reset is in the past, add 24 hours
+        if (nextReset <= now) {
+            nextReset.setUTCDate(nextReset.getUTCDate() + 1);
+        }
+
+        return nextReset;
+    }
+
+    // Set global reset time
+    global.nextPullReset = getNextResetTime();
+    startResetTimer(client);
+
+    // Start drop timers
     try {
-        const { startResetTimer } = require('./commands/mod/setResets.js');
         const { startDropTimer } = require('./commands/mod/setDrops.js');
-        startResetTimer(client);
         startDropTimer(client);
     } catch (error) {
         console.log('Timers will start when channels are set');
