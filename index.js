@@ -59,6 +59,11 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/onepiece_bo
 client.once('ready', () => {
     console.log(`Ready! Logged in as ${client.user.tag}`);
 
+    // Initialize battles Map for duel system
+    if (!client.battles) {
+        client.battles = new Map();
+    }
+
     // Load pull reset system - synchronized for all users
     const { startResetTimer } = require('./commands/mod/setResets.js');
 

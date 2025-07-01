@@ -12,13 +12,47 @@ function normalize(str) {
 }
 
 function calculateCardStats(cardDef, level) {
-  const [basePower, baseHealth, baseSpeed] = cardDef.phs.split('/').map(x => parseInt(x.trim()));
-  const multiplier = 1 + (level - 1) * 0.1;
+  if (!cardDef || !cardDef.phs) {
+    return { power: 10, health: 50, speed: 30 };
+  }
+
+  let basePower, baseHealth, baseSpeed;
+  try {
+    const stats = cardDef.phs.split('/').map(x => {
+      const parsed = parseInt(x.trim());
+      return isNaN(parsed) ? null : parsed;
+    });
+
+    if (stats.length !== 3 || stats.some(s => s === null)) {
+      return { power: 10, health: 50, speed: 30 };
+    }
+
+    [basePower, baseHealth, baseSpeed] = stats;
+  } catch (error) {
+    return { power: 10, health: 50, speed: 30 };
+  }
+
+  // Use the same calculation as levelSystem.js
+  const levelMultiplier = 1 + (level - 1) * 0.01;
+  
+  let power = Math.floor(basePower * levelMultiplier);
+  let health = Math.floor(baseHealth * levelMultiplier);
+  let speed = Math.floor(baseSpeed * levelMultiplier);
+
+  // Apply rank multipliers to match other commands
+  const rankMultipliers = {
+    C: 1.0,
+    B: 1.2,
+    A: 1.4,
+    S: 1.6,
+    UR: 2.0
+  };
+  const rankMultiplier = rankMultipliers[cardDef.rank] || 1.0;
 
   return {
-    power: Math.floor(basePower * multiplier),
-    health: Math.floor(baseHealth * multiplier),
-    speed: Math.floor(baseSpeed * multiplier)
+    power: Math.floor(power * rankMultiplier),
+    health: Math.floor(health * rankMultiplier),
+    speed: Math.floor(speed * rankMultiplier)
   };
 }
 
@@ -150,6 +184,7 @@ async function execute(message, args) {
 
         // Apply equipment bonuses
         let { power, health, speed } = stats;
+
         const normCard = normalize(cardDef.name);
         const equippedItem = user.equipped && user.equipped[normCard];
 

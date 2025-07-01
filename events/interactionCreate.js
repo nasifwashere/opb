@@ -3,6 +3,18 @@ const User = require('../db/models/User.js');
 const { calculateDamage, getActiveCard, resetTeamHP } = require('../utils/battleSystem.js');
 const { updateQuestProgress } = require('../utils/questSystem');
 
+// Helper function to check if interaction is still valid
+function isInteractionValid(interaction, maxAgeMs = 14 * 60 * 1000) {
+  const age = Date.now() - interaction.createdTimestamp;
+  return age < maxAgeMs && 
+         !interaction.replied && 
+         !interaction.deferred && 
+         interaction.isRepliable();
+}
+
+// Import duel functions
+const { createDuelEmbed, createDuelButtons } = require('../commands/duel.js');
+
 // Boss battle functions
 function createBossBattleEmbed(boss, playerTeam, battleLog, turn, enemyType = "enemy") {
   const battleTitle = enemyType === "boss" ? "Boss Battle" : "Battle";
@@ -131,7 +143,36 @@ async function execute(interaction, client) {
     }
 
     if (interaction.customId.startsWith('duel_')) {
-      await handleDuelInteraction(interaction, client);
+      const battleId = interaction.customId.split('_')[1];
+      const battleData = client.battles?.get(battleId);
+
+      if (!battleData) {
+        if (!interaction.replied && !interaction.deferred) {
+          return interaction.reply({ content: 'This duel has expired or is invalid.', ephemeral: true });
+        }
+        return;
+      }
+
+      try {
+        // Check if interaction is still valid (not expired)
+        if (Date.now() - interaction.createdTimestamp > 14 * 60 * 1000) { // 14 minutes
+          return interaction.reply({ content: 'This interaction has expired.', ephemeral: true }).catch(() => {});
+        }
+
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.deferUpdate();
+        }
+        await handleDuelInteraction(interaction, client);
+      } catch (error) {
+        console.error('Duel action error:', error.code || error.message);
+        if (!interaction.replied && !interaction.deferred) {
+          try {
+            await interaction.reply({ content: 'An error occurred during the duel action.', ephemeral: true });
+          } catch (replyError) {
+            console.error('Failed to reply to interaction:', replyError.message);
+          }
+        }
+      }
       return;
     }
 
@@ -532,37 +573,109 @@ async function handleItemUsage(interaction, client) {
   });
 }
 
-async function handleDuelInteraction(interaction, client) {
-  // Check if interaction is still valid
-  if (!interaction.isRepliable()) {
-    console.log('Duel interaction no longer repliable');
-    return;
-  }
+async function endDuelBattle(interaction, battleData, client, winner) {
+  try {
+    const { player1, player2 } = battleData;
+    const User = require('../db/models/User.js');
 
-  // Check interaction age to prevent expired interaction errors
-  if (Date.now() - interaction.createdTimestamp > 14 * 60 * 1000) {
-    console.log('Duel interaction too old, ignoring');
+    // Update user stats
+    const user1 = await User.findOne({ userId: player1.data.id });
+    const user2 = await User.findOne({ userId: player2.data.id });
+
+    const now = Date.now();
+
+    if (user1) {
+      user1.battleState = { inBattle: false };
+      if (winner.id === user1.userId) {
+        user1.wins = (user1.wins || 0) + 1;
+        user1.beli = (user1.beli || 0) + 150;
+      } else {
+        user1.losses = (user1.losses || 0) + 1;
+      }
+      user1.duelCooldown = now + 10 * 60 * 1000;
+      await user1.save();
+    }
+
+    if (user2) {
+      user2.battleState = { inBattle: false };
+      if (winner.id === user2.userId) {
+        user2.wins = (user2.wins || 0) + 1;
+        user2.beli = (user2.beli || 0) + 150;
+      } else {
+        user2.losses = (user2.losses || 0) + 1;
+      }
+      user2.duelCooldown = now + 10 * 60 * 1000;
+      await user2.save();
+    }
+
+    // Clean up battle data
+    client.battles.delete(interaction.message.id);
+
+    // Create final embed
+    const finalEmbed = createDuelEmbed(
+      player1.data, 
+      player2.data, 
+      player1.team, 
+      player2.team, 
+      battleData.battleLog, 
+      battleData.turn, 
+      battleData.currentPlayer, 
+      winner
+    );
+
+    await interaction.editReply({ embeds: [finalEmbed], components: [] });
+  } catch (error) {
+    console.error('Error ending duel battle:', error);
+  }
+}
+
+async function handleDuelInteraction(interaction, client) {
+  // Check interaction age first - Discord interactions expire after 15 minutes
+  const interactionAge = Date.now() - interaction.createdTimestamp;
+  if (interactionAge > 14 * 60 * 1000) {
+    console.log('Duel interaction too old, cleaning up battle');
+    // Clean up any existing battle data
+    if (client.battles?.has(interaction.message.id)) {
+      const battleData = client.battles.get(interaction.message.id);
+      if (battleData?.type === 'duel') {
+        try {
+          const User = require('../db/models/User.js');
+          const user1 = await User.findOne({ userId: battleData.player1.data.id });
+          const user2 = await User.findOne({ userId: battleData.player2.data.id });
+
+          if (user1) {
+            user1.battleState = { inBattle: false };
+            await user1.save();
+          }
+          if (user2) {
+            user2.battleState = { inBattle: false };
+            await user2.save();
+          }
+        } catch (error) {
+          console.error('Error cleaning up user battle states:', error);
+        }
+      }
+      client.battles.delete(interaction.message.id);
+    }
     return;
   }
 
   const battleData = client.battles?.get(interaction.message.id);
   if (!battleData || battleData.type !== 'duel') {
-    try {
-      await interaction.reply({ content: 'This duel has expired or is invalid.', ephemeral: true });
-    } catch (error) {
-      if (error.code !== 10062) {
-        console.error('Error replying to expired duel:', error);
-      }
+    // Clean up and don't try to respond to expired interactions
+    if (client.battles?.has(interaction.message.id)) {
+      client.battles.delete(interaction.message.id);
     }
     return;
   }
 
   if (interaction.user.id !== battleData.currentPlayer) {
-    try {
-      await interaction.reply({ content: "It's not your turn!", ephemeral: true });
-    } catch (error) {
-      if (error.code !== 10062) {
-        console.error('Error replying to wrong player:', error);
+    // Only respond if interaction is fresh and hasn't been handled
+    if (interactionAge < 30000 && !interaction.replied && !interaction.deferred) {
+      try {
+        await interaction.reply({ content: "It's not your turn!", ephemeral: true });
+      } catch (error) {
+        console.log('Could not respond to wrong turn interaction:', error.code);
       }
     }
     return;
@@ -578,39 +691,51 @@ async function handleDuelInteraction(interaction, client) {
   const enemyTeam = enemyPlayer.team;
 
   if (action === 'inventory') {
-    await interaction.deferUpdate();
+    try {
+      await interaction.deferUpdate();
 
-    const user = await User.findOne({ userId: interaction.user.id });
-    if (!user || !user.inventory || user.inventory.length === 0) {
-      await interaction.followUp({ content: 'Your inventory is empty!', ephemeral: true });
-      return;
-    }
+      const user = await User.findOne({ userId: interaction.user.id });
+      if (!user || !user.inventory || user.inventory.length === 0) {
+        await interaction.followUp({ content: 'Your inventory is empty!', ephemeral: true });
+        return;
+      }
 
-    const usableItems = user.inventory.filter(item =>
-      ['healingpotion', 'statbuffer', 'powerboost', 'speedboostfood'].includes(item.toLowerCase())
-    );
-
-    if (usableItems.length === 0) {
-      await interaction.followUp({ content: 'No usable items in battle!', ephemeral: true });
-      return;
-    }
-
-    const itemButtons = new ActionRowBuilder();
-    usableItems.slice(0, 5).forEach((item, index) => {
-      itemButtons.addComponents(
-        new ButtonBuilder()
-          .setCustomId(`use_item_${item}_${index}`)
-          .setLabel(item.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()))
-          .setStyle(ButtonStyle.Primary)
+      const usableItems = user.inventory.filter(item =>
+        ['healingpotion', 'statbuffer', 'powerboost', 'speedboostfood'].includes(item.toLowerCase())
       );
-    });
 
-    await interaction.followUp({
-      content: 'Choose an item to use:',
-      components: [itemButtons],
-      ephemeral: true
-    });
-    return;
+      if (usableItems.length === 0) {
+        await interaction.followUp({ content: 'No usable items in battle!', ephemeral: true });
+        return;
+      }
+
+      const itemButtons = new ActionRowBuilder();
+      usableItems.slice(0, 5).forEach((item, index) => {
+        itemButtons.addComponents(
+          new ButtonBuilder()
+            .setCustomId(`use_item_${item}_${index}`)
+            .setLabel(item.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()))
+            .setStyle(ButtonStyle.Primary)
+        );
+      });
+
+      await interaction.followUp({
+        content: 'Choose an item to use:',
+        components: [itemButtons],
+        ephemeral: true
+      });
+      return;
+    } catch (error) {
+      if (error.code === 10062 || error.code === 10063) {
+        console.log('Duel inventory interaction expired');
+        if (client.battles?.has(interaction.message.id)) {
+          client.battles.delete(interaction.message.id);
+        }
+        return;
+      }
+      console.error('Error handling duel inventory:', error);
+      return;
+    }
   }
 
   // Check battle end conditions
@@ -642,15 +767,22 @@ async function handleDuelInteraction(interaction, client) {
     return interaction.update({ embeds: [winEmbed], components: [] });
   }
 
-  try {
-    await interaction.deferUpdate();
-  } catch (error) {
-    if (error.code === 10062) {
-      console.log('Duel interaction expired');
+  // Handle interaction response more carefully
+  if (action !== 'inventory') {
+    try {
+      // Check if we can respond to this interaction
+      if (!interaction.isRepliable() || interaction.replied || interaction.deferred) {
+        console.log('Duel interaction no longer repliable');
+        return;
+      }
+
+      // Try to defer the update
+      await interaction.deferUpdate();
+    } catch (error) {
+      console.log('Failed to defer duel interaction:', error.code, error.message);
+      // Don't continue processing if we can't respond
       return;
     }
-    console.error('Error deferring duel interaction:', error);
-    return;
   }
 
   let damage = 0;
@@ -663,13 +795,22 @@ async function handleDuelInteraction(interaction, client) {
       battleLog.push(`⚔️ ${activeCard.name} attacks ${enemyCard.name} for ${damage} damage!`);
       if (enemyCard.currentHp <= 0) {
         battleLog.push(`💀 ${enemyCard.name} has been knocked out!`);
+
+        // Check if enemy team is completely defeated
+        const remainingEnemyCards = enemyTeam.filter(card => card.currentHp > 0);
+        if (remainingEnemyCards.length === 0) {
+          battleLog.push(`🏆 ${activePlayer.data.username} wins the duel!`);
+          await endDuelBattle(interaction, battleData, client, activePlayer.data);
+          return;
+        }
       }
       break;
 
     case 'defend':
       const healAmount = Math.floor(activeCard.hp * 0.2);
+      const actualHeal = Math.min(healAmount, activeCard.hp - activeCard.currentHp);
       activeCard.currentHp = Math.min(activeCard.hp, activeCard.currentHp + healAmount);
-      battleLog.push(`🛡️ ${activeCard.name} defends and recovers ${healAmount} HP!`);
+      battleLog.push(`🛡️ ${activeCard.name} defends and recovers ${actualHeal} HP!`);
       break;
 
     case 'forfeit':
