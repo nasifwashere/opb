@@ -85,15 +85,18 @@ function cardEmbed(cardInstance, cardDef, ownerName, index = 0, total = 1, user,
   // Calculate XP progress to next level
   const xpForCurrentLevel = (level - 1) * XP_PER_LEVEL;
   const xpForNextLevel = level * XP_PER_LEVEL;
-  const xpProgress = experience - xpForCurrentLevel;
-  const xpNeeded = xpForNextLevel - xpForCurrentLevel;
+  const xpProgress = Math.max(0, experience - xpForCurrentLevel);
+  const xpNeeded = XP_PER_LEVEL;
+  const cardExperience = cardInstance.experience || 0;
 
   let desc = [
     `**${cardDef.name}**${lockStatus}${duplicateText}`,
     `*${cardDef.shortDesc}*`,
     '',
     `**Owner** ${ownerName}`,
-    `**Level** ${level} (${xpProgress}/${xpNeeded} XP)`,
+    `**Level** ${level}`,
+    `**Rank** ${cardDef.rank}`,
+    `**XP:** ${xpProgress}/${xpNeeded} (Total: ${cardExperience})`,
     '',
     `**Stats**`,
     `Power: ${power}`,
@@ -178,7 +181,7 @@ async function execute(message, args) {
 
     if (interaction.customId === 'mycard_info') {
       const level = Math.max(1, cardInstance.level || (cardInstance.timesUpgraded ? cardInstance.timesUpgraded + 1 : 1));
-      
+
       // Parse stats safely
       let power, health, speed;
       try {
@@ -238,4 +241,4 @@ async function execute(message, args) {
   });
 }
 
-module.exports = { data, execute };
+module.exports = { data, execute };;

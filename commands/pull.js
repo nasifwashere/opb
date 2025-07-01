@@ -158,22 +158,20 @@ async function execute(message) {
         return message.reply("You haven't unlocked any saga beyond East Blue yet!");
     }
 
-    // Check cooldown
+    // Clean old pulls from the array first
     const now = Date.now();
-    const timeSinceLastPull = now - (user.lastPull || 0);
-    const timeUntilNextPull = PULL_WINDOW - timeSinceLastPull;
+    user.pulls = user.pulls.filter(pullTime => now - pullTime < PULL_WINDOW);
 
-    if (timeUntilNextPull > 0 && user.pulls.length >= PULLS_PER_WINDOW) {
-        // Clean old pulls
-        user.pulls = user.pulls.filter(pullTime => now - pullTime < PULL_WINDOW);
+    // Check if user has reached pull limit
+    if (user.pulls.length >= PULLS_PER_WINDOW) {
+        // Find the oldest pull to determine when next pull will be available
+        const oldestPull = Math.min(...user.pulls);
+        const timeUntilNextPull = PULL_WINDOW - (now - oldestPull);
         
-        if (user.pulls.length >= PULLS_PER_WINDOW) {
+        if (timeUntilNextPull > 0) {
             return message.reply(`⏰ You've used all your pulls! Wait ${prettyTime(timeUntilNextPull)} before pulling again.`);
         }
     }
-
-    // Clean old pulls from the array
-    user.pulls = user.pulls.filter(pullTime => now - pullTime < PULL_WINDOW);
 
     // Load cards
     const cards = loadCardsForSaga(user.saga);

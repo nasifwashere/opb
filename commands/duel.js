@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
 const { calculateBattleStats } = require('../utils/battleSystem.js');
+const path = require('path');
 
 const DUEL_COOLDOWN = 10 * 60 * 1000; // 10 minutes
 
@@ -153,10 +154,24 @@ async function execute(message, args) {
   const duelMessage = await message.reply({ embeds: [embed], components: [row] });
 
   const filter = i => i.user.id === mentionedUser.id && ['duel_accept', 'duel_decline'].includes(i.customId);
-  const collector = duelMessage.createMessageComponentCollector({ filter, time: 60000 });
+  const collector = duelMessage.createMessageComponentCollector({ filter, time: 30000 });
 
   collector.on('collect', async interaction => {
     try {
+      // Check if interaction is still valid
+      if (!interaction.isRepliable()) {
+        console.log('Duel interaction no longer repliable');
+        collector.stop();
+        return;
+      }
+
+      // Check interaction age
+      if (Date.now() - interaction.createdTimestamp > 14 * 60 * 1000) {
+        console.log('Duel interaction too old, skipping');
+        collector.stop();
+        return;
+      }
+
       if (interaction.customId === 'duel_accept') {
         await interaction.deferUpdate();
         
@@ -172,6 +187,7 @@ async function execute(message, args) {
           });
         }
         
+        collector.stop(); // Stop collector before starting duel
         await startDuel(message, user, opponent, message.author, mentionedUser, duelMessage);
       } else {
         await interaction.update({
@@ -179,23 +195,32 @@ async function execute(message, args) {
           embeds: [],
           components: []
         });
+        collector.stop();
       }
     } catch (error) {
       console.error('Duel interaction error:', error);
-      await interaction.followUp({ 
-        content: 'An error occurred while processing the duel request.', 
-        ephemeral: true 
-      }).catch(() => {});
+      // Only try to respond if interaction hasn't been handled
+      if (error.code !== 10062 && !interaction.replied && !interaction.deferred) {
+        try {
+          await interaction.reply({ 
+            content: 'An error occurred while processing the duel request.', 
+            ephemeral: true 
+          });
+        } catch (followUpError) {
+          console.log('Could not send error response:', followUpError.message);
+        }
+      }
+      collector.stop();
     }
   });
 
-  collector.on('end', collected => {
-    if (collected.size === 0) {
+  collector.on('end', (collected, reason) => {
+    if (collected.size === 0 && reason === 'time') {
       duelMessage.edit({
         content: 'Duel challenge expired.',
         embeds: [],
         components: []
-      });
+      }).catch(() => {});
     }
   });
 }
@@ -267,28 +292,78 @@ async function startDuel(message, user, opponent, challenger, challenged, duelMe
   await user.save();
   await opponent.save();
 
-  // Create battle embed
-  const battleEmbed = new EmbedBuilder()
-    .setTitle('⚔️ Duel Battle!')
-    .setDescription(`**${challenger.username}** vs **${challenged.username}**\n\n**${challenger.username}'s ${userCard.name}** (Lv.${userCard.level || 1})\nHP: ${userStats.health}/${userStats.health}\nPower: ${userStats.power}\n\n**${challenged.username}'s ${opponentCard.name}** (Lv.${opponentCard.level || 1})\nHP: ${opponentStats.health}/${opponentStats.health}\nPower: ${opponentStats.power}\n\n${challenger.username}'s turn!`)
-    .setColor(0xff6b35);
+  // Set up battle teams for the new system
+  const player1Team = [{
+    ...userCard,
+    currentHp: userStats.health,
+    hp: userStats.health,
+    attack: userStats.power,
+    level: userCard.level || 1
+  }];
 
-  const battleRow = new ActionRowBuilder()
-    .addComponents(
-      new ButtonBuilder()
-        .setCustomId('duel_attack')
-        .setLabel('⚔️ Attack')
-        .setStyle(ButtonStyle.Danger),
-      new ButtonBuilder()
-        .setCustomId('duel_flee')
-        .setLabel('🏃 Forfeit')
-        .setStyle(ButtonStyle.Secondary)
-    );
+  const player2Team = [{
+    ...opponentCard,
+    currentHp: opponentStats.health,
+    hp: opponentStats.health,
+    attack: opponentStats.power,
+    level: opponentCard.level || 1
+  }];
+
+  const battleLog = [`${challenger.username}'s ${userCard.name} vs ${challenged.username}'s ${opponentCard.name}!`];
+
+  // Create battle embed using the duel embed function
+  const battleEmbed = createDuelEmbed(
+    challenger, 
+    challenged, 
+    player1Team, 
+    player2Team, 
+    battleLog, 
+    1, 
+    challenger.id
+  );
+
+  const battleRow = createDuelButtons(challenger.id);
 
   const battleMessage = await duelMessage.edit({ embeds: [battleEmbed], components: [battleRow] });
 
   // Start battle loop
   await handleDuelBattle(battleMessage, user, opponent, challenger, challenged);
+}
+
+async function handleDuelBattle(battleMessage, user, opponent, challenger, challenged) {
+  // Set up battle data for the interaction handler
+  const { client } = require('../index.js');
+  
+  if (!client.battles) client.battles = new Map();
+  
+  const battleData = {
+    type: 'duel',
+    userId: challenger.id,
+    player1: {
+      data: challenger,
+      user: user,
+      team: [user.battleState.currentCard],
+      stats: user.battleState.currentStats
+    },
+    player2: {
+      data: challenged,
+      user: opponent,
+      team: [opponent.battleState.currentCard],
+      stats: opponent.battleState.currentStats
+    },
+    currentPlayer: challenger.id,
+    turn: 1,
+    battleLog: [`${challenger.username}'s ${user.battleState.currentCard.name} vs ${challenged.username}'s ${opponent.battleState.currentCard.name}!`]
+  };
+  
+  client.battles.set(battleMessage.id, battleData);
+  
+  // Set up a timeout to clean up the battle
+  setTimeout(() => {
+    if (client.battles.has(battleMessage.id)) {
+      client.battles.delete(battleMessage.id);
+    }
+  }, 10 * 60 * 1000); // 10 minutes
 }
 
 module.exports = { data, execute };

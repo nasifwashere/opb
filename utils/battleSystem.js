@@ -62,18 +62,29 @@ function calculateBattleStats(user, cardDatabase = allCards) {
     // Parse base stats with error handling
     let basePower, baseHealth, baseSpeed;
     try {
-      const stats = cardDef.phs.split('/').map(x => {
-        const parsed = parseInt(x.trim());
-        return isNaN(parsed) ? null : parsed;
-      });
-      
-      if (stats.length !== 3 || stats.some(s => s === null)) {
-        console.warn(`Invalid stats format for card: ${cardDef.name}, phs: ${cardDef.phs}`);
+      if (!cardDef.phs || typeof cardDef.phs !== 'string') {
+        console.warn(`Missing or invalid phs for card: ${cardDef.name}`);
         basePower = 10;
         baseHealth = 50;
         baseSpeed = 30;
       } else {
-        [basePower, baseHealth, baseSpeed] = stats;
+        const stats = cardDef.phs.split('/').map(x => {
+          const parsed = parseInt(x.trim());
+          return isNaN(parsed) || parsed <= 0 ? null : parsed;
+        });
+        
+        if (stats.length !== 3 || stats.some(s => s === null)) {
+          console.warn(`Invalid stats format for card: ${cardDef.name}, phs: ${cardDef.phs}`);
+          basePower = 10;
+          baseHealth = 50;
+          baseSpeed = 30;
+        } else {
+          [basePower, baseHealth, baseSpeed] = stats;
+          // Ensure minimum values
+          basePower = Math.max(1, basePower);
+          baseHealth = Math.max(10, baseHealth);
+          baseSpeed = Math.max(1, baseSpeed);
+        }
       }
     } catch (error) {
       console.warn(`Error parsing stats for card: ${cardDef.name}`, error);

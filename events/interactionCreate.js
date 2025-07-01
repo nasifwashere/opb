@@ -130,7 +130,15 @@ async function execute(interaction, client) {
       return;
     }
 
-    
+    if (interaction.customId.startsWith('duel_')) {
+      await handleDuelInteraction(interaction, client);
+      return;
+    }
+
+    if (interaction.customId.startsWith('use_item_')) {
+      await handleItemUsage(interaction, client);
+      return;
+    }
 
     if (interaction.customId.startsWith('help_')) {
       await handleHelpInteraction(interaction, client);
@@ -525,13 +533,39 @@ async function handleItemUsage(interaction, client) {
 }
 
 async function handleDuelInteraction(interaction, client) {
+  // Check if interaction is still valid
+  if (!interaction.isRepliable()) {
+    console.log('Duel interaction no longer repliable');
+    return;
+  }
+
+  // Check interaction age to prevent expired interaction errors
+  if (Date.now() - interaction.createdTimestamp > 14 * 60 * 1000) {
+    console.log('Duel interaction too old, ignoring');
+    return;
+  }
+
   const battleData = client.battles?.get(interaction.message.id);
   if (!battleData || battleData.type !== 'duel') {
-    return interaction.reply({ content: 'This duel has expired or is invalid.', ephemeral: true });
+    try {
+      await interaction.reply({ content: 'This duel has expired or is invalid.', ephemeral: true });
+    } catch (error) {
+      if (error.code !== 10062) {
+        console.error('Error replying to expired duel:', error);
+      }
+    }
+    return;
   }
 
   if (interaction.user.id !== battleData.currentPlayer) {
-    return interaction.reply({ content: "It's not your turn!", ephemeral: true });
+    try {
+      await interaction.reply({ content: "It's not your turn!", ephemeral: true });
+    } catch (error) {
+      if (error.code !== 10062) {
+        console.error('Error replying to wrong player:', error);
+      }
+    }
+    return;
   }
 
   const action = interaction.customId.split('_')[1];
@@ -611,7 +645,11 @@ async function handleDuelInteraction(interaction, client) {
   try {
     await interaction.deferUpdate();
   } catch (error) {
-    console.log('Interaction already handled');
+    if (error.code === 10062) {
+      console.log('Duel interaction expired');
+      return;
+    }
+    console.error('Error deferring duel interaction:', error);
     return;
   }
 

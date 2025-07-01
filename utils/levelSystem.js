@@ -13,6 +13,8 @@ function distributeXPToTeam(user, totalXP) {
   const xpPerMember = Math.floor(totalXP / user.team.length);
   const changes = [];
 
+  console.log(`Distributing ${totalXP} XP to ${user.team.length} team members (${xpPerMember} each)`);
+
   for (const cardName of user.team) {
     const cardInstance = user.cards.find(c => 
       c.name.toLowerCase() === cardName.toLowerCase()
@@ -28,6 +30,8 @@ function distributeXPToTeam(user, totalXP) {
       // Calculate new level
       const newLevel = Math.floor(cardInstance.experience / XP_PER_LEVEL) + 1;
       cardInstance.level = Math.max(1, newLevel);
+
+      console.log(`${cardInstance.name}: ${oldXP} + ${xpPerMember} = ${cardInstance.experience} XP (Level ${oldLevel} -> ${newLevel})`);
 
       if (newLevel > oldLevel) {
         changes.push({

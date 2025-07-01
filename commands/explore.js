@@ -1,6 +1,9 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle  } = require('discord.js');
 const User = require('../db/models/User.js');
 const { calculateBattleStats, calculateDamage, resetTeamHP } = require('../utils/battleSystem.js');
+const { distributeXPToTeam, XP_PER_LEVEL } = require('../utils/levelSystem.js');
+const path = require('path');
+const fs = require('fs');
 
 // Location data based on your specifications
 const LOCATIONS = {
@@ -330,12 +333,36 @@ function addToInventory(user, item) {
     }
 }
 
-function addXP(user, amount) {
+async function addXP(user, amount) {
     const xpBoost = user.activeBoosts?.find(boost => 
         boost.type === 'double_xp' && boost.expiresAt > Date.now()
     );
     const finalAmount = xpBoost ? amount * 2 : amount;
+    
+    // Add to user's total XP
     user.xp = (user.xp || 0) + finalAmount;
+    
+    // Distribute XP to team members and handle level ups
+    if (user.team && user.team.length > 0) {
+        const levelUpChanges = distributeXPToTeam(user, finalAmount);
+        
+        // Store level up information for display
+        if (levelUpChanges && levelUpChanges.length > 0) {
+            if (!user.recentLevelUps) user.recentLevelUps = [];
+            user.recentLevelUps.push(...levelUpChanges);
+        }
+        
+        // Mark the user document as modified to ensure cards array is saved
+        user.markModified('cards');
+        
+        // Save the user document to persist XP changes
+        try {
+            await user.save();
+            console.log('User XP data saved successfully');
+        } catch (error) {
+            console.error('Error saving user XP data:', error);
+        }
+    }
 }
 
 function prettyTime(ms) {
@@ -550,6 +577,16 @@ async function handleNarrative(message, user, stageData, currentLocation) {
         embed.addFields({ name: '🎁 Rewards', value: rewardText, inline: false });
     }
 
+    // Check for level ups and display them
+    if (user.recentLevelUps && user.recentLevelUps.length > 0) {
+        let levelUpText = '';
+        user.recentLevelUps.forEach(change => {
+            levelUpText += `🎉 **${change.name}** leveled up! Lv.${change.oldLevel} → Lv.${change.newLevel}\n`;
+        });
+        embed.addFields({ name: '⭐ Level Ups!', value: levelUpText, inline: false });
+        user.recentLevelUps = []; // Clear after displaying
+    }
+
     // Set cooldown and advance stage
     user.lastExplore = new Date();
     user.stage++;
@@ -637,6 +674,16 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
                 resultEmbed.addFields({ name: 'Reward', value: getRewardText(reward), inline: false });
             }
 
+            // Check for level ups and display them
+            if (user.recentLevelUps && user.recentLevelUps.length > 0) {
+                let levelUpText = '';
+                user.recentLevelUps.forEach(change => {
+                    levelUpText += `🎉 **${change.name}** leveled up! Lv.${change.oldLevel} → Lv.${change.newLevel}\n`;
+                });
+                resultEmbed.addFields({ name: '⭐ Level Ups!', value: levelUpText, inline: false });
+                user.recentLevelUps = []; // Clear after displaying
+            }
+
             // Set cooldown and advance stage
             user.lastExplore = new Date();
             user.stage++;
@@ -703,51 +750,18 @@ async function handleBattle(message, user, stageData, currentLocation, client) {
     let enemies = [];
 
     if (stageData.type === 'multi_enemy') {
-        // Load enemy stats from cards.json if available
-        const path = require('path');
-        const fs = require('fs');
-        const cardsPath = path.resolve('data', 'cards.json');
-        const allCards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
-
-        enemies = stageData.enemies.map(enemy => {
-            const enemyCardDef = allCards.find(c => c.name === enemy.name);
-            let enemyStats = { ...enemy };
-
-            if (enemyCardDef && enemyCardDef.phs) {
-                // Parse PHS stats
-                const [power, health, speed] = enemyCardDef.phs.split('/').map(x => parseInt(x.trim()));
-                enemyStats.hp = health;
-                enemyStats.atk = [Math.floor(power * 0.8), Math.floor(power * 1.2)];
-                enemyStats.spd = speed;
-            }
-
-            return {
-                ...enemyStats,
-                currentHp: enemyStats.hp,
-                maxHp: enemyStats.hp
-            };
-        });
+        // Use original enemy stats from stage data, don't load from cards.json
+        enemies = stageData.enemies.map(enemy => ({
+            ...enemy,
+            currentHp: enemy.hp,
+            maxHp: enemy.hp
+        }));
     } else {
-        // Load enemy stats from cards.json if available
-        const fs = require('fs');
-        const cardsPath = path.resolve('data', 'cards.json');
-        const allCards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
-
-        const enemyCardDef = allCards.find(c => c.name === stageData.enemy.name);
-        let enemyStats = { ...stageData.enemy };
-
-        if (enemyCardDef && enemyCardDef.phs) {
-            // Parse PHS stats
-            const [power, health, speed] = enemyCardDef.phs.split('/').map(x => parseInt(x.trim()));
-            enemyStats.hp = health;
-            enemyStats.atk = [Math.floor(power * 0.8), Math.floor(power * 1.2)];
-            enemyStats.spd = speed;
-        }
-
+        // Use original enemy stats from stage data
         enemies = [{
-            ...enemyStats,
-            currentHp: enemyStats.hp,
-            maxHp: enemyStats.hp
+            ...stageData.enemy,
+            currentHp: stageData.enemy.hp,
+            maxHp: stageData.enemy.hp
         }];
     }
 
@@ -905,6 +919,11 @@ async function displayBattleState(message, user, client) {
 async function handleBattleAttack(interaction, user, battleMessage) {
     const battleState = user.exploreStates.battleState;
 
+    // Check if battle state exists
+    if (!battleState || !battleState.userTeam) {
+        return await interaction.followUp({ content: 'Battle state corrupted. Please restart the battle.', ephemeral: true });
+    }
+
     // Get first alive card from team
     const activeCard = battleState.userTeam.find(card => card.currentHp > 0);
     if (!activeCard) {
@@ -962,6 +981,11 @@ async function updateBattleDisplay(interaction, user, battleMessage, battleLog) 
     const battleState = user.exploreStates.battleState;
     const stageData = user.exploreStates.currentStage;
     const currentLocation = user.exploreStates.currentLocation;
+
+    if (!battleState || !stageData || !currentLocation) {
+        console.error('Battle state corrupted during update');
+        return;
+    }
     const localStage = getLocalStage(user.stage);
     const totalStages = getTotalStagesInLocation(currentLocation);
 
@@ -1093,6 +1117,12 @@ async function handleBattleItems(interaction, user, battleMessage) {
 
 async function handleEnemyTurn(interaction, user, battleMessage) {
     const battleState = user.exploreStates.battleState;
+    
+    if (!battleState || !battleState.userTeam || !battleState.enemies) {
+        console.error('Battle state corrupted during enemy turn');
+        return;
+    }
+    
     let battleLog = '';
 
     // Each alive enemy attacks
@@ -1221,6 +1251,16 @@ async function handleBattleVictory(interaction, user, battleMessage, battleLog) 
         victoryEmbed.addFields({ name: 'Rewards', value: getRewardText(stageData.reward), inline: false });
     }
 
+    // Check for level ups and display them
+    if (user.recentLevelUps && user.recentLevelUps.length > 0) {
+        let levelUpText = '';
+        user.recentLevelUps.forEach(change => {
+            levelUpText += `🎉 **${change.name}** leveled up! Lv.${change.oldLevel} → Lv.${change.newLevel}\n`;
+        });
+        victoryEmbed.addFields({ name: '⭐ Level Ups!', value: levelUpText, inline: false });
+        user.recentLevelUps = []; // Clear after displaying
+    }
+
     await battleMessage.edit({ embeds: [victoryEmbed], components: [] });
 }
 
@@ -1254,7 +1294,7 @@ async function applyReward(user, reward) {
     if (!reward) return;
 
     if (reward.type === 'xp') {
-        addXP(user, reward.amount);
+        await addXP(user, reward.amount);
     } else if (reward.type === 'beli') {
         user.beli = (user.beli || 0) + reward.amount;
     } else if (reward.type === 'item') {
@@ -1503,6 +1543,16 @@ async function handleMiniChoice(choiceMessage, user, miniChoice, stageData) {
                 resultEmbed.addFields({ name: '🎁 Stage Reward', value: getRewardText(stageData.reward), inline: false });
             }
 
+            // Check for level ups and display them
+            if (user.recentLevelUps && user.recentLevelUps.length > 0) {
+                let levelUpText = '';
+                user.recentLevelUps.forEach(change => {
+                    levelUpText += `🎉 **${change.name}** leveled up! Lv.${change.oldLevel} → Lv.${change.newLevel}\n`;
+                });
+                resultEmbed.addFields({ name: '⭐ Level Ups!', value: levelUpText, inline: false });
+                user.recentLevelUps = []; // Clear after displaying
+            }
+
             collector.stop();
             await choiceMessage.edit({ embeds: [resultEmbed], components: [] });
 
@@ -1543,6 +1593,16 @@ async function handleAutoAdvance(choiceMessage, user, stageData) {
 
         if (stageData.reward) {
             timeoutEmbed.addFields({ name: '🎁 Reward', value: getRewardText(stageData.reward), inline: false });
+        }
+
+        // Check for level ups and display them
+        if (user.recentLevelUps && user.recentLevelUps.length > 0) {
+            let levelUpText = '';
+            user.recentLevelUps.forEach(change => {
+                levelUpText += `🎉 **${change.name}** leveled up! Lv.${change.oldLevel} → Lv.${change.newLevel}\n`;
+            });
+            timeoutEmbed.addFields({ name: '⭐ Level Ups!', value: levelUpText, inline: false });
+            user.recentLevelUps = []; // Clear after displaying
         }
 
         await choiceMessage.edit({ embeds: [timeoutEmbed], components: [] });
