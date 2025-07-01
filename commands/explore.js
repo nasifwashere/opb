@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle  } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const User = require('../db/models/User.js');
 const { calculateBattleStats, calculateDamage, resetTeamHP } = require('../utils/battleSystem.js');
 const { distributeXPToTeam, XP_PER_LEVEL } = require('../utils/levelSystem.js');
@@ -392,21 +392,21 @@ function createHpBar(current, max) {
 
 function getCurrentLocation(stage) {
     if (stage < 7) return 'WINDMILL VILLAGE';
-    if (stage < 15) return 'SHELLS TOWN';  // Shells Town has 8 stages (7-14)
-    if (stage < 22) return 'ORANGE TOWN';  // Orange Town has 7 stages (15-21)
-    if (stage < 27) return 'SYRUP VILLAGE'; // Syrup Village has 5 stages (22-26)
-    if (stage < 32) return 'BARATIE';      // Baratie has 5 stages (27-31)
-    if (stage < 41) return 'ARLONG PARK';  // Arlong Park has 9 stages (32-40)
+    if (stage < 16) return 'SHELLS TOWN';  // Shells Town has 9 stages (7-15)
+    if (stage < 24) return 'ORANGE TOWN';  // Orange Town has 8 stages (16-23)
+    if (stage < 29) return 'SYRUP VILLAGE'; // Syrup Village has 5 stages (24-28)
+    if (stage < 34) return 'BARATIE';      // Baratie has 5 stages (29-33)
+    if (stage < 43) return 'ARLONG PARK';  // Arlong Park has 9 stages (34-42)
     return 'COMPLETED';
 }
 
 function getLocalStage(globalStage) {
     if (globalStage < 7) return globalStage;
-    if (globalStage < 15) return globalStage - 7;
-    if (globalStage < 22) return globalStage - 15;
-    if (globalStage < 27) return globalStage - 22;
-    if (globalStage < 32) return globalStage - 27;
-    if (globalStage < 41) return globalStage - 32;
+    if (globalStage < 16) return globalStage - 7;
+    if (globalStage < 24) return globalStage - 16;
+    if (globalStage < 29) return globalStage - 24;
+    if (globalStage < 34) return globalStage - 29;
+    if (globalStage < 43) return globalStage - 34;
     return 0;
 }
 
@@ -735,6 +735,10 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
         if (reason !== 'time' && reason !== 'timeout') {
             choiceMessage.edit({ components: [] }).catch(() => {});
         }
+        // Clean up any pending timeouts
+        if (collector.timer) {
+            clearTimeout(collector.timer);
+        }
     });
 }
 
@@ -749,9 +753,8 @@ async function handleBattle(message, user, stageData, currentLocation, client) {
     // Fix HP property - ensure we're using maxHp correctly
     battleTeam.forEach(card => {
         card.maxHp = card.hp; // Set maxHp to the calculated hp value
-        card.currentHp = card.hp; // Set current HP to The goal is to remove the orphaned `await user.save()` statement on line 791.
-```javascript
- full at start of battle    });
+        card.currentHp = card.hp; // Set current HP to full at start of battle
+    });
 
     // Initialize battle state
     let enemies = [];
@@ -924,12 +927,13 @@ async function displayBattleState(message, user, client) {
 }
 
 async function handleBattleAttack(interaction, user, battleMessage) {
-    const battleState = user.exploreStates.battleState;
+    try {
+        const battleState = user.exploreStates.battleState;
 
-    // Check if battle state exists
-    if (!battleState || !battleState.userTeam) {
-        return await interaction.followUp({ content: 'Battle state corrupted. Please restart the battle.', ephemeral: true });
-    }
+        // Check if battle state exists
+        if (!battleState || !battleState.userTeam) {
+            return await interaction.followUp({ content: 'Battle state corrupted. Please restart the battle.', ephemeral: true });
+        }
 
     // Get first alive card from team
     const activeCard = battleState.userTeam.find(card => card.currentHp > 0);
@@ -982,6 +986,14 @@ async function handleBattleAttack(interaction, user, battleMessage) {
 
     // Update battle display
     await updateBattleDisplay(interaction, user, battleMessage, battleLog);
+    } catch (error) {
+        console.error('Error in handleBattleAttack:', error);
+        try {
+            await interaction.followUp({ content: 'An error occurred during battle. Please try again.', ephemeral: true });
+        } catch (followUpError) {
+            console.error('Error sending error message:', followUpError);
+        }
+    }
 }
 
 async function updateBattleDisplay(interaction, user, battleMessage, battleLog) {
@@ -1297,7 +1309,13 @@ async function handleBattleDefeat(interaction, user, battleMessage, battleLog) {
 }
 
 async function applyReward(user, reward, questTrigger = null) {
-    if (!reward) return;
+    if (!reward || !user) return;
+    
+    // Validate user object has required properties
+    if (!user.userId) {
+        console.error('Invalid user object in applyReward');
+        return;
+    }
 
     if (reward.type === 'xp') {
         await addXP(user, reward.amount);
@@ -1590,9 +1608,12 @@ async function handleAutoAdvance(choiceMessage, user, stageData) {
         user.stage++;
 
         try {
-            await updateQuestProgress(user, 'explore', 1);        } catch (error){
+            await updateQuestProgress(user, 'explore', 1);
+        } catch (error) {
             console.log('Quest system not available');
         }
+
+        await user.save();
 
         const timeoutEmbed = new EmbedBuilder()
             .setTitle('⏰ Time\'sUp!')

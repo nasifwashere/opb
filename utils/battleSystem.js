@@ -67,7 +67,7 @@ function calculateBattleStats(user, cardDatabase = allCards) {
     // Use the SAME calculation as mycard, info, and collection commands
     const { calculateCardStats } = require('./levelSystem.js');
     let stats = calculateCardStats(cardDef, level);
-    
+
     // Ensure stats are valid numbers
     let power = (isNaN(stats.power) || stats.power === null || stats.power === undefined) ? 10 : Math.floor(Number(stats.power));
     let health = (isNaN(stats.health) || stats.health === null || stats.health === undefined) ? 50 : Math.floor(Number(stats.health));
@@ -122,7 +122,7 @@ function calculateBattleStats(user, cardDatabase = allCards) {
 function calculateDamage(attacker, defender, attackType = 'normal') {
     // Get base damage from attacker
     let baseDamage;
-    
+
     if (attacker.atk && Array.isArray(attacker.atk)) {
         // Enemy with attack range - ensure valid numbers
         const minAtk = Math.max(1, Number(attacker.atk[0]) || 10);

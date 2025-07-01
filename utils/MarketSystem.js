@@ -133,13 +133,18 @@ async function purchaseItem(buyerId, listingId) {
 
     // Mark listing as sold
     listing.active = false;
-    
+
     // Save all changes
     await Promise.all([
       buyer.save(),
       seller.save(),
       listing.save()
     ]);
+
+    // Update quest progress for market transactions
+    const { updateQuestProgress } = require('./questSystem');
+    await updateQuestProgress(buyer, 'market_buy', 1);
+    await updateQuestProgress(seller, 'market_sell', 1);
 
     return {
       success: true,
@@ -249,7 +254,7 @@ async function getMarketListings(filters = {}, page = 0, limit = 10) {
     }
 
     const skip = page * limit;
-    
+
     const [listings, totalCount] = await Promise.all([
       MarketListing.find(query)
         .sort({ createdAt: -1 })

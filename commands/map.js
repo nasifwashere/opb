@@ -1,3 +1,4 @@
+
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
 
@@ -51,57 +52,61 @@ async function execute(message, args) {
     const totalStages = getTotalStagesInLocation(currentLocation);
 
     // Calculate overall progress
-    const totalPossibleStages = 7 + 9 + 8 + 5 + 5 + 9; // 43 total stages
-    const overallProgress = Math.floor((currentStage / totalPossibleStages) * 100);
+    const totalPossibleStages = 43; // 7 + 9 + 8 + 5 + 5 + 9
+    const overallProgress = Math.min(Math.floor((currentStage / totalPossibleStages) * 100), 100);
 
     const embed = new EmbedBuilder()
-        .setColor(0x2C2F33)
+        .setColor(0x3498db)
+        .setTitle('🗺️ Adventure Map')
         .setDescription([
-            `**${user.username || message.author.username}'s Adventure Map**`,
+            `**${user.username || message.author.username}'s Journey**`,
             '',
             `📍 **Current Location:** ${currentLocation}`,
-            currentLocation !== 'COMPLETED' ? `🗺️ **Progress:** ${localStage}/${totalStages} stages` : '🎉 **East Blue Saga Complete!**'
+            currentLocation === 'COMPLETED' ? '🎉 **East Blue Saga Complete!**' : `🗺️ **Stage Progress:** ${localStage}/${totalStages}`
         ].join('\n'));
 
     // Location progress bars
     const locations = [
-        { name: 'WINDMILL VILLAGE', stages: 7, unlocked: currentStage >= 0 },
-        { name: 'SHELLS TOWN', stages: 9, unlocked: currentStage >= 7 },
-        { name: 'ORANGE TOWN', stages: 8, unlocked: currentStage >= 16 },
-        { name: 'SYRUP VILLAGE', stages: 5, unlocked: currentStage >= 24 },
-        { name: 'BARATIE', stages: 5, unlocked: currentStage >= 29 },
-        { name: 'ARLONG PARK', stages: 9, unlocked: currentStage >= 34 }
+        { name: 'WINDMILL VILLAGE', stages: 7, unlocked: currentStage >= 0, startStage: 0 },
+        { name: 'SHELLS TOWN', stages: 9, unlocked: currentStage >= 7, startStage: 7 },
+        { name: 'ORANGE TOWN', stages: 8, unlocked: currentStage >= 16, startStage: 16 },
+        { name: 'SYRUP VILLAGE', stages: 5, unlocked: currentStage >= 24, startStage: 24 },
+        { name: 'BARATIE', stages: 5, unlocked: currentStage >= 29, startStage: 29 },
+        { name: 'ARLONG PARK', stages: 9, unlocked: currentStage >= 34, startStage: 34 }
     ];
 
     let progressText = '';
-    let cumulativeStages = 0;
 
     locations.forEach(location => {
-        const locationStart = cumulativeStages;
-        const locationEnd = cumulativeStages + location.stages;
-        cumulativeStages = locationEnd;
-
+        const locationEnd = location.startStage + location.stages;
+        
         let status = '';
         let progress = 0;
+        let progressIcon = '';
 
         if (!location.unlocked) {
-            status = '🔒 *Locked*';
+            status = '🔒 Locked';
+            progressIcon = '⚫';
         } else if (currentStage >= locationEnd) {
-            status = '✅ *Complete*';
+            status = '✅ Complete';
             progress = location.stages;
-        } else if (currentStage >= locationStart) {
-            status = '🔍 *Current*';
-            progress = currentStage - locationStart;
+            progressIcon = '🟢';
+        } else if (currentStage >= location.startStage) {
+            status = '🔍 Current';
+            progress = currentStage - location.startStage;
+            progressIcon = '🔵';
         } else {
-            status = '⏳ *Upcoming*';
+            status = '⏳ Upcoming';
+            progressIcon = '⚪';
         }
 
         const progressBar = createProgressBar(progress, location.stages);
-        progressText += `**${location.name}**\n${progressBar} ${progress}/${location.stages} ${status}\n\n`;
+        progressText += `${progressIcon} **${location.name}**\n`;
+        progressText += `${progressBar} \`${progress}/${location.stages}\` ${status}\n\n`;
     });
 
     embed.addFields({
-        name: '🗺️ East Blue Saga Progress',
+        name: '🌊 East Blue Saga Progress',
         value: progressText,
         inline: false
     });
@@ -111,7 +116,7 @@ async function execute(message, args) {
         const activeQuests = Object.values(user.questData.activeQuests).filter(q => !q.completed);
         if (activeQuests.length > 0) {
             const questText = activeQuests.slice(0, 3).map(quest => 
-                `• ${quest.name} (${quest.progress}/${quest.target})`
+                `🎯 ${quest.name} \`${quest.progress}/${quest.target}\``
             ).join('\n');
 
             embed.addFields({
@@ -122,22 +127,8 @@ async function execute(message, args) {
         }
     }
 
-    // Add stats
-    const stats = [
-        `**Level:** ${user.level || 1}`,
-        `**XP:** ${user.xp || 0}`,
-        `**Beli:** ${user.beli || 0}`,
-        `**Cards:** ${user.cards ? user.cards.length : 0}`
-    ].join(' • ');
-
-    embed.addFields({
-        name: '📊 Adventure Stats',
-        value: stats,
-        inline: false
-    });
-
     embed.setFooter({ 
-        text: `Overall Progress: ${overallProgress}% • Use "op explore" to continue` 
+        text: `Overall Progress: ${overallProgress}% • Use "op explore" to continue your adventure` 
     });
 
     await message.reply({ embeds: [embed] });
@@ -145,7 +136,7 @@ async function execute(message, args) {
 
 function createProgressBar(current, max) {
     const percentage = Math.min(current / max, 1);
-    const barLength = 10;
+    const barLength = 12;
     const filledBars = Math.floor(percentage * barLength);
     const emptyBars = barLength - filledBars;
 
