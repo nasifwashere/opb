@@ -5,21 +5,26 @@ const questSchema = new mongoose.Schema({
   name: { type: String, required: true },
   description: { type: String, required: true },
   type: { type: String, enum: ['daily', 'weekly', 'story'], required: true },
+  
   requirements: [{
     type: { type: String, required: true }, // 'battle_win', 'explore', 'pull', 'evolve', etc.
     target: { type: Number, required: true },
     current: { type: Number, default: 0 }
   }],
+  
   rewards: [{
     type: { type: String, required: true }, // 'beli', 'xp', 'item', 'card'
     amount: { type: Number },
-    itemName: { type: String }
+    itemName: { type: String },
+    rank: { type: String } // For card rewards
   }],
+  
   unlockRequirements: {
     saga: { type: String },
     level: { type: Number },
     completedQuests: [{ type: String }]
   },
+  
   active: { type: Boolean, default: true }
 }, {
   timestamps: true

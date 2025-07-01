@@ -3,9 +3,15 @@ const User = require('../db/models/User.js');
 const fs = require('fs');
 const path = require('path');
 
-// Load cards data
-const cardsPath = path.resolve('data', 'cards.json');
-const allCards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
+// Load cards data with fallback
+let allCards = [];
+try {
+  const cardsPath = path.resolve('data', 'cards.json');
+  allCards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
+} catch (error) {
+  console.log('Cards data not found, team command will work with basic functionality');
+  allCards = [];
+}
 
 function normalize(str) {
   return String(str || '').replace(/\s+/g, '').toLowerCase();
@@ -13,8 +19,18 @@ function normalize(str) {
 
 function calculateCardStats(cardDef, level) {
   // Use the same calculation as other commands by importing from levelSystem
-  const { calculateCardStats: systemCalculateCardStats } = require('../utils/levelSystem.js');
-  return systemCalculateCardStats(cardDef, level);
+  try {
+    const { calculateCardStats: systemCalculateCardStats } = require('../utils/levelSystem.js');
+    return systemCalculateCardStats(cardDef, level);
+  } catch (error) {
+    // Fallback calculation if levelSystem is not available
+    const baseStats = cardDef || { power: 100, health: 100, speed: 50 };
+    return {
+      power: Math.floor(baseStats.power * (1 + (level - 1) * 0.1)),
+      health: Math.floor(baseStats.health * (1 + (level - 1) * 0.1)),
+      speed: Math.floor(baseStats.speed * (1 + (level - 1) * 0.05))
+    };
+  }
 }
 
 function buildTeamEmbed(teamCards, username, totalPower) {

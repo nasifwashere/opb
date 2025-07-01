@@ -535,7 +535,7 @@
   },
   {
     "questId": "story_rank_up_specialist",
-    "name": "Rank Up Specialist", 
+    "name": "Rank Up Specialist",
     "description": "Evolve cards to reach A rank or higher 3 times.",
     "type": "story",
     "requirements": [

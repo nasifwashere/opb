@@ -1,109 +1,141 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-    userId: { type: String, required: true, index: true, unique: true },
-    username: { type: String, required: true },
-    beli: { type: Number, default: 0 },
-    xp: { type: Number, default: 0 },
-    level: { type: Number, default: 1 },
-    wins: { type: Number, default: 0 },
-    losses: { type: Number, default: 0 },
-    stage: { type: Number, default: 0 },
-    hp: { type: Number, default: 100 },
-    maxHp: { type: Number, default: 100 },
-    atk: { type: Number, default: 15 },
-    spd: { type: Number, default: 50 },
-    def: { type: Number, default: 10 },
-    
-    // Collections
-    cards: [{
-        name: { type: String, required: true },
-        rank: { type: String, required: true },
-        level: { type: Number, default: 1, min: 1 },
-        experience: { type: Number, default: 0, min: 0 },
-        timesUpgraded: { type: Number, default: 0, min: 0 },
-        locked: { type: Boolean, default: false }
-    }],
-    
-    inventory: [String],
-    equipped: { type: Map, of: String, default: {} },
-    team: [String],
-    
-    // Battle state
-    battleState: {
-        inBattle: { type: Boolean, default: false },
-        enemy: mongoose.Schema.Types.Mixed,
-        battleHp: Number,
-        turnCount: { type: Number, default: 0 },
-        battleLog: [String]
-    },
-    
-    // Explore states for complex exploration system
-    exploreStates: {
-        inBossFight: { type: Boolean, default: false },
-        battleState: mongoose.Schema.Types.Mixed,
-        currentStage: mongoose.Schema.Types.Mixed,
-        currentLocation: String,
-        defeatCooldown: Date
-    },
-    
-    // Cooldowns
-    lastExplore: { type: Date, default: null },
-    lastBattle: { type: Date, default: null },
-    defeatedAt: { type: Date, default: null },
-    
-    // Quest system
-    activeQuests: [{
-        questId: String,
-        progress: { type: Map, of: mongoose.Schema.Types.Mixed, default: {} },
-        startedAt: { type: Date, default: Date.now }
-    }],
-    completedQuests: [String],
-    questData: {
-        progress: { type: Map, of: Number, default: {} },
-        completed: [String],
-        lastReset: {
-            daily: { type: Number, default: 0 },
-            weekly: { type: Number, default: 0 }
-        }
-    },
-    
-    // Boosts
-    activeBoosts: [{
-        type: String,
-        expiresAt: Date,
-        multiplier: Number
-    }],
-    
-    // Pull tracking
-    pulls: [{ type: Number }],
-    lastPull: { type: Number, default: 0 },
-    
-    // Crew system
-    crewId: { type: String, default: null },
-    crewData: {
-        name: String,
-        captain: String,
-        members: [String],
-        treasury: { type: Number, default: 0 },
-        level: { type: Number, default: 1 },
-        createdAt: { type: Date, default: Date.now }
-    },
-    
-    // Daily rewards
-    dailyReward: {
-        lastClaimed: { type: Date, default: null },
-        streak: { type: Number, default: 0 }
-    },
+  userId: { type: String, required: true, index: true, unique: true },
+  username: { type: String, required: true },
+  beli: { type: Number, default: 0 },
+  xp: { type: Number, default: 0 },
+  level: { type: Number, default: 1 },
+  wins: { type: Number, default: 0 },
+  losses: { type: Number, default: 0 },
+  stage: { type: Number, default: 0 },
+  hp: { type: Number, default: 100 },
+  maxHp: { type: Number, default: 100 },
+  atk: { type: Number, default: 15 },
+  spd: { type: Number, default: 50 },
+  def: { type: Number, default: 10 },
 
-    // Timestamps
+  // Collections
+  cards: [{
+    name: { type: String, required: true },
+    rank: { type: String, required: true },
+    level: { type: Number, default: 1, min: 1 },
+    experience: { type: Number, default: 0, min: 0 },
+    timesUpgraded: { type: Number, default: 0, min: 0 },
+    locked: { type: Boolean, default: false }
+  }],
+
+  team: [{ type: String }], // Array of card names
+
+  inventory: [{ type: String }],
+
+  // Quest System - Fixed structure
+  activeQuests: [{
+    questId: { type: String, required: true },
+    progress: { type: mongoose.Schema.Types.Mixed, default: {} }, // Store as plain object
+    startedAt: { type: Number, default: Date.now }
+  }],
+
+  completedQuests: [{ type: String }], // Array of "questId_resetPeriod" strings
+
+  // Quest data tracking for migration and consistency
+  questData: {
+    lastReset: {
+      daily: { type: Number, default: 0 },
+      weekly: { type: Number, default: 0 }
+    },
+    migrationVersion: { type: Number, default: 1 }
+  },
+
+  // Game progression
+  location: { type: String, default: "Foosha Village" },
+  unlockedSagas: [{ type: String, default: ["East Blue"] }],
+  
+  // Timers
+  lastDaily: { type: Date },
+  nextPullReset: { type: Date },
+  
+  // Trading and market
+  tradeOffers: [{
+    offerId: String,
+    fromUser: String,
+    toUser: String,
+    fromCards: [String],
+    toCards: [String],
+    status: { type: String, default: 'pending' },
     createdAt: { type: Date, default: Date.now },
-    lastActive: { type: Date, default: Date.now }
+    expiresAt: { type: Date }
+  }],
+  
+  // Crew system
+  crewId: { type: String },
+  crewRole: { type: String, default: 'member' },
+  
+  // Battle system
+  battleStats: {
+    totalBattles: { type: Number, default: 0 },
+    pvpWins: { type: Number, default: 0 },
+    pvpLosses: { type: Number, default: 0 },
+    pveWins: { type: Number, default: 0 },
+    pveLosses: { type: Number, default: 0 }
+  },
+
+  // User preferences
+  settings: {
+    autoTeam: { type: Boolean, default: false },
+    notifications: { type: Boolean, default: true },
+    publicProfile: { type: Boolean, default: true }
+  },
+
+  // Administrative
+  banned: { type: Boolean, default: false },
+  banReason: { type: String },
+  lastActive: { type: Date, default: Date.now }
+}, {
+  timestamps: true,
+  // Ensure proper JSON serialization of Mixed types
+  toJSON: { 
+    transform: function(doc, ret) {
+      // Ensure activeQuests progress is always an object
+      if (ret.activeQuests) {
+        ret.activeQuests = ret.activeQuests.map(quest => ({
+          ...quest,
+          progress: quest.progress || {}
+        }));
+      }
+      return ret;
+    }
+  }
 });
 
-// Additional indexes for performance
-userSchema.index({ beli: -1 });
-userSchema.index({ xp: -1 });
-userSchema.index({ wins: -1 });
+// Index for quest operations
+userSchema.index({ 'activeQuests.questId': 1 });
+userSchema.index({ completedQuests: 1 });
+
+// Pre-save middleware to ensure quest data consistency
+userSchema.pre('save', function(next) {
+  // Initialize quest arrays if they don't exist
+  if (!this.activeQuests) this.activeQuests = [];
+  if (!this.completedQuests) this.completedQuests = [];
+  
+  // Ensure quest data structure exists
+  if (!this.questData) {
+    this.questData = {
+      lastReset: { daily: 0, weekly: 0 },
+      migrationVersion: 1
+    };
+  }
+  
+  // Clean up activeQuests - ensure progress is always an object
+  this.activeQuests = this.activeQuests.map(quest => ({
+    questId: quest.questId,
+    progress: (quest.progress && typeof quest.progress === 'object' && !Array.isArray(quest.progress)) 
+      ? quest.progress 
+      : {},
+    startedAt: quest.startedAt || Date.now()
+  }));
+  
+  next();
+});
 
 module.exports = mongoose.model('User', userSchema);
