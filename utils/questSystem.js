@@ -5,34 +5,44 @@ const path = require('path');
 
 const questsPath = path.resolve('data', 'quests.json');
 
+// Configuration for quest logging - set to false to reduce spam
+const ENABLE_QUEST_LOGGING = process.env.QUEST_DEBUG === 'true' || false;
+
+// Silent logging function that only logs when debugging is enabled
+function questLog(message) {
+    if (ENABLE_QUEST_LOGGING) {
+        console.log(message);
+    }
+}
+
 /**
  * Load available quests from database and data file
  * @returns {Array} Array of quest objects
  */
 async function loadQuestDatabase() {
-  // Try to load from database first
-  let dbQuests = await Quest.find({ active: true });
-  
-  // If no quests in database, load from file and seed database
-  if (dbQuests.length === 0) {
-    try {
-      if (fs.existsSync(questsPath)) {
-        const fileQuests = JSON.parse(fs.readFileSync(questsPath, 'utf8'));
-        
-        // Seed database with quests from file
-        for (const questData of fileQuests) {
-          const quest = new Quest(questData);
-          await quest.save();
+    // Try to load from database first
+    let dbQuests = await Quest.find({ active: true });
+    
+    // If no quests in database, load from file and seed database
+    if (dbQuests.length === 0) {
+        try {
+            if (fs.existsSync(questsPath)) {
+                const fileQuests = JSON.parse(fs.readFileSync(questsPath, 'utf8'));
+                
+                // Seed database with quests from file
+                for (const questData of fileQuests) {
+                    const quest = new Quest(questData);
+                    await quest.save();
+                }
+                
+                dbQuests = await Quest.find({ active: true });
+            }
+        } catch (error) {
+            console.error('Error loading quest database:', error);
         }
-        
-        dbQuests = await Quest.find({ active: true });
-      }
-    } catch (error) {
-      console.error('Error loading quest database:', error);
     }
-  }
-  
-  return dbQuests;
+    
+    return dbQuests;
 }
 
 /**
@@ -41,172 +51,174 @@ async function loadQuestDatabase() {
  * @returns {Array} Array of available quests
  */
 async function getAvailableQuests(user) {
-  const allQuests = await loadQuestDatabase();
-  const availableQuests = [];
-  
-  // Ensure user has proper quest data structure
-  await ensureQuestDataStructure(user);
-  
-  for (const quest of allQuests) {
-    // Check unlock requirements
-    if (quest.unlockRequirements) {
-      // Check saga requirement - default to East Blue if no saga set
-      if (quest.unlockRequirements.saga) {
-        const userSaga = user.unlockedSagas ? user.unlockedSagas : ['East Blue'];
-        if (!userSaga.includes(quest.unlockRequirements.saga)) {
-          continue;
+    const allQuests = await loadQuestDatabase();
+    const availableQuests = [];
+    
+    // Ensure user has proper quest data structure
+    await ensureQuestDataStructure(user);
+    
+    for (const quest of allQuests) {
+        // Check unlock requirements
+        if (quest.unlockRequirements) {
+            // Check saga requirement - default to East Blue if no saga set
+            if (quest.unlockRequirements.saga) {
+                const userSaga = user.unlockedSagas ? user.unlockedSagas : ['East Blue'];
+                if (!userSaga.includes(quest.unlockRequirements.saga)) {
+                    continue;
+                }
+            }
+            
+            if (quest.unlockRequirements.level && (user.xp || 0) < quest.unlockRequirements.level) {
+                continue;
+            }
+            
+            if (quest.unlockRequirements.completedQuests) {
+                const hasRequiredQuests = quest.unlockRequirements.completedQuests.every(
+                    reqQuest => user.completedQuests?.some(completed => completed.startsWith(reqQuest))
+                );
+                if (!hasRequiredQuests) continue;
+            }
         }
-      }
-      
-      if (quest.unlockRequirements.level && (user.xp || 0) < quest.unlockRequirements.level) {
-        continue;
-      }
-      
-      if (quest.unlockRequirements.completedQuests) {
-        const hasRequiredQuests = quest.unlockRequirements.completedQuests.every(
-          reqQuest => user.completedQuests?.some(completed => completed.startsWith(reqQuest))
-        );
-        if (!hasRequiredQuests) continue;
-      }
+        
+        // Check if quest is already completed for this reset period
+        const resetPeriod = getQuestResetPeriod(quest.type);
+        const completedKey = `${quest.questId}_${resetPeriod}`;
+        
+        if (quest.type === 'daily' || quest.type === 'weekly') {
+            const isCompletedThisPeriod = user.completedQuests?.includes(completedKey);
+            if (isCompletedThisPeriod) continue;
+        }
+        
+        // Check if story quest is already completed (one-time only)
+        if (quest.type === 'story') {
+            const alreadyCompleted = user.completedQuests?.some(
+                questId => questId.startsWith(quest.questId)
+            );
+            if (alreadyCompleted) continue;
+        }
+        
+        availableQuests.push(quest);
     }
     
-    // Check if quest is already completed for this reset period
-    const resetPeriod = getQuestResetPeriod(quest.type);
-    const completedKey = `${quest.questId}_${resetPeriod}`;
-    
-    if (quest.type === 'daily' || quest.type === 'weekly') {
-      const isCompletedThisPeriod = user.completedQuests?.includes(completedKey);
-      if (isCompletedThisPeriod) continue;
-    }
-    
-    // Check if story quest is already completed (one-time only)
-    if (quest.type === 'story') {
-      const alreadyCompleted = user.completedQuests?.some(
-        questId => questId.startsWith(quest.questId)
-      );
-      if (alreadyCompleted) continue;
-    }
-    
-    availableQuests.push(quest);
-  }
-  
-  return availableQuests;
+    return availableQuests;
 }
 
 /**
- * Update quest progress for a user
+ * Update quest progress for a user (with reduced logging)
  * @param {Object} user - User document
  * @param {string} actionType - Type of action (battle_win, explore, pull, etc.)
  * @param {number} amount - Amount to add to progress
  * @returns {Array} Array of completed quest IDs
  */
 async function updateQuestProgress(user, actionType, amount = 1) {
-  try {
-    // Ensure proper quest data structure
-    await ensureQuestDataStructure(user);
-    
-    const availableQuests = await getAvailableQuests(user);
-    const completedQuests = [];
-    
-    for (const quest of availableQuests) {
-      // Skip if already completed for this reset period
-      const resetPeriod = getQuestResetPeriod(quest.type);
-      const claimId = `${quest.questId}_${resetPeriod}`;
-      
-      if (user.completedQuests.includes(claimId)) {
-        continue;
-      }
-      
-      // Find or create active quest entry
-      let activeQuest = user.activeQuests.find(aq => aq.questId === quest.questId);
-      
-      if (!activeQuest) {
-        activeQuest = {
-          questId: quest.questId,
-          progress: {},
-          startedAt: Date.now()
-        };
-        user.activeQuests.push(activeQuest);
-      }
-      
-      // Ensure progress is a plain object
-      if (!activeQuest.progress || typeof activeQuest.progress !== 'object' || Array.isArray(activeQuest.progress)) {
-        activeQuest.progress = {};
-      }
-      
-      // Update progress for matching requirements
-      let questCompleted = true;
-      let hasMatchingRequirement = false;
-      
-      for (const requirement of quest.requirements) {
-        // Handle direct action type matches
-        if (requirement.type === actionType) {
-          hasMatchingRequirement = true;
-          const currentProgress = activeQuest.progress[requirement.type] || 0;
-          activeQuest.progress[requirement.type] = Math.min(currentProgress + amount, requirement.target);
-          
-          console.log(`[QUEST] Updated ${quest.questId}: ${requirement.type} ${activeQuest.progress[requirement.type]}/${requirement.target}`);
+    try {
+        // Ensure proper quest data structure
+        await ensureQuestDataStructure(user);
+        
+        const availableQuests = await getAvailableQuests(user);
+        const completedQuests = [];
+        
+        for (const quest of availableQuests) {
+            // Skip if already completed for this reset period
+            const resetPeriod = getQuestResetPeriod(quest.type);
+            const claimId = `${quest.questId}_${resetPeriod}`;
+            
+            if (user.completedQuests.includes(claimId)) {
+                continue;
+            }
+            
+            // Find or create active quest entry
+            let activeQuest = user.activeQuests.find(aq => aq.questId === quest.questId);
+            
+            if (!activeQuest) {
+                activeQuest = {
+                    questId: quest.questId,
+                    progress: {},
+                    startedAt: Date.now()
+                };
+                user.activeQuests.push(activeQuest);
+            }
+            
+            // Ensure progress is a plain object
+            if (!activeQuest.progress || typeof activeQuest.progress !== 'object' || Array.isArray(activeQuest.progress)) {
+                activeQuest.progress = {};
+            }
+            
+            // Update progress for matching requirements
+            let questCompleted = true;
+            let hasMatchingRequirement = false;
+            
+            for (const requirement of quest.requirements) {
+                // Handle direct action type matches
+                if (requirement.type === actionType) {
+                    hasMatchingRequirement = true;
+                    const currentProgress = activeQuest.progress[requirement.type] || 0;
+                    activeQuest.progress[requirement.type] = Math.min(currentProgress + amount, requirement.target);
+                    
+                    // Only log when quest debugging is enabled
+                    questLog(`[QUEST] Updated ${quest.questId}: ${requirement.type} ${activeQuest.progress[requirement.type]}/${requirement.target}`);
+                }
+                
+                // Special handling for specific quest types
+                if (requirement.type === 'team_full' && actionType === 'team_change') {
+                    if (user.team && user.team.length >= 3) {
+                        activeQuest.progress['team_full'] = 1;
+                        hasMatchingRequirement = true;
+                    }
+                }
+                
+                if (requirement.type === 'saga_complete' && actionType === 'saga_complete') {
+                    activeQuest.progress['saga_complete'] = (activeQuest.progress['saga_complete'] || 0) + amount;
+                    hasMatchingRequirement = true;
+                }
+                
+                if (requirement.type === 'battle_win' && actionType === 'battle_win') {
+                    activeQuest.progress['battle_win'] = (activeQuest.progress['battle_win'] || 0) + amount;
+                    hasMatchingRequirement = true;
+                }
+                
+                if (requirement.type === 'pull' && actionType === 'pull') {
+                    activeQuest.progress['pull'] = (activeQuest.progress['pull'] || 0) + amount;
+                    hasMatchingRequirement = true;
+                }
+                
+                if (requirement.type === 'level_up' && actionType === 'level_up') {
+                    activeQuest.progress['level_up'] = (activeQuest.progress['level_up'] || 0) + amount;
+                    hasMatchingRequirement = true;
+                }
+                
+                if (requirement.type === 'explore' && actionType === 'explore') {
+                    activeQuest.progress['explore'] = (activeQuest.progress['explore'] || 0) + amount;
+                    hasMatchingRequirement = true;
+                }
+                
+                // Check if this requirement is completed
+                const progress = activeQuest.progress[requirement.type] || 0;
+                if (progress < requirement.target) {
+                    questCompleted = false;
+                }
+            }
+            
+            // Save progress if there was a matching requirement
+            if (hasMatchingRequirement) {
+                // Mark the document as modified for the activeQuests array
+                user.markModified('activeQuests');
+                await user.save();
+            }
+            
+            // Only mark as completed if quest has matching requirements and is fully completed
+            if (questCompleted && hasMatchingRequirement) {
+                completedQuests.push(quest.questId);
+                questLog(`[QUEST] Quest ${quest.questId} completed!`);
+            }
         }
         
-        // Special handling for specific quest types
-        if (requirement.type === 'team_full' && actionType === 'team_change') {
-          if (user.team && user.team.length >= 3) {
-            activeQuest.progress['team_full'] = 1;
-            hasMatchingRequirement = true;
-          }
-        }
+        return completedQuests;
         
-        if (requirement.type === 'saga_complete' && actionType === 'saga_complete') {
-          activeQuest.progress['saga_complete'] = (activeQuest.progress['saga_complete'] || 0) + amount;
-          hasMatchingRequirement = true;
-        }
-        
-        if (requirement.type === 'battle_win' && actionType === 'battle_win') {
-          activeQuest.progress['battle_win'] = (activeQuest.progress['battle_win'] || 0) + amount;
-          hasMatchingRequirement = true;
-        }
-        
-        if (requirement.type === 'pull' && actionType === 'pull') {
-          activeQuest.progress['pull'] = (activeQuest.progress['pull'] || 0) + amount;
-          hasMatchingRequirement = true;
-        }
-        
-        if (requirement.type === 'level_up' && actionType === 'level_up') {
-          activeQuest.progress['level_up'] = (activeQuest.progress['level_up'] || 0) + amount;
-          hasMatchingRequirement = true;
-        }
-        
-        if (requirement.type === 'explore' && actionType === 'explore') {
-          activeQuest.progress['explore'] = (activeQuest.progress['explore'] || 0) + amount;
-          hasMatchingRequirement = true;
-        }
-        
-        // Check if this requirement is completed
-        const progress = activeQuest.progress[requirement.type] || 0;
-        if (progress < requirement.target) {
-          questCompleted = false;
-        }
-      }
-      
-      // Save progress if there was a matching requirement
-      if (hasMatchingRequirement) {
-        // Mark the document as modified for the activeQuests array
-        user.markModified('activeQuests');
-        await user.save();
-      }
-      
-      // Only mark as completed if quest has matching requirements and is fully completed
-      if (questCompleted && hasMatchingRequirement) {
-        completedQuests.push(quest.questId);
-        console.log(`[QUEST] Quest ${quest.questId} completed!`);
-      }
+    } catch (error) {
+        console.error('Error updating quest progress:', error);
+        return [];
     }
-    
-    return completedQuests;
-  } catch (error) {
-    console.error('Error updating quest progress:', error);
-    return [];
-  }
 }
 
 /**
@@ -216,99 +228,97 @@ async function updateQuestProgress(user, actionType, amount = 1) {
  * @returns {Object} Result object with success status and message
  */
 async function claimQuestReward(user, questId) {
-  try {
-    const quest = await Quest.findOne({ questId: questId, active: true });
-    
-    if (!quest) {
-      return { success: false, message: 'Quest not found.' };
-    }
-    
-    // Ensure proper quest data structure
-    await ensureQuestDataStructure(user);
-    
-    // Check if quest is active
-    const activeQuest = user.activeQuests?.find(aq => aq.questId === questId);
-    
-    if (!activeQuest) {
-      return { success: false, message: 'You have not started this quest.' };
-    }
-    
-    // Verify all requirements are met
-    for (const requirement of quest.requirements) {
-      const progress = activeQuest.progress[requirement.type] || 0;
-      
-      if (progress < requirement.target) {
+    try {
+        const quest = await Quest.findOne({ questId: questId, active: true });
+        
+        if (!quest) {
+            return { success: false, message: 'Quest not found.' };
+        }
+        
+        // Ensure proper quest data structure
+        await ensureQuestDataStructure(user);
+        
+        // Check if quest is active
+        const activeQuest = user.activeQuests?.find(aq => aq.questId === questId);
+        
+        if (!activeQuest) {
+            return { success: false, message: 'You have not started this quest.' };
+        }
+        
+        // Verify all requirements are met
+        for (const requirement of quest.requirements) {
+            const progress = activeQuest.progress[requirement.type] || 0;
+            if (progress < requirement.target) {
+                return {
+                    success: false,
+                    message: `Quest not completed. ${requirement.type}: ${progress}/${requirement.target}`
+                };
+            }
+        }
+        
+        // Check if already claimed for this reset period
+        const resetPeriod = getQuestResetPeriod(quest.type);
+        const claimId = `${questId}_${resetPeriod}`;
+        
+        if (user.completedQuests?.includes(claimId)) {
+            return { success: false, message: 'Quest reward already claimed.' };
+        }
+        
+        // Award rewards
+        let rewardText = '';
+        for (const reward of quest.rewards) {
+            switch (reward.type) {
+                case 'beli':
+                    user.beli = (user.beli || 0) + reward.amount;
+                    rewardText += `+${reward.amount} Beli `;
+                    break;
+                    
+                case 'xp':
+                    user.xp = (user.xp || 0) + reward.amount;
+                    rewardText += `+${reward.amount} XP `;
+                    break;
+                    
+                case 'item':
+                    if (!user.inventory) user.inventory = [];
+                    user.inventory.push(reward.itemName.toLowerCase().replace(/\s+/g, ''));
+                    rewardText += `+${reward.itemName} `;
+                    break;
+                    
+                case 'card':
+                    if (!user.cards) user.cards = [];
+                    user.cards.push({
+                        name: reward.itemName,
+                        rank: reward.rank || 'C',
+                        level: 1,
+                        experience: 0,
+                        timesUpgraded: 0,
+                        locked: false
+                    });
+                    rewardText += `+${reward.itemName} card `;
+                    break;
+            }
+        }
+        
+        // Mark quest as completed
+        if (!user.completedQuests) user.completedQuests = [];
+        user.completedQuests.push(claimId);
+        
+        // Remove from active quests
+        user.activeQuests = user.activeQuests.filter(aq => aq.questId !== questId);
+        
+        // Mark arrays as modified
+        user.markModified('completedQuests');
+        user.markModified('activeQuests');
+        
         return {
-          success: false,
-          message: `Quest not completed. ${requirement.type}: ${progress}/${requirement.target}`
+            success: true,
+            message: `Quest "${quest.name}" completed! Rewards: ${rewardText.trim()}`
         };
-      }
+        
+    } catch (error) {
+        console.error('Error claiming quest reward:', error);
+        return { success: false, message: 'Failed to claim quest reward.' };
     }
-    
-    // Check if already claimed for this reset period
-    const resetPeriod = getQuestResetPeriod(quest.type);
-    const claimId = `${questId}_${resetPeriod}`;
-    
-    if (user.completedQuests?.includes(claimId)) {
-      return { success: false, message: 'Quest reward already claimed.' };
-    }
-    
-    // Award rewards
-    let rewardText = '';
-    
-    for (const reward of quest.rewards) {
-      switch (reward.type) {
-        case 'beli':
-          user.beli = (user.beli || 0) + reward.amount;
-          rewardText += `+${reward.amount} Beli `;
-          break;
-          
-        case 'xp':
-          user.xp = (user.xp || 0) + reward.amount;
-          rewardText += `+${reward.amount} XP `;
-          break;
-          
-        case 'item':
-          if (!user.inventory) user.inventory = [];
-          user.inventory.push(reward.itemName.toLowerCase().replace(/\s+/g, ''));
-          rewardText += `+${reward.itemName} `;
-          break;
-          
-        case 'card':
-          if (!user.cards) user.cards = [];
-          user.cards.push({
-            name: reward.itemName,
-            rank: reward.rank || 'C',
-            level: 1,
-            experience: 0,
-            timesUpgraded: 0,
-            locked: false
-          });
-          rewardText += `+${reward.itemName} card `;
-          break;
-      }
-    }
-    
-    // Mark quest as completed
-    if (!user.completedQuests) user.completedQuests = [];
-    user.completedQuests.push(claimId);
-    
-    // Remove from active quests
-    user.activeQuests = user.activeQuests.filter(aq => aq.questId !== questId);
-    
-    // Mark arrays as modified
-    user.markModified('completedQuests');
-    user.markModified('activeQuests');
-    
-    return {
-      success: true,
-      message: `Quest "${quest.name}" completed! Rewards: ${rewardText.trim()}`
-    };
-    
-  } catch (error) {
-    console.error('Error claiming quest reward:', error);
-    return { success: false, message: 'Failed to claim quest reward.' };
-  }
 }
 
 /**
@@ -318,27 +328,27 @@ async function claimQuestReward(user, questId) {
  * @returns {Object} Progress object
  */
 function getQuestProgress(user, questId) {
-  if (!user.activeQuests || !Array.isArray(user.activeQuests)) {
-    return { started: false, progress: {} };
-  }
-  
-  const activeQuest = user.activeQuests.find(aq => aq.questId === questId);
-  
-  if (!activeQuest) {
-    return { started: false, progress: {} };
-  }
-  
-  // Ensure progress is always an object
-  let progressObj = {};
-  if (activeQuest.progress && typeof activeQuest.progress === 'object' && !Array.isArray(activeQuest.progress)) {
-    progressObj = { ...activeQuest.progress };
-  }
-  
-  return {
-    started: true,
-    progress: progressObj,
-    startedAt: activeQuest.startedAt
-  };
+    if (!user.activeQuests || !Array.isArray(user.activeQuests)) {
+        return { started: false, progress: {} };
+    }
+    
+    const activeQuest = user.activeQuests.find(aq => aq.questId === questId);
+    
+    if (!activeQuest) {
+        return { started: false, progress: {} };
+    }
+    
+    // Ensure progress is always an object
+    let progressObj = {};
+    if (activeQuest.progress && typeof activeQuest.progress === 'object' && !Array.isArray(activeQuest.progress)) {
+        progressObj = { ...activeQuest.progress };
+    }
+    
+    return {
+        started: true,
+        progress: progressObj,
+        startedAt: activeQuest.startedAt
+    };
 }
 
 /**
@@ -346,11 +356,11 @@ function getQuestProgress(user, questId) {
  * @returns {string} Week start date string
  */
 function getWeekStart() {
-  const now = new Date();
-  const dayOfWeek = now.getDay();
-  const diff = now.getDate() - dayOfWeek;
-  const weekStart = new Date(now.setDate(diff));
-  return weekStart.toDateString();
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const diff = now.getDate() - dayOfWeek;
+    const weekStart = new Date(now.setDate(diff));
+    return weekStart.toDateString();
 }
 
 /**
@@ -359,138 +369,55 @@ function getWeekStart() {
  * @returns {string} Reset period identifier
  */
 function getQuestResetPeriod(questType) {
-  if (questType === 'daily') {
-    return new Date().toDateString();
-  } else if (questType === 'weekly') {
-    return getWeekStart();
-  }
-  return '';
+    if (questType === 'daily') {
+        return new Date().toDateString();
+    }
+    if (questType === 'weekly') {
+        return getWeekStart();
+    }
+    return 'permanent';
 }
 
 /**
  * Ensure user has proper quest data structure
  * @param {Object} user - User document
- * @returns {boolean} Whether initialization was performed
  */
 async function ensureQuestDataStructure(user) {
-  let modified = false;
-  
-  // Initialize activeQuests array if missing
-  if (!user.activeQuests || !Array.isArray(user.activeQuests)) {
-    user.activeQuests = [];
-    modified = true;
-  }
-  
-  // Initialize completedQuests array if missing
-  if (!user.completedQuests || !Array.isArray(user.completedQuests)) {
-    user.completedQuests = [];
-    modified = true;
-  }
-  
-  // Initialize questData if missing
-  if (!user.questData) {
-    user.questData = {
-      lastReset: { daily: 0, weekly: 0 },
-      migrationVersion: 1
-    };
-    modified = true;
-  }
-  
-  // Clean up any corrupted activeQuests entries
-  const cleanedActiveQuests = [];
-  for (const quest of user.activeQuests) {
-    if (quest.questId && typeof quest.questId === 'string') {
-      cleanedActiveQuests.push({
-        questId: quest.questId,
-        progress: (quest.progress && typeof quest.progress === 'object' && !Array.isArray(quest.progress)) 
-          ? quest.progress 
-          : {},
-        startedAt: quest.startedAt || Date.now()
-      });
+    let needsSave = false;
+    
+    if (!user.activeQuests) {
+        user.activeQuests = [];
+        needsSave = true;
     }
-  }
-  
-  if (cleanedActiveQuests.length !== user.activeQuests.length) {
-    user.activeQuests = cleanedActiveQuests;
-    modified = true;
-  }
-  
-  if (modified) {
-    user.markModified('activeQuests');
-    user.markModified('completedQuests');
-    user.markModified('questData');
-    user.markModified('team');
-  }
-  
-  return modified;
-}
-
-/**
- * Reset daily/weekly quests for all users
- * @param {string} resetType - 'daily' or 'weekly'
- * @returns {number} Number of users affected
- */
-async function resetQuests(resetType = 'daily') {
-  try {
-    const resetPeriod = getQuestResetPeriod(resetType);
     
-    // Find all users with quest data
-    const users = await User.find({
-      $or: [
-        { completedQuests: { $exists: true, $ne: [] } },
-        { activeQuests: { $exists: true, $ne: [] } }
-      ]
-    });
+    if (!user.completedQuests) {
+        user.completedQuests = [];
+        needsSave = true;
+    }
     
-    let modifiedCount = 0;
+    if (!user.questData) {
+        user.questData = {
+            progress: new Map(),
+            completed: [],
+            lastReset: {
+                daily: 0,
+                weekly: 0
+            }
+        };
+        needsSave = true;
+    }
     
-    for (const user of users) {
-      let userModified = false;
-      
-      // Remove completed quests of this type from this reset period
-      if (user.completedQuests && Array.isArray(user.completedQuests)) {
-        const beforeLength = user.completedQuests.length;
-        user.completedQuests = user.completedQuests.filter(
-          questId => !questId.includes(`_${resetPeriod}`)
-        );
-        if (user.completedQuests.length !== beforeLength) {
-          userModified = true;
-        }
-      }
-      
-      // Remove active quests of this type (they will be re-added when available)
-      if (user.activeQuests && Array.isArray(user.activeQuests)) {
-        const beforeLength = user.activeQuests.length;
-        user.activeQuests = user.activeQuests.filter(
-          quest => !quest.questId.startsWith(`${resetType}_`)
-        );
-        if (user.activeQuests.length !== beforeLength) {
-          userModified = true;
-        }
-      }
-      
-      if (userModified) {
-        user.markModified('completedQuests');
-        user.markModified('activeQuests');
+    if (needsSave) {
         await user.save();
-        modifiedCount++;
-      }
     }
-    
-    console.log(`[QUEST] Reset ${resetType} quests for ${modifiedCount} users`);
-    return modifiedCount;
-    
-  } catch (error) {
-    console.error(`Error resetting ${resetType} quests:`, error);
-    return 0;
-  }
 }
 
 module.exports = {
-  getAvailableQuests,
-  updateQuestProgress,
-  claimQuestReward,
-  resetQuests,
-  getQuestProgress,
-  ensureQuestDataStructure
+    loadQuestDatabase,
+    getAvailableQuests,
+    updateQuestProgress,
+    claimQuestReward,
+    getQuestProgress,
+    getQuestResetPeriod,
+    ensureQuestDataStructure
 };
