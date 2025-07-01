@@ -189,10 +189,15 @@ async function execute(message) {
         timesUpgraded: 0
     });
 
-    // Update quest progress for pulling cards
-    const { updateQuestProgress } = require('../utils/questSystem.js');
-    await updateQuestProgress(user, 'pull', 1);
+    // Update quest progress for pulls
+    try {
+        const { updateQuestProgress } = require('../utils/questSystem.js');
+        await updateQuestProgress(user, 'pull', 1);
+    } catch (error) {
+        console.log('Quest system not available');
+    }
 
+    // Save user data
     await user.save();
 
     // Prepare evolution text

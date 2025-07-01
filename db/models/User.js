@@ -53,6 +53,12 @@ const userSchema = new mongoose.Schema({
     defeatedAt: { type: Date, default: null },
     
     // Quest system
+    activeQuests: [{
+        questId: String,
+        progress: { type: Map, of: mongoose.Schema.Types.Mixed, default: {} },
+        startedAt: { type: Date, default: Date.now }
+    }],
+    completedQuests: [String],
     questData: {
         progress: { type: Map, of: Number, default: {} },
         completed: [String],

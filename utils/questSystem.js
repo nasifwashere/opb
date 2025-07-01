@@ -47,15 +47,21 @@ async function getAvailableQuests(user) {
   for (const quest of allQuests) {
     // Check unlock requirements
     if (quest.unlockRequirements) {
-      if (quest.unlockRequirements.saga && user.saga !== quest.unlockRequirements.saga) {
-        continue;
+      // Check saga requirement - default to East Blue if no saga set
+      if (quest.unlockRequirements.saga) {
+        const userSaga = user.unlockedSagas ? user.unlockedSagas : ['East Blue'];
+        if (!userSaga.includes(quest.unlockRequirements.saga)) {
+          continue;
+        }
       }
+      
       if (quest.unlockRequirements.level && (user.xp || 0) < quest.unlockRequirements.level) {
         continue;
       }
+      
       if (quest.unlockRequirements.completedQuests) {
         const hasRequiredQuests = quest.unlockRequirements.completedQuests.every(
-          reqQuest => user.completedQuests?.includes(reqQuest)
+          reqQuest => user.completedQuests?.some(completed => completed.startsWith(reqQuest))
         );
         if (!hasRequiredQuests) continue;
       }
@@ -77,6 +83,14 @@ async function getAvailableQuests(user) {
         questId => questId.startsWith(`${quest.questId}_${weekStart}`)
       );
       if (completedThisWeek) continue;
+    }
+
+    // Check if story quest is already completed (one-time only)
+    if (quest.type === 'story') {
+      const alreadyCompleted = user.completedQuests?.some(
+        questId => questId.startsWith(quest.questId)
+      );
+      if (alreadyCompleted) continue;
     }
 
     availableQuests.push(quest);
@@ -114,41 +128,83 @@ async function updateQuestProgress(user, actionType, amount = 1) {
     if (!activeQuest) {
       activeQuest = {
         questId: quest.questId,
-        progress: new Map(),
+        progress: {},
         startedAt: Date.now()
       };
       user.activeQuests.push(activeQuest);
     }
 
-    // Convert progress to Map if it's an object (for backward compatibility)
-    if (!(activeQuest.progress instanceof Map)) {
-      const progressMap = new Map();
-      if (activeQuest.progress && typeof activeQuest.progress === 'object') {
-        for (const [key, value] of Object.entries(activeQuest.progress)) {
-          progressMap.set(key, value);
-        }
-      }
-      activeQuest.progress = progressMap;
+    // Ensure progress is an object
+    if (!activeQuest.progress || typeof activeQuest.progress !== 'object') {
+      activeQuest.progress = {};
     }
 
     // Update progress for matching requirements
     let questCompleted = true;
+    let hasMatchingRequirement = false;
+    
     for (const requirement of quest.requirements) {
       if (requirement.type === actionType) {
-        const currentProgress = activeQuest.progress.get(requirement.type) || 0;
-        activeQuest.progress.set(requirement.type, Math.min(currentProgress + amount, requirement.target));
+        hasMatchingRequirement = true;
+        const currentProgress = activeQuest.progress[requirement.type] || 0;
+        activeQuest.progress[requirement.type] = Math.min(currentProgress + amount, requirement.target);
+        console.log(`[QUEST] Updated ${quest.questId}: ${requirement.type} ${activeQuest.progress[requirement.type]}/${requirement.target}`);
+      }
+
+      // Special handling for team_full quest
+      if (requirement.type === 'team_full' && actionType === 'team_change') {
+        if (user.team && user.team.length >= 3) {
+          activeQuest.progress['team_full'] = 1;
+          hasMatchingRequirement = true;
+        }
+      }
+
+      // Special handling for saga completion
+      if (requirement.type === 'saga_complete' && actionType === 'saga_complete') {
+        activeQuest.progress['saga_complete'] = (activeQuest.progress['saga_complete'] || 0) + 1;
+        hasMatchingRequirement = true;
+      }
+
+      // Special handling for battle wins
+      if (requirement.type === 'battle_win' && actionType === 'battle_win') {
+        activeQuest.progress['battle_win'] = (activeQuest.progress['battle_win'] || 0) + amount;
+        hasMatchingRequirement = true;  
+      }
+
+      // Special handling for card pulls
+      if (requirement.type === 'pull' && actionType === 'pull') {
+        activeQuest.progress['pull'] = (activeQuest.progress['pull'] || 0) + amount;
+        hasMatchingRequirement = true;
+      }
+
+      // Special handling for level ups
+      if (requirement.type === 'level_up' && actionType === 'level_up') {
+        activeQuest.progress['level_up'] = (activeQuest.progress['level_up'] || 0) + amount;
+        hasMatchingRequirement = true;
+      }
+
+      // Special handling for exploration
+      if (requirement.type === 'explore' && actionType === 'explore') {
+        activeQuest.progress['explore'] = (activeQuest.progress['explore'] || 0) + amount;
+        hasMatchingRequirement = true;
       }
 
       // Check if this requirement is completed
-      const progress = activeQuest.progress.get(requirement.type) || 0;
+      const progress = activeQuest.progress[requirement.type] || 0;
       if (progress < requirement.target) {
         questCompleted = false;
       }
     }
 
-    // If quest is completed, add to completed list
-    if (questCompleted) {
+    // Save progress even if quest isn't completed yet
+    if (hasMatchingRequirement) {
+      await user.save();
+    }
+
+    // Only add to completed if quest has matching requirements and is fully completed
+    if (questCompleted && hasMatchingRequirement) {
       completedQuests.push(quest.questId);
+      console.log(`[QUEST] Quest ${quest.questId} completed!`);
     }
   }
 
@@ -176,9 +232,13 @@ async function claimQuestReward(user, questId) {
 
     // Verify all requirements are met - handle both Map and Object progress
     for (const requirement of quest.requirements) {
-      const progress = activeQuest.progress instanceof Map ? 
-        activeQuest.progress.get(requirement.type) || 0 : 
-        activeQuest.progress[requirement.type] || 0;
+      let progress = 0;
+      if (activeQuest.progress instanceof Map) {
+        progress = activeQuest.progress.get(requirement.type) || 0;
+      } else if (activeQuest.progress && typeof activeQuest.progress === 'object') {
+        progress = activeQuest.progress[requirement.type] || 0;
+      }
+      
       if (progress < requirement.target) {
         return { 
           success: false, 
@@ -280,9 +340,14 @@ function getQuestProgress(user, questId) {
     return { started: false, progress: {} };
   }
 
-  const progressObj = {};
-  for (const [key, value] of Object.entries(activeQuest.progress)) {
-    progressObj[key] = value;
+  // Handle both Map and Object progress formats
+  let progressObj = {};
+  if (activeQuest.progress instanceof Map) {
+    for (const [key, value] of activeQuest.progress.entries()) {
+      progressObj[key] = value;
+    }
+  } else if (activeQuest.progress && typeof activeQuest.progress === 'object') {
+    progressObj = { ...activeQuest.progress };
   }
 
   return {

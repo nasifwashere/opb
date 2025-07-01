@@ -4,6 +4,7 @@ const { calculateBattleStats, calculateDamage, resetTeamHP } = require('../utils
 const { distributeXPToTeam, XP_PER_LEVEL } = require('../utils/levelSystem.js');
 const path = require('path');
 const fs = require('fs');
+const { updateQuestProgress } = require('../utils/questSystem.js');
 
 // Location data based on your specifications
 const LOCATIONS = {
@@ -304,7 +305,8 @@ const LOCATIONS = {
             type: "narrative",
             title: "Alabasta Unlocked!",
             desc: "With Arlong defeated, you've completed the East Blue saga! The Grand Line awaits - Alabasta arc is now unlocked!",
-            reward: { type: "saga_unlock", saga: "Alabasta" }
+            reward: { type: "saga_unlock", saga: "Alabasta" },
+            questTrigger: "saga_complete"
         }
     ]
 };
@@ -467,6 +469,12 @@ async function execute(message, args, client) {
             // Advance to next location's first stage
             user.stage = nextLocationStartStage;
             user.lastExplore = new Date();
+            // Update quest progress for exploration
+            try {
+                await updateQuestProgress(user, 'explore', 1);
+            } catch (error) {
+                console.error('Error updating quest progress:', error);
+            }
             await user.save();
 
             const nextEmbed = new EmbedBuilder()
@@ -533,7 +541,7 @@ async function handleNarrative(message, user, stageData, currentLocation) {
         .setFooter({ text: `Progress: ${localStage + 1}/${totalStages}` });
 
     // Apply original rewards
-    await applyReward(user, stageData.reward);
+    await applyReward(user, stageData.reward, stageData.questTrigger);
 
     // Apply hidden event rewards
     if (features.hiddenEvent) {
@@ -593,7 +601,6 @@ async function handleNarrative(message, user, stageData, currentLocation) {
 
     // Update quest progress for exploration
     try {
-        const { updateQuestProgress } = require('../utils/questSystem.js');
         await updateQuestProgress(user, 'explore', 1);
     } catch (error) {
         console.log('Quest system not available');
@@ -690,7 +697,6 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
 
             // Update quest progress for exploration
             try {
-                const { updateQuestProgress } = require('../utils/questSystem.js');
                 await updateQuestProgress(user, 'explore', 1);
             } catch (error) {
                 console.log('Quest system not available');
@@ -743,8 +749,9 @@ async function handleBattle(message, user, stageData, currentLocation, client) {
     // Fix HP property - ensure we're using maxHp correctly
     battleTeam.forEach(card => {
         card.maxHp = card.hp; // Set maxHp to the calculated hp value
-        card.currentHp = card.hp; // Set current HP to full at start of battle
-    });
+        card.currentHp = card.hp; // Set current HP to The goal is to remove the orphaned `await user.save()` statement on line 791.
+```javascript
+ full at start of battle    });
 
     // Initialize battle state
     let enemies = [];
@@ -1227,7 +1234,6 @@ async function handleBattleVictory(interaction, user, battleMessage, battleLog) 
 
     // Update quest progress
     try {
-        const { updateQuestProgress } = require('../utils/questSystem.js');
         await updateQuestProgress(user, 'explore', 1);
         if (stageData.type === 'boss') {
             await updateQuestProgress(user, 'battle_win', 1);
@@ -1290,7 +1296,7 @@ async function handleBattleDefeat(interaction, user, battleMessage, battleLog) {
     await battleMessage.edit({ embeds: [defeatEmbed], components: [] });
 }
 
-async function applyReward(user, reward) {
+async function applyReward(user, reward, questTrigger = null) {
     if (!reward) return;
 
     if (reward.type === 'xp') {
@@ -1320,6 +1326,13 @@ async function applyReward(user, reward) {
         if (!user.unlockedSagas) user.unlockedSagas = ['East Blue'];
         if (!user.unlockedSagas.includes(reward.saga)) {
             user.unlockedSagas.push(reward.saga);
+        }
+
+        // Trigger saga completion quest
+        try {
+            await updateQuestProgress(user, 'saga_complete', 1);
+        } catch (error) {
+            console.log('Quest system not available');
         }
     }
 }
@@ -1526,7 +1539,6 @@ async function handleMiniChoice(choiceMessage, user, miniChoice, stageData) {
 
             // Update quest progress
             try {
-                const { updateQuestProgress } = require('../utils/questSystem.js');
                 await updateQuestProgress(user, 'explore', 1);
             } catch (error) {
                 console.log('Quest system not available');
@@ -1578,13 +1590,9 @@ async function handleAutoAdvance(choiceMessage, user, stageData) {
         user.stage++;
 
         try {
-            const { updateQuestProgress } = require('../utils/questSystem.js');
-            await updateQuestProgress(user, 'explore', 1);
-        } catch (error) {
+            await updateQuestProgress(user, 'explore', 1);        } catch (error){
             console.log('Quest system not available');
         }
-
-        await user.save();
 
         const timeoutEmbed = new EmbedBuilder()
             .setTitle('⏰ Time\'sUp!')

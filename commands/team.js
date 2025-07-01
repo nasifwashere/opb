@@ -12,48 +12,9 @@ function normalize(str) {
 }
 
 function calculateCardStats(cardDef, level) {
-  if (!cardDef || !cardDef.phs) {
-    return { power: 10, health: 50, speed: 30 };
-  }
-
-  let basePower, baseHealth, baseSpeed;
-  try {
-    const stats = cardDef.phs.split('/').map(x => {
-      const parsed = parseInt(x.trim());
-      return isNaN(parsed) ? null : parsed;
-    });
-
-    if (stats.length !== 3 || stats.some(s => s === null)) {
-      return { power: 10, health: 50, speed: 30 };
-    }
-
-    [basePower, baseHealth, baseSpeed] = stats;
-  } catch (error) {
-    return { power: 10, health: 50, speed: 30 };
-  }
-
-  // Use the same calculation as levelSystem.js
-  const levelMultiplier = 1 + (level - 1) * 0.01;
-
-  let power = Math.floor(basePower * levelMultiplier);
-  let health = Math.floor(baseHealth * levelMultiplier);
-  let speed = Math.floor(baseSpeed * levelMultiplier);
-
-  // Apply rank multipliers to match other commands
-  const rankMultipliers = {
-    C: 1.0,
-    B: 1.2,
-    A: 1.4,
-    S: 1.6,
-    UR: 2.0
-  };
-  const rankMultiplier = rankMultipliers[cardDef.rank] || 1.0;
-
-  return {
-    power: Math.floor(power * rankMultiplier),
-    health: Math.floor(health * rankMultiplier),
-    speed: Math.floor(speed * rankMultiplier)
-  };
+  // Use the same calculation as other commands by importing from levelSystem
+  const { calculateCardStats: systemCalculateCardStats } = require('../utils/levelSystem.js');
+  return systemCalculateCardStats(cardDef, level);
 }
 
 function buildTeamEmbed(teamCards, username, totalPower) {
@@ -166,8 +127,12 @@ async function execute(message, args) {
     user.team.push(userCard.name);
 
         // Update quest progress for team changes
-        const { updateQuestProgress } = require('../utils/questSystem.js');
-        await updateQuestProgress(user, 'team_change', 1);
+        try {
+            const { updateQuestProgress } = require('../utils/questSystem.js');
+            await updateQuestProgress(user, 'team_change', 1);
+        } catch (error) {
+            console.log('Quest system not available');
+        }
 
         await user.save();
         await message.reply(`✅ Added **${cardName}** to your team!`);
@@ -185,18 +150,23 @@ async function execute(message, args) {
       // Find card definition
       const cardDef = allCards.find(c => normalize(c.name) === normalize(userCard.name));
       if (cardDef) {
-        const stats = calculateCardStats(cardDef, userCard.level || 1);
+        const level = userCard.level || 1;
+        const stats = calculateCardStats(cardDef, level);
 
         // Apply equipment bonuses
         let { power, health, speed } = stats;
 
-        const normCard = normalize(cardDef.name);
-        const equippedItem = user.equipped && user.equipped[normCard];
+        // Check for equipped items using the same logic as other commands
+        const equipped = user.equipped;
+        if (equipped) {
+          const normalizedCardName = normalize(cardDef.name);
+          const equippedItem = equipped[normalizedCardName];
 
-        if (equippedItem === 'strawhat') {
-          power = Math.ceil(power * 1.3);
-          health = Math.ceil(health * 1.3);
-          speed = Math.ceil(speed * 1.3);
+          if (equippedItem === 'strawhat') {
+            power = Math.ceil(power * 1.3);
+            health = Math.ceil(health * 1.3);
+            speed = Math.ceil(speed * 1.3);
+          }
         }
 
         const cardData = {
@@ -206,7 +176,7 @@ async function execute(message, args) {
           health: health,
           speed: speed,
           locked: userCard.locked || false,
-          level: userCard.level || 1
+          level: level
         };
         teamCards.push(cardData);
         totalPower += power;

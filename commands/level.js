@@ -121,6 +121,14 @@ async function execute(message, args) {
   const actualCost = costPerLevel * levelsGained;
   user.beli = (user.beli || 0) - actualCost;
 
+  // Update quest progress for level ups
+  try {
+    const { updateQuestProgress } = require('../utils/questSystem.js');
+    await updateQuestProgress(user, 'level_up', levelsGained);
+  } catch (error) {
+    console.log('Quest system not available');
+  }
+
   await user.save();
 
   // Calculate new stats
@@ -173,6 +181,3 @@ async function execute(message, args) {
 }
 
 module.exports = { data, execute };
-
-module.exports = { data, execute };
-```
