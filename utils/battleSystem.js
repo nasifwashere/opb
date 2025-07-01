@@ -49,75 +49,46 @@ function calculateBattleStats(user, cardDatabase = allCards) {
 
     if (!userCard) continue;
 
-    // Find card definition
+    // Find card definition - make sure we match exactly
     const cardDef = cardDatabase.find(c => 
-      c && c.name && c.name.toLowerCase() === cardName.toLowerCase()
+      c && c.name && c.name.toLowerCase().trim() === cardName.toLowerCase().trim()
     );
 
-    if (!cardDef || !cardDef.phs) continue;
+    if (!cardDef || !cardDef.phs) {
+      console.warn(`Card definition not found for: ${cardName}`);
+      continue;
+    }
 
     // Skip disallowed cards
     if (user.disallowedCards?.includes(cardDef.name)) continue;
 
-    // Parse base stats with error handling
-    let basePower, baseHealth, baseSpeed;
-    try {
-      if (!cardDef.phs || typeof cardDef.phs !== 'string') {
-        console.warn(`Missing or invalid phs for card: ${cardDef.name}`);
-        basePower = 10;
-        baseHealth = 50;
-        baseSpeed = 30;
-      } else {
-        const stats = cardDef.phs.split('/').map(x => {
-          const parsed = parseInt(x.trim());
-          return isNaN(parsed) || parsed <= 0 ? null : parsed;
-        });
-        
-        if (stats.length !== 3 || stats.some(s => s === null)) {
-          console.warn(`Invalid stats format for card: ${cardDef.name}, phs: ${cardDef.phs}`);
-          basePower = 10;
-          baseHealth = 50;
-          baseSpeed = 30;
-        } else {
-          [basePower, baseHealth, baseSpeed] = stats;
-          // Ensure minimum values
-          basePower = Math.max(1, basePower);
-          baseHealth = Math.max(10, baseHealth);
-          baseSpeed = Math.max(1, baseSpeed);
-        }
-      }
-    } catch (error) {
-      console.warn(`Error parsing stats for card: ${cardDef.name}`, error);
-      basePower = 10;
-      baseHealth = 50;
-      baseSpeed = 30;
-    }
-
     const level = userCard.level || (userCard.timesUpgraded ? userCard.timesUpgraded + 1 : 1);
-    const rankMultiplier = rankMultipliers[cardDef.rank] || 1.0;
 
-    // Calculate base stats with level boost (1% per level above 1) and rank
+    // Use the SAME calculation as mycard, info, and collection commands
     const { calculateCardStats } = require('./levelSystem.js');
-    const stats = calculateCardStats(cardDef, level);
-    let power = Math.floor(stats.power * rankMultiplier);
-    let health = Math.floor(stats.health * rankMultiplier);
-    let speed = Math.floor(stats.speed * rankMultiplier);
+    let stats = calculateCardStats(cardDef, level);
+    
+    // Ensure stats are valid numbers
+    let power = (isNaN(stats.power) || stats.power === null || stats.power === undefined) ? 10 : Math.floor(Number(stats.power));
+    let health = (isNaN(stats.health) || stats.health === null || stats.health === undefined) ? 50 : Math.floor(Number(stats.health));
+    let speed = (isNaN(stats.speed) || stats.speed === null || stats.speed === undefined) ? 30 : Math.floor(Number(stats.speed));
 
-    // Apply equipment bonuses
+    // Apply equipment bonuses (same as other commands)
     const equipped = user.equipped;
     if (equipped) {
       const normalizedCardName = cardName.replace(/\s+/g, '').toLowerCase();
       const equippedItem = equipped[normalizedCardName];
 
-      if (equippedItem && equipmentBonuses[equippedItem]) {
-        const bonus = equipmentBonuses[equippedItem];
-        power = Math.floor(power * bonus.power);
-        health = Math.floor(health * bonus.health);
-        speed = Math.floor(speed * bonus.speed);
+      if (equippedItem === 'strawhat') {
+        power = Math.ceil(power * 1.3);
+        health = Math.ceil(health * 1.3);
+        speed = Math.ceil(speed * 1.3);
       }
     }
 
-    // Calculate attack range using new damage multiplier system
+    console.log(`Battle stats for ${cardDef.name} (Level ${level}): Power: ${power}, Health: ${health}, Speed: ${speed}`);
+
+    // Calculate attack range using damage multiplier system (same as other commands)
     const damageMultiplier = damageMultipliers[cardDef.rank] || 0.10;
     const baseDamage = power * damageMultiplier;
     const attackLow = Math.floor(baseDamage * 1.0);

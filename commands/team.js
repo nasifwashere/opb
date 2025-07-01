@@ -34,7 +34,7 @@ function calculateCardStats(cardDef, level) {
 
   // Use the same calculation as levelSystem.js
   const levelMultiplier = 1 + (level - 1) * 0.01;
-  
+
   let power = Math.floor(basePower * levelMultiplier);
   let health = Math.floor(baseHealth * levelMultiplier);
   let speed = Math.floor(baseSpeed * levelMultiplier);
@@ -58,11 +58,11 @@ function calculateCardStats(cardDef, level) {
 
 function buildTeamEmbed(teamCards, username, totalPower) {
   let teamDisplay = '';
-  
+
   for (let i = 0; i < 3; i++) {
     const slotNumber = i + 1;
     const card = teamCards[i];
-    
+
     if (card) {
       const lockStatus = card.locked ? ' 🔒' : '';
       teamDisplay += `**${slotNumber}.** Lv.${card.level} ${card.displayName}${lockStatus}\n`;
@@ -117,7 +117,7 @@ async function execute(message, args) {
 
   let user = await User.findOne({ userId });
   if (!user) return message.reply("You need to start first! Use `op start`.");
-  
+
   // Ensure username is set if missing
   if (!user.username) {
     user.username = username;
@@ -164,8 +164,13 @@ async function execute(message, args) {
     }
 
     user.team.push(userCard.name);
-    await user.save();
-    return message.reply(`Added **${userCard.name}** to your crew!`);
+
+        // Update quest progress for team changes
+        const { updateQuestProgress } = require('../utils/questSystem.js');
+        await updateQuestProgress(user, 'team_change', 1);
+
+        await user.save();
+        await message.reply(`✅ Added **${cardName}** to your team!`);
   }
 
   // Display team (default behavior)

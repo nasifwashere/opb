@@ -158,19 +158,17 @@ async function execute(message) {
         return message.reply("You haven't unlocked any saga beyond East Blue yet!");
     }
 
+    // Check global reset system
+    const resetSystem = require('../utils/resetSystem');
+    resetSystem.resetUserPullsIfNeeded(user);
+
     // Clean old pulls from the array first
     const now = Date.now();
     user.pulls = user.pulls.filter(pullTime => now - pullTime < PULL_WINDOW);
 
     // Check if user has reached pull limit
     if (user.pulls.length >= PULLS_PER_WINDOW) {
-        // Find the oldest pull to determine when next pull will be available
-        const oldestPull = Math.min(...user.pulls);
-        const timeUntilNextPull = PULL_WINDOW - (now - oldestPull);
-        
-        if (timeUntilNextPull > 0) {
-            return message.reply(`⏰ You've used all your pulls! Wait ${prettyTime(timeUntilNextPull)} before pulling again.`);
-        }
+        return message.reply(`⏰ You've used all your pulls! Next global reset will happen automatically for everyone.`);
     }
 
     // Load cards

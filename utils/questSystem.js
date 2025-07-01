@@ -319,50 +319,23 @@ function getQuestResetPeriod(questType) {
 }
 
 /**
- * Check if user needs quest reset and perform it
+ * Initialize user quest data if needed
  * @param {Object} user - User document
- * @returns {boolean} Whether resets were performed
+ * @returns {boolean} Whether initialization was performed
  */
 async function checkAndResetUserQuests(user) {
-  let resetPerformed = false;
-  const now = new Date();
-  
   if (!user.questData) {
     user.questData = {
       progress: new Map(),
       completed: [],
       lastReset: { daily: 0, weekly: 0 }
     };
+    return true;
   }
   
-  // Check daily reset (if it's a new day)
-  const lastDailyReset = new Date(user.questData.lastReset.daily);
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  
-  if (user.questData.lastReset.daily === 0 || lastDailyReset < todayStart) {
-    // Reset daily quests
-    user.completedQuests = user.completedQuests?.filter(qId => !qId.includes('daily_')) || [];
-    user.activeQuests = user.activeQuests?.filter(aq => !aq.questId.startsWith('daily_')) || [];
-    user.questData.lastReset.daily = now.getTime();
-    resetPerformed = true;
-    console.log(`[QUEST] Reset daily quests for user ${user.userId}`);
-  }
-  
-  // Check weekly reset (if it's a new week)
-  const lastWeeklyReset = new Date(user.questData.lastReset.weekly);
-  const weekStart = new Date(todayStart);
-  weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Start of this week
-  
-  if (user.questData.lastReset.weekly === 0 || lastWeeklyReset < weekStart) {
-    // Reset weekly quests
-    user.completedQuests = user.completedQuests?.filter(qId => !qId.includes('weekly_')) || [];
-    user.activeQuests = user.activeQuests?.filter(aq => !aq.questId.startsWith('weekly_')) || [];
-    user.questData.lastReset.weekly = now.getTime();
-    resetPerformed = true;
-    console.log(`[QUEST] Reset weekly quests for user ${user.userId}`);
-  }
-  
-  return resetPerformed;
+  // Quest resets are now handled globally by the reset system
+  // Individual user quest data is managed by the global reset system
+  return false;
 }
 
 module.exports = {

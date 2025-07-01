@@ -173,3 +173,6 @@ async function execute(message, args) {
 }
 
 module.exports = { data, execute };
+
+module.exports = { data, execute };
+```

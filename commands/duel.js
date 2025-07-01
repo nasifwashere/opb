@@ -264,11 +264,7 @@ async function startDuel(message, user, opponent, challenger, challenged, duelMe
       return message.reply('❌ Error finding card definitions!');
     }
 
-    // Calculate stats
-    const userStats = calculateCardStats(userCardDef, userCard.level || 1);
-    const opponentStats = calculateCardStats(opponentCardDef, opponentCard.level || 1);
-
-    // Set up battle teams with all team members
+    // Set up battle teams with all team members using proper card definitions
     const { calculateBattleStats } = require('../utils/battleSystem.js');
     const player1Team = calculateBattleStats(user, allCards);
     const player2Team = calculateBattleStats(opponent, allCards);
@@ -331,6 +327,7 @@ async function handleDuelBattle(battleMessage, user, opponent, challenger, chall
     const battleData = {
       type: 'duel',
       messageId: battleMessage.id,
+      channelId: battleMessage.channel.id,
       player1: {
         data: challenger,
         user: user,
@@ -351,35 +348,24 @@ async function handleDuelBattle(battleMessage, user, opponent, challenger, chall
 
     // Set up battle interaction collector with shorter timeout
     const filter = i => ['duel_attack', 'duel_defend', 'duel_inventory', 'duel_forfeit'].includes(i.customId);
-    const collector = battleMessage.createMessageComponentCollector({ filter, time: 300000 }); // 5 minutes
+    const collector = battleMessage.createMessageComponentCollector({ filter, time: 180000 }); // 3 minutes
 
     collector.on('collect', async interaction => {
-      try {
-        // Check if interaction is still valid
-        const interactionAge = Date.now() - interaction.createdTimestamp;
-        if (interactionAge > 2 * 60 * 1000) { // 2 minutes max
-          console.log('Battle interaction too old, ending duel');
-          await endDuel(battleMessage.id, client, 'expired');
-          collector.stop();
-          return;
-        }
+      // Don't handle interactions here - let interactionCreate.js handle them
+      // This prevents duplicate handling and timing conflicts
+      
+      // Just check if battle still exists and is valid
+      if (!client.battles.has(battleMessage.id)) {
+        collector.stop();
+        return;
+      }
 
-        // Check if battle still exists
-        if (!client.battles.has(battleMessage.id)) {
-          console.log('Battle no longer exists');
-          collector.stop();
-          return;
-        }
-
-        await handleDuelAction(interaction, client);
-      } catch (error) {
-        console.error('Duel action error:', error.code, error.message);
-
-        // Clean up battle if interaction fails
-        if (error.code === 10062 || error.code === 10063 || error.code === 40060) {
-          await endDuel(battleMessage.id, client, 'expired');
-          collector.stop();
-        }
+      // Check for very old interactions (shouldn't happen but safety check)
+      const interactionAge = Date.now() - interaction.createdTimestamp;
+      if (interactionAge > 60000) { // 1 minute is too old
+        await endDuel(battleMessage.id, client, 'expired');
+        collector.stop();
+        return;
       }
     });
 
@@ -394,113 +380,7 @@ async function handleDuelBattle(battleMessage, user, opponent, challenger, chall
   }
 }
 
-async function handleDuelAction(interaction, client) {
-  try {
-    if (!interaction.isButton()) return;
-
-    const battleData = client.battles.get(interaction.message.id);
-    if (!battleData || battleData.type !== 'duel') {
-      return interaction.reply({ content: 'This duel has expired!', ephemeral: true });
-    }
-
-    // Check if it's the user's turn
-    if (interaction.user.id !== battleData.currentPlayer) {
-      return interaction.reply({ content: "It's not your turn!", ephemeral: true });
-    }
-
-    // Defer the interaction immediately
-    try {
-      await interaction.deferUpdate();
-    } catch (deferError) {
-      console.log('Failed to defer duel interaction:', deferError.code, deferError.message);
-      if (deferError.code === 10062 || deferError.code === 10063) {
-        await endDuel(interaction.message.id, client, 'expired');
-        return;
-      }
-    }
-
-    const action = interaction.customId.split('_')[1];
-    const { player1, player2, battleLog, turn } = battleData;
-
-    const isPlayer1Turn = battleData.currentPlayer === player1.data.id;
-    const activePlayer = isPlayer1Turn ? player1 : player2;
-    const enemyPlayer = isPlayer1Turn ? player2 : player1;
-    const activeCard = activePlayer.team[0];
-    const enemyCard = enemyPlayer.team[0];
-
-    if (action === 'forfeit') {
-      const winner = enemyPlayer.data;
-      battleLog.push(`🏳️ ${activePlayer.data.username} forfeits!`);
-      battleLog.push(`🏆 ${winner.username} wins the duel!`);
-
-      await endDuel(interaction.message.id, client, 'forfeit', winner);
-      return;
-    }
-
-    const { calculateDamage } = require('../utils/battleSystem.js');
-    let damage = 0;
-
-    switch (action) {
-      case 'attack':
-        damage = calculateDamage(activeCard, enemyCard, 'normal');
-        enemyCard.currentHp = Math.max(0, enemyCard.currentHp - damage);
-        battleLog.push(`⚔️ ${activeCard.name} attacks ${enemyCard.name} for ${damage} damage!`);
-
-        if (enemyCard.currentHp <= 0) {
-          battleLog.push(`💀 ${enemyCard.name} has been defeated!`);
-          battleLog.push(`🏆 ${activePlayer.data.username} wins the duel!`);
-          await endDuel(interaction.message.id, client, 'victory', activePlayer.data);
-          return;
-        }
-        break;
-
-      case 'defend':
-        const healAmount = Math.floor(activeCard.hp * 0.2);
-        activeCard.currentHp = Math.min(activeCard.hp, activeCard.currentHp + healAmount);
-        battleLog.push(`🛡️ ${activeCard.name} defends and recovers ${healAmount} HP!`);
-        break;
-
-      case 'inventory':
-        const User = require('../db/models/User.js');
-        const user = await User.findOne({ userId: interaction.user.id });
-        if (!user || !user.inventory || user.inventory.length === 0) {
-          return interaction.followUp({ content: 'Your inventory is empty!', ephemeral: true });
-        }
-
-        const itemList = user.inventory.slice(0, 10).map((item, index) => `${index + 1}. ${item}`).join('\n');
-        return interaction.followUp({ 
-          content: `**Your Inventory:**\n${itemList}\n\nUse \`op use <item>\` to use an item!`, 
-          ephemeral: true 
-        });
-    }
-
-    // Switch turns
-    battleData.currentPlayer = battleData.currentPlayer === player1.data.id ? player2.data.id : player1.data.id;
-    battleData.turn++;
-    battleData.battleLog = battleLog;
-
-    // Update battle display
-    const updatedEmbed = createDuelEmbed(
-      player1.data, 
-      player2.data, 
-      player1.team, 
-      player2.team, 
-      battleLog, 
-      battleData.turn, 
-      battleData.currentPlayer
-    );
-
-    const updatedButtons = createDuelButtons(battleData.currentPlayer);
-
-    await interaction.editReply({ embeds: [updatedEmbed], components: [updatedButtons] });
-
-  } catch (error) {
-    console.error('Error handling duel action:', error);
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ content: 'An error occurred during the duel!', ephemeral: true });
-    }
-  }
-}
+// handleDuelAction is now handled in interactionCreate.js to prevent conflicts
 
 async function endDuel(messageId, client, reason, winner = null) {
   try {
@@ -566,4 +446,4 @@ async function endDuel(messageId, client, reason, winner = null) {
   }
 }
 
-module.exports = { data, execute, handleDuelAction, createDuelEmbed, createDuelButtons };
+module.exports = { data, execute, createDuelEmbed, createDuelButtons, endDuel };

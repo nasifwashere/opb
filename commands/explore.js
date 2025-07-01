@@ -338,23 +338,23 @@ async function addXP(user, amount) {
         boost.type === 'double_xp' && boost.expiresAt > Date.now()
     );
     const finalAmount = xpBoost ? amount * 2 : amount;
-    
+
     // Add to user's total XP
     user.xp = (user.xp || 0) + finalAmount;
-    
+
     // Distribute XP to team members and handle level ups
     if (user.team && user.team.length > 0) {
         const levelUpChanges = distributeXPToTeam(user, finalAmount);
-        
+
         // Store level up information for display
         if (levelUpChanges && levelUpChanges.length > 0) {
             if (!user.recentLevelUps) user.recentLevelUps = [];
             user.recentLevelUps.push(...levelUpChanges);
         }
-        
+
         // Mark the user document as modified to ensure cards array is saved
         user.markModified('cards');
-        
+
         // Save the user document to persist XP changes
         try {
             await user.save();
@@ -1117,12 +1117,12 @@ async function handleBattleItems(interaction, user, battleMessage) {
 
 async function handleEnemyTurn(interaction, user, battleMessage) {
     const battleState = user.exploreStates.battleState;
-    
+
     if (!battleState || !battleState.userTeam || !battleState.enemies) {
         console.error('Battle state corrupted during enemy turn');
         return;
     }
-    
+
     let battleLog = '';
 
     // Each alive enemy attacks
@@ -1587,7 +1587,7 @@ async function handleAutoAdvance(choiceMessage, user, stageData) {
         await user.save();
 
         const timeoutEmbed = new EmbedBuilder()
-            .setTitle('⏰ Time\'s Up!')
+            .setTitle('⏰ Time\'sUp!')
             .setDescription('You took too long to decide and continued on your journey.')
             .setColor(0x95a5a6);
 

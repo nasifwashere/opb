@@ -120,6 +120,10 @@ async function execute(message, args) {
     });
   }
 
+  // Update quest progress for market transactions
+  const { updateQuestProgress } = require('../utils/questSystem.js');
+  await updateQuestProgress(user, 'market_transaction', 1);
+
   await user.save();
 
   const embed = new EmbedBuilder()

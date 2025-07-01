@@ -107,7 +107,7 @@ async function execute(message, args) {
 
   // Perform evolution
   user.beli -= evolutionCost;
-  
+
   // Update the card
   const cardIndex = user.cards.findIndex(c => normalize(c.name) === normalize(userCard.name));
   user.cards[cardIndex] = {

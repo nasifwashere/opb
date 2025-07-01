@@ -82,31 +82,41 @@ function getCardStatsWithLevel(cardDef, level = 1) {
  * @param {Object} cardDef - Card definition from cards.json
  * @param {number} level - Card level
  */
-function calculateCardStats(cardDef, level = 1) {
+function calculateCardStats(cardDef, level) {
   if (!cardDef || !cardDef.phs) {
+    console.warn(`Missing card definition or phs for card: ${cardDef?.name || 'unknown'}`);
     return { power: 10, health: 50, speed: 30 };
   }
 
-  let basePower, baseHealth, baseSpeed;
+  // Parse base stats from card definition phs field
+  let stats;
   try {
-    const stats = cardDef.phs.split('/').map(x => {
+    stats = cardDef.phs.split('/').map(x => {
       const parsed = parseInt(x.trim());
       return isNaN(parsed) ? null : parsed;
     });
-
-    if (stats.length !== 3 || stats.some(s => s === null)) {
-      return { power: 10, health: 50, speed: 30 };
-    }
-
-    [basePower, baseHealth, baseSpeed] = stats;
   } catch (error) {
+    console.warn(`Error parsing phs for card: ${cardDef.name}`, error);
     return { power: 10, health: 50, speed: 30 };
   }
 
+  if (stats.length !== 3 || stats.some(s => s === null || s <= 0)) {
+    console.warn(`Invalid stats format for card: ${cardDef.name}, phs: ${cardDef.phs}`);
+    return { power: 10, health: 50, speed: 30 };
+  }
+
+  const [basePower, baseHealth, baseSpeed] = stats;
+
+  // Ensure valid level
+  const validLevel = Math.max(1, Math.min(100, level || 1));
+
+  // Level scaling: 1% increase per level above 1
+  const levelMultiplier = 1 + ((validLevel - 1) * 0.01);
+
   return {
-    power: calculateStatWithLevel(basePower, level),
-    health: calculateStatWithLevel(baseHealth, level),
-    speed: calculateStatWithLevel(baseSpeed, level)
+    power: Math.max(1, Math.floor(basePower * levelMultiplier)),
+    health: Math.max(10, Math.floor(baseHealth * levelMultiplier)),
+    speed: Math.max(1, Math.floor(baseSpeed * levelMultiplier))
   };
 }
 

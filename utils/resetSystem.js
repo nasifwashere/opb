@@ -1,0 +1,268 @@
+
+const User = require('../db/models/User.js');
+const { EmbedBuilder } = require('discord.js');
+const fs = require('fs').promises;
+const path = require('path');
+
+const CONFIG_PATH = path.join(__dirname, '..', 'resetConfig.json');
+
+// Global reset intervals (in milliseconds)
+const PULL_RESET_INTERVAL = 5 * 60 * 60 * 1000; // 5 hours
+const DAILY_QUEST_RESET_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+const WEEKLY_QUEST_RESET_INTERVAL = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+class ResetSystem {
+    constructor() {
+        this.client = null;
+        this.pullResetTimer = null;
+        this.dailyQuestResetTimer = null;
+        this.weeklyQuestResetTimer = null;
+        this.config = {
+            pullResetChannelId: null,
+            questResetChannelId: null,
+            lastPullReset: 0,
+            lastDailyQuestReset: 0,
+            lastWeeklyQuestReset: 0
+        };
+    }
+
+    async initialize(client) {
+        this.client = client;
+        await this.loadConfig();
+        this.startResetTimers();
+    }
+
+    async loadConfig() {
+        try {
+            const configData = await fs.readFile(CONFIG_PATH, 'utf8');
+            this.config = { ...this.config, ...JSON.parse(configData) };
+        } catch (error) {
+            console.log('Creating new reset config file');
+            await this.saveConfig();
+        }
+    }
+
+    async saveConfig() {
+        try {
+            await fs.writeFile(CONFIG_PATH, JSON.stringify(this.config, null, 2));
+        } catch (error) {
+            console.error('Error saving reset config:', error);
+        }
+    }
+
+    async setResetChannel(type, channelId) {
+        if (type === 'pulls') {
+            this.config.pullResetChannelId = channelId;
+        } else if (type === 'quests' || type === 'daily' || type === 'weekly') {
+            this.config.questResetChannelId = channelId;
+        }
+        await this.saveConfig();
+    }
+
+    startResetTimers() {
+        // Calculate next reset times
+        const now = Date.now();
+        
+        // Pull resets
+        const timeSinceLastPullReset = now - this.config.lastPullReset;
+        const timeUntilNextPullReset = PULL_RESET_INTERVAL - (timeSinceLastPullReset % PULL_RESET_INTERVAL);
+        
+        console.log(`Next pull reset in ${Math.round(timeUntilNextPullReset / 1000 / 60)} minutes`);
+        
+        this.pullResetTimer = setTimeout(() => {
+            this.resetPulls();
+            // Set up recurring timer
+            this.pullResetTimer = setInterval(() => this.resetPulls(), PULL_RESET_INTERVAL);
+        }, timeUntilNextPullReset);
+
+        // Daily quest resets (reset at midnight UTC)
+        const nextMidnight = new Date();
+        nextMidnight.setUTCHours(24, 0, 0, 0);
+        const timeUntilMidnight = nextMidnight.getTime() - now;
+        
+        this.dailyQuestResetTimer = setTimeout(() => {
+            this.resetDailyQuests();
+            // Set up recurring timer for daily resets
+            this.dailyQuestResetTimer = setInterval(() => this.resetDailyQuests(), DAILY_QUEST_RESET_INTERVAL);
+        }, timeUntilMidnight);
+
+        // Weekly quest resets (reset on Monday at midnight UTC)
+        const nextMonday = new Date();
+        const daysUntilMonday = (7 - nextMonday.getUTCDay() + 1) % 7 || 7;
+        nextMonday.setUTCDate(nextMonday.getUTCDate() + daysUntilMonday);
+        nextMonday.setUTCHours(0, 0, 0, 0);
+        const timeUntilMonday = nextMonday.getTime() - now;
+
+        this.weeklyQuestResetTimer = setTimeout(() => {
+            this.resetWeeklyQuests();
+            // Set up recurring timer for weekly resets
+            this.weeklyQuestResetTimer = setInterval(() => this.resetWeeklyQuests(), WEEKLY_QUEST_RESET_INTERVAL);
+        }, timeUntilMonday);
+    }
+
+    async resetPulls() {
+        try {
+            console.log('Performing global pull reset...');
+            
+            // Reset all users' pulls
+            await User.updateMany({}, { 
+                $set: { 
+                    pulls: [],
+                    lastPull: 0 
+                } 
+            });
+
+            this.config.lastPullReset = Date.now();
+            await this.saveConfig();
+
+            // Send notification
+            if (this.config.pullResetChannelId) {
+                await this.sendPullResetNotification();
+            }
+
+            console.log('Pull reset completed for all users');
+        } catch (error) {
+            console.error('Error during pull reset:', error);
+        }
+    }
+
+    async resetDailyQuests() {
+        try {
+            console.log('Performing global daily quest reset...');
+            
+            // Reset daily quests for all users
+            await User.updateMany({}, {
+                $pull: {
+                    'questData.completed': { $regex: '^daily_' }
+                },
+                $unset: {
+                    'activeQuests.$[elem]': ''
+                }
+            }, {
+                arrayFilters: [{ 'elem.questId': { $regex: '^daily_' } }]
+            });
+
+            // Clean up empty array elements
+            await User.updateMany({}, {
+                $pull: {
+                    'activeQuests': null
+                }
+            });
+
+            this.config.lastDailyQuestReset = Date.now();
+            await this.saveConfig();
+
+            // Send notification
+            if (this.config.questResetChannelId) {
+                await this.sendQuestResetNotification('daily');
+            }
+
+            console.log('Daily quest reset completed for all users');
+        } catch (error) {
+            console.error('Error during daily quest reset:', error);
+        }
+    }
+
+    async resetWeeklyQuests() {
+        try {
+            console.log('Performing global weekly quest reset...');
+            
+            // Reset weekly quests for all users
+            await User.updateMany({}, {
+                $pull: {
+                    'questData.completed': { $regex: '^weekly_' }
+                },
+                $unset: {
+                    'activeQuests.$[elem]': ''
+                }
+            }, {
+                arrayFilters: [{ 'elem.questId': { $regex: '^weekly_' } }]
+            });
+
+            // Clean up empty array elements
+            await User.updateMany({}, {
+                $pull: {
+                    'activeQuests': null
+                }
+            });
+
+            this.config.lastWeeklyQuestReset = Date.now();
+            await this.saveConfig();
+
+            // Send notification
+            if (this.config.questResetChannelId) {
+                await this.sendQuestResetNotification('weekly');
+            }
+
+            console.log('Weekly quest reset completed for all users');
+        } catch (error) {
+            console.error('Error during weekly quest reset:', error);
+        }
+    }
+
+    async sendPullResetNotification() {
+        try {
+            const channel = this.client.channels.cache.get(this.config.pullResetChannelId);
+            if (!channel) return;
+
+            const embed = new EmbedBuilder()
+                .setTitle('🔄 Pull Reset!')
+                .setDescription('All player pulls have been reset! Use `op pull` to get new cards!')
+                .setColor(0x00ff00)
+                .setTimestamp();
+
+            await channel.send({ 
+                content: '@everyone',
+                embeds: [embed] 
+            });
+        } catch (error) {
+            console.error('Error sending pull reset notification:', error);
+        }
+    }
+
+    async sendQuestResetNotification(type) {
+        try {
+            const channel = this.client.channels.cache.get(this.config.questResetChannelId);
+            if (!channel) return;
+
+            const embed = new EmbedBuilder()
+                .setTitle(`📋 ${type.charAt(0).toUpperCase() + type.slice(1)} Quest Reset!`)
+                .setDescription(`All ${type} quests have been reset! Check your quest progress with \`op quest\`!`)
+                .setColor(0x3498db)
+                .setTimestamp();
+
+            await channel.send({ 
+                content: '@everyone',
+                embeds: [embed] 
+            });
+        } catch (error) {
+            console.error('Error sending quest reset notification:', error);
+        }
+    }
+
+    // Check if user's pulls should be reset based on global reset time
+    shouldResetUserPulls(user) {
+        return user.lastPull < this.config.lastPullReset;
+    }
+
+    // Reset user's pulls if needed
+    resetUserPullsIfNeeded(user) {
+        if (this.shouldResetUserPulls(user)) {
+            user.pulls = [];
+            user.lastPull = 0;
+            return true;
+        }
+        return false;
+    }
+
+    cleanup() {
+        if (this.pullResetTimer) clearTimeout(this.pullResetTimer);
+        if (this.dailyQuestResetTimer) clearTimeout(this.dailyQuestResetTimer);
+        if (this.weeklyQuestResetTimer) clearTimeout(this.weeklyQuestResetTimer);
+    }
+}
+
+// Global instance
+const resetSystem = new ResetSystem();
+
+module.exports = resetSystem;
