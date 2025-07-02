@@ -393,20 +393,20 @@ function createHpBar(current, max) {
 function getCurrentLocation(stage) {
     if (stage < 7) return 'WINDMILL VILLAGE';
     if (stage < 16) return 'SHELLS TOWN';  // Shells Town has 9 stages (7-15)
-    if (stage < 24) return 'ORANGE TOWN';  // Orange Town has 8 stages (16-23)
-    if (stage < 29) return 'SYRUP VILLAGE'; // Syrup Village has 5 stages (24-28)
-    if (stage < 34) return 'BARATIE';      // Baratie has 5 stages (29-33)
-    if (stage < 43) return 'ARLONG PARK';  // Arlong Park has 9 stages (34-42)
+    if (stage < 23) return 'ORANGE TOWN';  // Orange Town has 7 stages (16-22)
+    if (stage < 28) return 'SYRUP VILLAGE'; // Syrup Village has 5 stages (23-27)
+    if (stage < 33) return 'BARATIE';      // Baratie has 5 stages (28-32)
+    if (stage < 42) return 'ARLONG PARK';  // Arlong Park has 9 stages (33-41)
     return 'COMPLETED';
 }
 
 function getLocalStage(globalStage) {
     if (globalStage < 7) return globalStage;
     if (globalStage < 16) return globalStage - 7;
-    if (globalStage < 24) return globalStage - 16;
-    if (globalStage < 29) return globalStage - 24;
-    if (globalStage < 34) return globalStage - 29;
-    if (globalStage < 43) return globalStage - 34;
+    if (globalStage < 23) return globalStage - 16;
+    if (globalStage < 28) return globalStage - 23;
+    if (globalStage < 33) return globalStage - 28;
+    if (globalStage < 42) return globalStage - 33;
     return 0;
 }
 
@@ -491,7 +491,15 @@ async function execute(message, args, client) {
         fixedIssues.push('Excessive defeat cooldown');
     }
 
-    // Fix 4: Check for stuck location transitions
+    // Fix 4: Specific fix for Orange Town bug (stage 23)
+    if (user.stage === 23) {
+        // Users stuck at stage 23 due to Orange Town array length mismatch
+        user.stage = 23; // Set to corrected Syrup Village start
+        wasStuck = true;
+        fixedIssues.push('Orange Town transition bug');
+    }
+
+    // Fix 5: Check for stuck location transitions
     const currentLoc = getCurrentLocation(user.stage);
     const localStg = getLocalStage(user.stage);
     const locData = LOCATIONS[currentLoc];
@@ -511,7 +519,7 @@ async function execute(message, args, client) {
         }
     }
 
-    // Fix 5: Validate team state for battles
+    // Fix 6: Validate team state for battles
     if (user.team && user.team.length > 0) {
         // Check if team has valid cards
         const validTeam = user.team.filter(cardName => {
