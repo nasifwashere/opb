@@ -27,7 +27,8 @@ async function execute(interaction) {
 }
 
 async function showQuestMenu(interaction, user) {
-    const availableQuests = await getAvailableQuests(user);
+    try {
+        const availableQuests = await getAvailableQuests(user);
     
     // Categorize quests
     const dailyQuests = availableQuests.filter(q => q.type === 'daily');
@@ -75,7 +76,7 @@ async function showQuestMenu(interaction, user) {
                 .setCustomId('quest_weekly')
                 .setLabel(`Weekly (${weeklyQuests.length})`)
                 .setStyle(ButtonStyle.Primary)
-                .setEmoji('�'),
+                .setEmoji('📆'),
             new ButtonBuilder()
                 .setCustomId('quest_story')
                 .setLabel(`Story (${storyQuests.length})`)
@@ -123,6 +124,24 @@ async function showQuestMenu(interaction, user) {
             );
         interaction.editReply({ components: [disabledRow] }).catch(() => {});
     });
+    } catch (error) {
+        console.error('Error in showQuestMenu:', error);
+        if (interaction.replied || interaction.deferred) {
+            return interaction.editReply({ 
+                embeds: [new EmbedBuilder()
+                    .setColor(0xff0000)
+                    .setTitle('❌ Error')
+                    .setDescription('An error occurred while loading the quest menu. Please try again.')
+                ], 
+                components: [] 
+            });
+        } else {
+            return interaction.reply({ 
+                content: 'An error occurred while loading the quest menu. Please try again.',
+                ephemeral: true
+            });
+        }
+    }
 }
 
 async function showQuestsByType(interaction, user, questType) {
@@ -187,9 +206,27 @@ async function showQuestsByType(interaction, user, questType) {
             }
         }
         
+        // Ensure field value doesn't exceed Discord's 1024 character limit
+        let fieldValue = `${quest.description}\n\n**Progress:**\n${progressText}\n**Rewards:** ${rewardsText.trim()}`;
+        if (fieldValue.length > 1024) {
+            // Truncate description if too long
+            const maxDescLength = 1024 - progressText.length - rewardsText.length - 50; // 50 chars for formatting
+            const truncatedDesc = quest.description.length > maxDescLength 
+                ? quest.description.substring(0, maxDescLength) + "..."
+                : quest.description;
+            fieldValue = `${truncatedDesc}\n\n**Progress:**\n${progressText}\n**Rewards:** ${rewardsText.trim()}`;
+        }
+        
+        // Ensure field name doesn't exceed Discord's 256 character limit
+        let fieldName = `${statusEmoji} ${quest.name}`;
+        if (fieldName.length > 256) {
+            const maxNameLength = 256 - statusEmoji.length - 4; // 4 chars for spacing and "..."
+            fieldName = `${statusEmoji} ${quest.name.substring(0, maxNameLength)}...`;
+        }
+        
         embed.addFields({
-            name: `${statusEmoji} ${quest.name}`,
-            value: `${quest.description}\n\n**Progress:**\n${progressText}\n**Rewards:** ${rewardsText.trim()}`,
+            name: fieldName,
+            value: fieldValue,
             inline: false
         });
     }
@@ -281,12 +318,19 @@ async function claimAllQuests(interaction, user) {
     if (totalRewards.items.length > 0) rewardsSummary += `🎒 **Items:** ${totalRewards.items.join(', ')}\n`;
     if (totalRewards.cards.length > 0) rewardsSummary += `🃏 **Cards:** ${totalRewards.cards.join(', ')}\n`;
     
+    // Ensure completed quests list doesn't exceed Discord field limits
+    let completedQuestsText = claimedQuests.join('\n');
+    if (completedQuestsText.length > 1024) {
+        // If too long, show count instead of full list
+        completedQuestsText = `${claimedQuests.length} quests completed (list too long to display)`;
+    }
+    
     const embed = new EmbedBuilder()
         .setColor(0x27ae60)
         .setTitle('🎉 Quest Rewards Claimed!')
         .setDescription(`Successfully claimed rewards from **${claimedQuests.length}** quest(s)!`)
         .addFields(
-            { name: '📋 Completed Quests', value: claimedQuests.join('\n'), inline: false },
+            { name: '📋 Completed Quests', value: completedQuestsText, inline: false },
             { name: '🎁 Total Rewards', value: rewardsSummary || 'No rewards', inline: false }
         )
         .setTimestamp();
