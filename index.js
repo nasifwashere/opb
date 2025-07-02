@@ -230,7 +230,8 @@ client.on('messageCreate', async message => {
     // Create unique message ID for deduplication
     const messageId = `${message.id}-${message.channelId}-${commandName}`;
     if (processedMessages.has(messageId)) {
-        console.log('🔄 Duplicate message detected, skipping...');
+        // Reduce excessive duplicate detection logging
+        // console.log('🔄 Duplicate message detected, skipping...');
         return;
     }
     processedMessages.set(messageId, Date.now());
@@ -271,7 +272,8 @@ client.on('interactionCreate', async interaction => {
     // Create unique interaction ID for deduplication
     const interactionId = `${interaction.id}-${interaction.user.id}-${interaction.customId || interaction.commandName}`;
     if (processedInteractions.has(interactionId)) {
-        console.log('🔄 Duplicate interaction detected, skipping...');
+        // Reduce excessive duplicate detection logging
+        // console.log('🔄 Duplicate interaction detected, skipping...');
         return;
     }
     processedInteractions.set(interactionId, Date.now());
@@ -324,7 +326,8 @@ client.on('interactionCreate', async interaction => {
             }
             
             // Handle other button interactions as needed
-            console.log(`🔘 Button interaction: ${interaction.customId} by ${interaction.user.tag}`);
+            // Reduce excessive logging for performance
+            // console.log(`🔘 Button interaction: ${interaction.customId} by ${interaction.user.tag}`);
             
         } catch (error) {
             console.error(`❌ Error handling button interaction ${interaction.customId}:`, error);
@@ -372,7 +375,8 @@ client.on('interactionCreate', async interaction => {
             });
             
             if (!needsMigration) {
-                console.log('✅ No migration needed');
+                // Reduce excessive logging for performance
+                // console.log('✅ No migration needed');
                 migrationCompleted = true;
                 return;
             }
@@ -388,7 +392,8 @@ client.on('interactionCreate', async interaction => {
             }
             
         } catch (error) {
-            console.log('⚠️ Migration utilities not found, skipping migration');
+            // Reduce excessive logging for performance
+            // console.log('⚠️ Migration utilities not found, skipping migration');
             migrationCompleted = true;
         }
         

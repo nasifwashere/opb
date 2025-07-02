@@ -38,6 +38,53 @@ function createHpBar(current, max) {
   return '█'.repeat(filledBars) + '░'.repeat(emptyBars);
 }
 
+function createEnhancedHealthBar(current, max) {
+  const percentage = Math.max(0, current / max);
+  const barLength = 15;
+  const filledBars = Math.round(percentage * barLength);
+  const emptyBars = barLength - filledBars;
+  
+  // Use different colors based on health percentage
+  let healthEmoji;
+  let barColor;
+  if (percentage > 0.6) {
+    healthEmoji = '🟢';
+    barColor = '🟩';
+  } else if (percentage > 0.3) {
+    healthEmoji = '🟡';
+    barColor = '🟨';
+  } else {
+    healthEmoji = '🔴';
+    barColor = '🟥';
+  }
+  
+  const healthBar = barColor.repeat(filledBars) + '⬛'.repeat(emptyBars);
+  return `${healthEmoji} ${healthBar} ${current}/${max}`;
+}
+
+function createTeamDisplay(team, teamName) {
+  if (!team || team.length === 0) {
+    return `**═══${teamName}'s Team═══**\n*No active cards*`;
+  }
+  
+  let display = `**═══${teamName}'s Team═══**\n`;
+  
+  team.filter(card => card.currentHp > 0).forEach((card, index) => {
+    const healthBar = createEnhancedHealthBar(card.currentHp, card.hp);
+    const level = card.level || 1;
+    const rank = card.rank || 'C';
+    
+    display += `\n🔸 **${card.name}** | Lv. ${level} **${rank}**\n`;
+    display += `${healthBar}\n`;
+    
+    const power = card.power || card.atk || 100;
+    const speed = card.speed || card.spd || 50;
+    display += `⚔️ ${power} PWR • ❤️ ${card.hp} HP • ⚡ ${speed} SPD\n`;
+  });
+  
+  return display;
+}
+
 function createDuelEmbed(player1, player2, player1Team, player2Team, battleLog, turn, currentPlayerId, winner = null) {
   let description = `**${player1.username}** vs **${player2.username}**\n\n`;
 
@@ -48,27 +95,37 @@ function createDuelEmbed(player1, player2, player1Team, player2Team, battleLog, 
     description += `**Turn:** ${turn} | **Current Player:** ${currentPlayerName}\n\n`;
   }
 
-  description += battleLog.slice(-4).join('\n');
+  // Add recent battle log
+  if (battleLog && battleLog.length > 0) {
+    description += `**═══Battle Log═══**\n`;
+    description += battleLog.slice(-3).join('\n') + '\n\n';
+  }
 
   const embed = new EmbedBuilder()
-    .setTitle('PvP Duel')
+    .setTitle('⚔️ PvP Team Battle')
     .setDescription(description)
-    .setColor(winner ? 0x2C2F33 : 0x34495E) // dark green if winner, else muted blue-gray
+    .setColor(winner ? 0x2ecc71 : 0x3498db)
     .setFooter({ text: 'Use the buttons below to take action.' });
 
-  const team1Display = player1Team.filter(card => card.currentHp > 0).map(card => {
-    const hpBar = createHpBar(card.currentHp, card.hp);
-    return `${card.name} | ${hpBar} | ${card.currentHp}/${card.hp}`;
-  }).join('\n') || 'No active cards';
+  // Use enhanced team displays
+  const team1Display = createTeamDisplay(player1Team, player1.username);
+  const team2Display = createTeamDisplay(player2Team, player2.username);
 
-  const team2Display = player2Team.filter(card => card.currentHp > 0).map(card => {
-    const hpBar = createHpBar(card.currentHp, card.hp);
-    return `${card.name} | ${hpBar} | ${card.currentHp}/${card.hp}`;
-  }).join('\n') || 'No active cards';
+  // Add total team power
+  const team1Power = player1Team.filter(c => c.currentHp > 0).reduce((sum, card) => sum + (card.power || card.atk || 100), 0);
+  const team2Power = player2Team.filter(c => c.currentHp > 0).reduce((sum, card) => sum + (card.power || card.atk || 100), 0);
 
   embed.addFields(
-    { name: `${player1.username}'s Team`, value: team1Display, inline: true },
-    { name: `${player2.username}'s Team`, value: team2Display, inline: true }
+    { 
+      name: `${player1.username}'s Team (${team1Power} Total PWR)`, 
+      value: team1Display, 
+      inline: false 
+    },
+    { 
+      name: `${player2.username}'s Team (${team2Power} Total PWR)`, 
+      value: team2Display, 
+      inline: false 
+    }
   );
 
   return embed;

@@ -86,8 +86,6 @@ function calculateBattleStats(user, cardDatabase = allCards) {
       }
     }
 
-    console.log(`Battle stats for ${cardDef.name} (Level ${level}): Power: ${power}, Health: ${health}, Speed: ${speed}`);
-
     // Calculate attack range using damage multiplier system (same as other commands)
     const damageMultiplier = damageMultipliers[cardDef.rank] || 0.10;
     const baseDamage = power * damageMultiplier;

@@ -1,4 +1,3 @@
-
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const User = require('../db/models/User.js');
 const { calculateBattleStats, calculateDamage, resetTeamHP } = require('../utils/battleSystem.js');
@@ -359,7 +358,6 @@ async function addXP(user, amount) {
         // Save the user document to persist XP changes
         try {
             await user.save();
-            console.log('User XP data saved successfully');
         } catch (error) {
             console.error('Error saving user XP data:', error);
         }
@@ -389,6 +387,57 @@ function createHpBar(current, max) {
     return '█'.repeat(filledBars) + '░'.repeat(emptyBars);
 }
 
+function createEnhancedHealthBar(current, max) {
+    const percentage = Math.max(0, current / max);
+    const barLength = 20;
+    const filledBars = Math.round(percentage * barLength);
+    const emptyBars = barLength - filledBars;
+    
+    // Use different colors based on health percentage
+    let healthEmoji;
+    let barColor;
+    if (percentage > 0.6) {
+        healthEmoji = '🟢';
+        barColor = '🟩';
+    } else if (percentage > 0.3) {
+        healthEmoji = '🟡';
+        barColor = '🟨';
+    } else {
+        healthEmoji = '🔴';
+        barColor = '🟥';
+    }
+    
+    const healthBar = barColor.repeat(filledBars) + '⬛'.repeat(emptyBars);
+    return `${healthEmoji} ${healthBar} ${current}/${max}`;
+}
+
+function createTeamDisplay(team, teamName, showStats = true) {
+    if (!team || team.length === 0) {
+        return `**═══${teamName}═══**\n*No active cards*`;
+    }
+    
+    let display = `**═══${teamName}═══**\n`;
+    
+    team.forEach((card, index) => {
+        if (card.currentHp > 0) {
+            const healthBar = createEnhancedHealthBar(card.currentHp, card.maxHp || card.hp);
+            const level = card.level || 1;
+            const rank = card.rank || 'C';
+            
+            display += `\n🔸 **${card.name}** | Lv. ${level} **${rank}**\n`;
+            display += `${healthBar}\n`;
+            
+            if (showStats) {
+                const power = card.power || card.atk || 100;
+                const speed = card.speed || card.spd || 50;
+                display += `⚔️ ${power} PWR • ❤️ ${card.maxHp || card.hp} HP • ⚡ ${speed} SPD\n`;
+            }
+        }
+    });
+    
+    return display;
+}
+
 function getCurrentLocation(stage) {
     if (stage < 7) return 'WINDMILL VILLAGE';
     if (stage < 16) return 'SHELLS TOWN';
@@ -407,6 +456,24 @@ function getLocalStage(globalStage) {
     if (globalStage < 34) return globalStage - 29;
     if (globalStage < 43) return globalStage - 34;
     return 0;
+}
+
+function getNextLocation(currentLocation) {
+    const locationOrder = [
+        'WINDMILL VILLAGE',
+        'SHELLS TOWN',
+        'ORANGE TOWN',
+        'SYRUP VILLAGE',
+        'BARATIE',
+        'ARLONG PARK'
+    ];
+    
+    const currentIndex = locationOrder.indexOf(currentLocation);
+    if (currentIndex === -1 || currentIndex >= locationOrder.length - 1) {
+        return 'COMPLETED';
+    }
+    
+    return locationOrder[currentIndex + 1];
 }
 
 // Calculate equipped item bonuses
@@ -526,8 +593,23 @@ async function execute(message, args, client) {
     const localStage = getLocalStage(user.stage);
     const locationData = LOCATIONS[currentLocation];
     
+    // Check if we need to move to next location
     if (!locationData || localStage >= locationData.length) {
-        return message.reply('❌ No more stages available in this location!');
+        // Instead of showing "no more stages", automatically move to next location
+        const nextLocation = getNextLocation(currentLocation);
+        
+        if (nextLocation === 'COMPLETED') {
+            return message.reply('🎉 Congratulations! You have completed all available locations in the East Blue saga!');
+        }
+        
+        // Automatically transition to next location
+        const embed = new EmbedBuilder()
+            .setTitle(`🗺️ Moving to ${nextLocation}`)
+            .setDescription(`You have completed **${currentLocation}**!\n\nYour adventure continues in **${nextLocation}**...`)
+            .setColor(0x2ecc71)
+            .setFooter({ text: 'Use `op explore` again to continue your journey!' });
+        
+        return message.reply({ embeds: [embed] });
     }
 
     const stageData = locationData[localStage];
@@ -565,7 +647,8 @@ async function handleNarrative(message, user, stageData, currentLocation) {
         const { updateQuestProgress } = require('../utils/questSystem.js');
         await updateQuestProgress(user, 'explore', 1);
     } catch (error) {
-        console.log('Quest system not available');
+        // Remove excessive logging - quest system is optional
+        // console.log('Quest system not available');
     }
     
     await user.save();
@@ -623,7 +706,8 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
                 const { updateQuestProgress } = require('../utils/questSystem.js');
                 await updateQuestProgress(user, 'explore', 1);
             } catch (error) {
-                console.log('Quest system not available');
+                // Remove excessive logging - quest system is optional
+                // console.log('Quest system not available');
             }
             
             await user.save();
@@ -728,10 +812,7 @@ async function displayBattleState(message, user, client) {
     // User team display
     const aliveTeamMembers = battleState.userTeam.filter(card => card.currentHp > 0);
     if (aliveTeamMembers.length > 0) {
-        const teamDisplay = aliveTeamMembers.map(card => {
-            const hpBar = createHpBar(card.currentHp, card.maxHp);
-            return `${card.name} (Lv.${card.level}) | ${hpBar} | ${card.currentHp}/${card.maxHp}`;
-        }).join('\n');
+        const teamDisplay = createTeamDisplay(aliveTeamMembers, message.author.username);
         
         embed.addFields({
             name: `${message.author.username}'s Team`,
@@ -743,10 +824,10 @@ async function displayBattleState(message, user, client) {
     // Enemy HP bars
     battleState.enemies.forEach((enemy, index) => {
         if (enemy.currentHp > 0) {
-            const enemyHpBar = createHpBar(enemy.currentHp, enemy.maxHp);
+            const enemyHpBar = createEnhancedHealthBar(enemy.currentHp, enemy.maxHp);
             embed.addFields({
                 name: `${enemy.name}`,
-                value: `💀 ${enemy.currentHp}/${enemy.maxHp} ${enemyHpBar}`,
+                value: enemyHpBar,
                 inline: true
             });
         }
@@ -881,10 +962,7 @@ async function handleBattleAttack(interaction, user, battleMessage) {
     // Team display
     const aliveTeam = battleState.userTeam.filter(card => card.currentHp > 0);
     if (aliveTeam.length > 0) {
-        const teamDisplay = aliveTeam.map(card => {
-            const hpBar = createHpBar(card.currentHp, card.maxHp);
-            return `${card.name} (Lv.${card.level}) | ${hpBar} | ${card.currentHp}/${card.maxHp}`;
-        }).join('\n');
+        const teamDisplay = createTeamDisplay(aliveTeam, message.author.username);
         
         embed.addFields({
             name: `${interaction.user.username}'s Team`,
@@ -896,10 +974,10 @@ async function handleBattleAttack(interaction, user, battleMessage) {
     // Enemy HP
     battleState.enemies.forEach(enemy => {
         if (enemy.currentHp > 0) {
-            const enemyHpBar = createHpBar(enemy.currentHp, enemy.maxHp);
+            const enemyHpBar = createEnhancedHealthBar(enemy.currentHp, enemy.maxHp);
             embed.addFields({
                 name: enemy.name,
-                value: `💀 ${enemy.currentHp}/${enemy.maxHp} ${enemyHpBar}`,
+                value: enemyHpBar,
                 inline: true
             });
         }
@@ -1057,10 +1135,7 @@ async function handleEnemyTurn(interaction, user, battleMessage) {
     // Team display
     const aliveTeam = battleState.userTeam.filter(card => card.currentHp > 0);
     if (aliveTeam.length > 0) {
-        const teamDisplay = aliveTeam.map(card => {
-            const hpBar = createHpBar(card.currentHp, card.maxHp);
-            return `${card.name} (Lv.${card.level}) | ${hpBar} | ${card.currentHp}/${card.maxHp}`;
-        }).join('\n');
+        const teamDisplay = createTeamDisplay(aliveTeam, message.author.username);
         
         embed.addFields({
             name: `${interaction.user.username}'s Team`,
@@ -1072,10 +1147,10 @@ async function handleEnemyTurn(interaction, user, battleMessage) {
     // Enemy HP
     battleState.enemies.forEach(enemy => {
         if (enemy.currentHp > 0) {
-            const enemyHpBar = createHpBar(enemy.currentHp, enemy.maxHp);
+            const enemyHpBar = createEnhancedHealthBar(enemy.currentHp, enemy.maxHp);
             embed.addFields({
                 name: enemy.name,
-                value: `💀 ${enemy.currentHp}/${enemy.maxHp} ${enemyHpBar}`,
+                value: enemyHpBar,
                 inline: true
             });
         }
@@ -1148,7 +1223,8 @@ async function handleBattleVictory(interaction, user, battleMessage, battleLog) 
             await updateQuestProgress(user, 'battle_win', 1);
         }
     } catch (error) {
-        console.log('Quest system not available');
+        // Remove excessive logging - quest system is optional
+        // console.log('Quest system not available');
     }
     
     await user.save();

@@ -36,14 +36,24 @@ function calculateCardStats(cardDef, level) {
 function buildTeamEmbed(teamCards, username, totalPower) {
   let teamDisplay = '';
 
+  // Enhanced team header
+  teamDisplay += `**═══${username}'s Crew═══**\n\n`;
+
   for (let i = 0; i < 3; i++) {
     const slotNumber = i + 1;
     const card = teamCards[i];
 
     if (card) {
       const lockStatus = card.locked ? ' 🔒' : '';
-      teamDisplay += `**${slotNumber}.** Lv.${card.level} ${card.displayName}${lockStatus}\n`;
-      teamDisplay += `${card.power} PWR • ${card.health} HP • ${card.speed} SPD\n\n`;
+      const rank = card.rank || 'C';
+      
+      teamDisplay += `**${slotNumber}.** 🔸 **${card.displayName}** | Lv.${card.level} **${rank}**${lockStatus}\n`;
+      
+      // Create health bar for display (showing max HP)
+      const healthEmoji = '🟢';
+      const healthBar = '🟩'.repeat(10);
+      teamDisplay += `${healthEmoji} ${healthBar} ${card.health}/${card.health}\n`;
+      teamDisplay += `⚔️ ${card.power} PWR • ❤️ ${card.health} HP • ⚡ ${card.speed} SPD\n\n`;
     } else {
       teamDisplay += `**${slotNumber}.** *Empty Slot*\n`;
       teamDisplay += `Use \`op team add <card>\` to fill this slot\n\n`;
@@ -51,10 +61,14 @@ function buildTeamEmbed(teamCards, username, totalPower) {
   }
 
   const embed = new EmbedBuilder()
-    .setTitle(`${username}'s Team`)
+    .setTitle(`👑 ${username}'s Crew`)
     .setDescription(teamDisplay)
-    .addFields({ name: "Total Power", value: `${totalPower}`, inline: true })
-    .setColor(0x2b2d31)
+    .addFields({ 
+      name: "⚡ Total Power", 
+      value: `**${totalPower}** PWR`, 
+      inline: true 
+    })
+    .setColor(0x3498db)
     .setFooter({ text: "op team add <card> • op team remove <card>" });
 
   return embed;
@@ -212,7 +226,8 @@ async function execute(message, args) {
         const { updateQuestProgress } = require('../utils/questSystem.js');
         await updateQuestProgress(user, 'team_change', 1);
     } catch (error) {
-        console.log('Quest system not available');
+        // Remove excessive logging for performance
+        // console.log('Quest system not available');
     }
 
     await user.save();
