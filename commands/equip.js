@@ -41,10 +41,28 @@ function fuzzyFindCard(cards, input) {
     return bestMatch;
 }
 
+// Legacy item mappings for old items that users might still have
+const legacyItemMappings = {
+  'marinesword': 'Marine Saber',
+  'townmap': 'Rusty Cutlass',
+  'battlebanner': 'Marine Coat',
+  'powergloves': 'Leather Vest',
+  'defensearmor': 'Marine Coat',
+  'luckycharm': 'Rusty Cutlass'
+};
+
 // Find equipment item in shop data
 function findShopItem(itemName) {
   const normalizedTarget = normalize(itemName);
   
+  // Check for legacy item mapping first
+  const mappedItem = legacyItemMappings[normalizedTarget];
+  if (mappedItem) {
+    const allItems = [...shopData.items, ...(shopData.devilFruits || [])];
+    return allItems.find(item => normalize(item.name) === normalize(mappedItem));
+  }
+  
+  // Then check normal items
   const allItems = [...shopData.items, ...(shopData.devilFruits || [])];
   return allItems.find(item => normalize(item.name) === normalizedTarget);
 }
@@ -113,11 +131,19 @@ async function execute(message, args) {
         return message.reply(`You don't own **${itemName}**.`);
     }
 
-      // Check if item is equipment
-  const item = findShopItem(itemName);
-  if (!item || (item.type !== 'equipment')) {
-    return message.reply(`**${itemName}** is not an equipment item that can be equipped.`);
-  }
+    // Check if item is equipment (including legacy items)
+    const item = findShopItem(itemName);
+    
+    // List of legacy equipment items that should be considered valid
+    const legacyEquipment = ['marinesword', 'townmap', 'battlebanner', 'powergloves', 'defensearmor', 'luckycharm'];
+    
+    if (!item && !legacyEquipment.includes(normalizedItemName)) {
+        return message.reply(`**${itemName}** is not an equipment item that can be equipped.`);
+    }
+    
+    if (item && item.type !== 'equipment') {
+        return message.reply(`**${itemName}** is not an equipment item that can be equipped.`);
+    }
 
     // Find the card
     const card = fuzzyFindCard(user.cards || [], cardName);
@@ -139,8 +165,9 @@ async function execute(message, args) {
     const itemIndex = user.inventory.indexOf(normalizedItemName);
     user.inventory.splice(itemIndex, 1);
 
-    // Equip the new item
-    user.equipped[card.name] = item.name;
+    // Equip the new item (use mapped name if it's a legacy item)
+    const equipItemName = item ? item.name : (legacyItemMappings[normalizedItemName] || itemName);
+    user.equipped[card.name] = equipItemName;
 
     // Mark as modified and save
     user.markModified('equipped');
@@ -154,7 +181,7 @@ async function execute(message, args) {
 
     const embed = new EmbedBuilder()
         .setTitle('Equipment Changed')
-        .setDescription(`Equipped **${item.name}** to **${card.name}**!`)
+        .setDescription(`Equipped **${equipItemName}** to **${card.name}**!`)
         .addFields({ 
             name: 'Stat Bonuses', 
             value: boostText || 'No stat bonuses', 
