@@ -2,6 +2,7 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('
 const User = require('../db/models/User.js');
 const { calculateBattleStats, calculateDamage, resetTeamHP } = require('../utils/battleSystem.js');
 const { distributeXPToTeam, XP_PER_LEVEL } = require('../utils/levelSystem.js');
+const { saveUserWithRetry } = require('../utils/saveWithRetry.js');
 const path = require('path');
 const fs = require('fs');
 const { createProfessionalTeamDisplay, createEnemyDisplay, createBattleLogDisplay, createBattleStatusDisplay } = require('../utils/uiHelpers.js');
@@ -551,40 +552,7 @@ const data = {
     description: "Begin or continue your adventure in the One Piece world!"
 };
 
-// Utility function to handle database version conflicts with retry logic
-async function saveUserWithRetry(user, maxRetries = 3) {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-            await user.save();
-            return; // Success!
-        } catch (error) {
-            if (error.name === 'VersionError' && attempt < maxRetries) {
-                // Refresh user data and retry
-                const freshUser = await User.findById(user._id);
-                if (freshUser) {
-                    // Copy current changes to fresh user
-                    Object.assign(freshUser, {
-                        stage: user.stage,
-                        lastExplore: user.lastExplore,
-                        exploreStates: user.exploreStates,
-                        coins: user.coins,
-                        xp: user.xp,
-                        inventory: user.inventory,
-                        cards: user.cards,
-                        team: user.team
-                    });
-                    user = freshUser;
-                    
-                    // Wait before retry with exponential backoff
-                    await new Promise(resolve => setTimeout(resolve, attempt * 100));
-                    continue;
-                }
-            }
-            // Re-throw if it's not a version error or we've exhausted retries
-            throw error;
-        }
-    }
-}
+
 
 async function execute(message, args, client) {
     const userId = message.author.id;
@@ -650,7 +618,7 @@ async function execute(message, args, client) {
             // Quest system is optional
         }
         
-        await user.save(); // Save the user's progress
+        await saveUserWithRetry(user); // Save the user's progress
         
         // Automatically transition to next location
         const embed = new EmbedBuilder()

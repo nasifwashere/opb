@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
+const { saveUserWithRetry } = require('../utils/saveWithRetry.js');
 
 // Normalize string for fuzzy matching
 function normalize(str) {
@@ -154,7 +155,7 @@ async function execute(message, args, client) {
 
     if (statsText === '') statsText = 'No stat bonuses';
 
-    await user.save();
+    await saveUserWithRetry(user);
 
     const embed = new EmbedBuilder()
         .setTitle('Item Equipped')

@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
 const fs = require('fs');
 const path = require('path');
+const { saveUserWithRetry } = require('../utils/saveWithRetry.js');
 
 // Load cards data with fallback
 let allCards = [];
@@ -119,7 +120,7 @@ async function execute(message, args) {
   // Ensure username is set if missing
   if (!user.username) {
     user.username = username;
-    await user.save();
+    await saveUserWithRetry(user);
   }
 
   if (sub === "remove") {
@@ -161,7 +162,7 @@ async function execute(message, args) {
       return message.reply({ embeds: [embed] });
     }
 
-    await user.save();
+    await saveUserWithRetry(user);
     
     const embed = new EmbedBuilder()
       .setTitle('Card Removed')
@@ -230,7 +231,7 @@ async function execute(message, args) {
         // console.log('Quest system not available');
     }
 
-    await user.save();
+    await saveUserWithRetry(user);
     
     const embed = new EmbedBuilder()
       .setTitle('Card Added')

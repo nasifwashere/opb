@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
 const fs = require('fs');
 const path = require('path');
+const { saveUserWithRetry } = require('../utils/saveWithRetry.js');
 
 const cardsPath = path.resolve('data', 'cards.json');
 const allCards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
@@ -40,7 +41,7 @@ async function execute(message, args) {
   // Ensure username is set if missing
   if (!user.username) {
     user.username = username;
-    await user.save();
+    await saveUserWithRetry(user);
   }
 
   if (args.length === 0) {
@@ -190,7 +191,7 @@ async function execute(message, args) {
     console.log('Quest system not available');
   }
 
-  await user.save();
+  await saveUserWithRetry(user);
 
   // Calculate new stats
   const newLevel = currentLevel + levelsGained;
