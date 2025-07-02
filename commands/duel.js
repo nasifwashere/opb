@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
 const { calculateBattleStats } = require('../utils/battleSystem.js');
+const { createProfessionalTeamDisplay } = require('../utils/uiHelpers.js');
 const path = require('path');
 
 const DUEL_COOLDOWN = 10 * 60 * 1000; // 10 minutes
@@ -30,109 +31,64 @@ function prettyTime(ms) {
   return out.join(", ");
 }
 
-function createHpBar(current, max) {
-  const percentage = Math.max(0, current / max);
-  const barLength = 10;
-  const filledBars = Math.round(percentage * barLength);
-  const emptyBars = barLength - filledBars;
-  return '█'.repeat(filledBars) + '░'.repeat(emptyBars);
-}
-
-function createEnhancedHealthBar(current, max) {
-  const percentage = Math.max(0, current / max);
-  const barLength = 15;
-  const filledBars = Math.round(percentage * barLength);
-  const emptyBars = barLength - filledBars;
-  
-  // Use different colors based on health percentage
-  let healthEmoji;
-  let barColor;
-  if (percentage > 0.6) {
-    healthEmoji = '🟢';
-    barColor = '🟩';
-  } else if (percentage > 0.3) {
-    healthEmoji = '🟡';
-    barColor = '🟨';
-  } else {
-    healthEmoji = '🔴';
-    barColor = '🟥';
-  }
-  
-  const healthBar = barColor.repeat(filledBars) + '⬛'.repeat(emptyBars);
-  return `${healthEmoji} ${healthBar} ${current}/${max}`;
-}
-
-function createTeamDisplay(team, teamName) {
-  if (!team || team.length === 0) {
-    return `**═══${teamName}'s Team═══**\n*No active cards*`;
-  }
-  
-  let display = `**═══${teamName}'s Team═══**\n`;
-  
-  team.filter(card => card.currentHp > 0).forEach((card, index) => {
-    const healthBar = createEnhancedHealthBar(card.currentHp, card.hp);
-    const level = card.level || 1;
-    const rank = card.rank || 'C';
-    
-    display += `\n🔸 **${card.name}** | Lv. ${level} **${rank}**\n`;
-    display += `${healthBar}\n`;
-    
-    const power = card.power || card.atk || 100;
-    const speed = card.speed || card.spd || 50;
-    display += `⚔️ ${power} PWR • ❤️ ${card.hp} HP • ⚡ ${speed} SPD\n`;
-  });
-  
-  return display;
-}
+// Modern UI functions now handled by uiHelpers.js
 
 function createDuelEmbed(player1, player2, player1Team, player2Team, battleLog, turn, currentPlayerId, winner = null) {
-  let description = `**${player1.username}** vs **${player2.username}**\n\n`;
+  // Create modern battle embed using the same style as explore
+  const embed = new EmbedBuilder()
+    .setTitle('⚔️ PvP Duel Battle')
+    .setColor(winner ? 0x2ecc71 : 0x2b2d31);
 
   if (winner) {
-    description += `🏆 **${winner.username}** wins the duel!\n\n`;
+    embed.setDescription(`🏆 **${winner.username}** wins the duel!`);
   } else {
     const currentPlayerName = currentPlayerId === player1.id ? player1.username : player2.username;
-    description += `**Turn:** ${turn} | **Current Player:** ${currentPlayerName}\n\n`;
+    embed.setDescription(`**Turn ${turn}** • **${currentPlayerName}'s Turn**`);
   }
 
-  // Add recent battle log
-  if (battleLog && battleLog.length > 0) {
-    description += `**═══Battle Log═══**\n`;
-    description += battleLog.slice(-3).join('\n') + '\n\n';
-  }
-
-  const embed = new EmbedBuilder()
-    .setTitle('⚔️ PvP Team Battle')
-    .setDescription(description)
-    .setColor(winner ? 0x2ecc71 : 0x3498db)
-    .setFooter({ text: 'Use the buttons below to take action.' });
-
-  // Use enhanced team displays
-  const team1Display = createTeamDisplay(player1Team, player1.username);
-  const team2Display = createTeamDisplay(player2Team, player2.username);
-
-  // Add total team power
-  const team1Power = player1Team.filter(c => c.currentHp > 0).reduce((sum, card) => sum + (card.power || card.atk || 100), 0);
-  const team2Power = player2Team.filter(c => c.currentHp > 0).reduce((sum, card) => sum + (card.power || card.atk || 100), 0);
+  // Use modern team displays from uiHelpers (same as explore)
+  const team1Display = createProfessionalTeamDisplay(
+    player1Team.filter(card => card.currentHp > 0), 
+    player1.username
+  );
+  const team2Display = createProfessionalTeamDisplay(
+    player2Team.filter(card => card.currentHp > 0), 
+    player2.username
+  );
 
   embed.addFields(
     { 
-      name: `${player1.username}'s Team (${team1Power} Total PWR)`, 
-      value: team1Display, 
+      name: `${player1.username}'s Team`, 
+      value: team1Display || 'No active cards', 
       inline: false 
     },
     { 
-      name: `${player2.username}'s Team (${team2Power} Total PWR)`, 
-      value: team2Display, 
+      name: `${player2.username}'s Team`, 
+      value: team2Display || 'No active cards', 
       inline: false 
     }
   );
 
+  // Add recent battle log if available
+  if (battleLog && battleLog.length > 0) {
+    const recentLog = battleLog.slice(-3).join('\n');
+    embed.addFields({
+      name: 'Recent Actions',
+      value: recentLog,
+      inline: false
+    });
+  }
+
+  if (!winner) {
+    embed.setFooter({ text: 'Use the buttons below to take action.' });
+  }
+
   return embed;
 }
 
-function createDuelButtons(currentPlayerId, disabled = false) {
-  return new ActionRowBuilder().addComponents(
+function createDuelButtons(disabled = false) {
+  // Modern battle buttons using the same style as explore
+  const battleButtons = [
     new ButtonBuilder()
       .setCustomId('duel_attack')
       .setLabel('Attack')
@@ -153,7 +109,9 @@ function createDuelButtons(currentPlayerId, disabled = false) {
       .setLabel('Forfeit')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(disabled)
-  );
+  ];
+
+  return new ActionRowBuilder().addComponents(battleButtons);
 }
 
 const data = new SlashCommandBuilder()
@@ -352,7 +310,7 @@ async function startDuel(message, user, opponent, challenger, challenged, duelMe
     await user.save();
     await opponent.save();
 
-    // Create battle embed
+    // Create modern battle embed
     const battleEmbed = createDuelEmbed(
       challenger, 
       challenged, 
@@ -363,22 +321,11 @@ async function startDuel(message, user, opponent, challenger, challenged, duelMe
       challenger.id
     );
 
-    const battleRow = createDuelButtons(challenger.id);
+    const battleRow = createDuelButtons();
     const battleMessage = await duelMessage.edit({ embeds: [battleEmbed], components: [battleRow] });
 
-    // Start battle loop
-    await handleDuelBattle(battleMessage, user, opponent, challenger, challenged, player1Team, player2Team);
-  } catch (error) {
-    console.error('Error starting duel:', error);
-    await message.reply('❌ An error occurred while starting the duel!');
-  }
-}
-
-async function handleDuelBattle(battleMessage, user, opponent, challenger, challenged, player1Team, player2Team) {
-  try {
-    // Get client from the message's client property
+    // Set up battle data for the duelHandler system
     const client = battleMessage.client;
-
     if (!client.battles) client.battles = new Map();
 
     const battleData = {
@@ -397,110 +344,20 @@ async function handleDuelBattle(battleMessage, user, opponent, challenger, chall
       },
       currentPlayer: challenger.id,
       turn: 1,
-      battleLog: [`⚔️ Team Battle: ${challenger.username} vs ${challenged.username}!`],
+      battleLog: [`⚔️ Duel started: ${challenger.username} vs ${challenged.username}!`],
       startTime: Date.now()
     };
 
     client.battles.set(battleMessage.id, battleData);
-
-    // Set up battle interaction collector with shorter timeout
-    const filter = i => ['duel_attack', 'duel_defend', 'duel_inventory', 'duel_forfeit'].includes(i.customId);
-    const collector = battleMessage.createMessageComponentCollector({ filter, time: 180000 }); // 3 minutes
-
-    collector.on('collect', async interaction => {
-      // Don't handle interactions here - let interactionCreate.js handle them
-      // This prevents duplicate handling and timing conflicts
-      
-      // Just check if battle still exists and is valid
-      if (!client.battles.has(battleMessage.id)) {
-        collector.stop();
-        return;
-      }
-
-      // Check for very old interactions (shouldn't happen but safety check)
-      const interactionAge = Date.now() - interaction.createdTimestamp;
-      if (interactionAge > 60000) { // 1 minute is too old
-        await endDuel(battleMessage.id, client, 'expired');
-        collector.stop();
-        return;
-      }
-    });
-
-    collector.on('end', async (collected, reason) => {
-      if (client.battles.has(battleMessage.id)) {
-        await endDuel(battleMessage.id, client, reason === 'time' ? 'timeout' : reason);
-      }
-    });
-
+    
+    // The actual battle interaction handling is done in index.js via duelHandler
+    
   } catch (error) {
-    console.error('Error in handleDuelBattle:', error);
+    console.error('Error starting duel:', error);
+    await message.reply('❌ An error occurred while starting the duel!');
   }
 }
 
-// handleDuelAction is now handled in interactionCreate.js to prevent conflicts
+// Battle handling is now done by utils/duelHandler.js
 
-async function endDuel(messageId, client, reason, winner = null) {
-  try {
-    const battleData = client.battles.get(messageId);
-    if (!battleData) return;
-
-    const User = require('../db/models/User.js');
-    const { player1, player2 } = battleData;
-
-    // Update user battle states and stats
-    const user1 = await User.findOne({ userId: player1.data.id });
-    const user2 = await User.findOne({ userId: player2.data.id });
-
-    if (user1) {
-      user1.battleState = { inBattle: false };
-      if (winner && winner.id === user1.userId) {
-        user1.wins = (user1.wins || 0) + 1;
-        user1.coins = (user1.coins || 0) + 100; // Reward for winning
-      } else if (reason !== 'timeout') {
-        user1.losses = (user1.losses || 0) + 1;
-      }
-      user1.duelCooldown = Date.now() + (10 * 60 * 1000); // 10 minute cooldown
-      await user1.save();
-    }
-
-    if (user2) {
-      user2.battleState = { inBattle: false };
-      if (winner && winner.id === user2.userId) {
-        user2.wins = (user2.wins || 0) + 1;
-        user2.coins = (user2.coins || 0) + 100; // Reward for winning
-      } else if (reason !== 'timeout') {
-        user2.losses = (user2.losses || 0) + 1;
-      }
-      user2.duelCooldown = Date.now() + (10 * 60 * 1000); // 10 minute cooldown
-      await user2.save();
-    }
-
-    // Clean up battle data
-    client.battles.delete(messageId);
-
-    // Update final message
-    const channel = client.channels.cache.get(battleData.channelId);
-    if (channel) {
-      const finalEmbed = createDuelEmbed(
-        player1.data, 
-        player2.data, 
-        player1.team, 
-        player2.team, 
-        battleData.battleLog, 
-        battleData.turn, 
-        battleData.currentPlayer, 
-        winner
-      );
-
-      const message = await channel.messages.fetch(messageId).catch(() => null);
-      if (message) {
-        await message.edit({ embeds: [finalEmbed], components: [] }).catch(() => {});
-      }
-    }
-
-  } catch (error) {
-    console.error('Error ending duel:', error);
-  }
-}
-
-module.exports = { data, execute, createDuelEmbed, createDuelButtons, endDuel };
+module.exports = { data, execute };
