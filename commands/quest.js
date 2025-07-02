@@ -18,7 +18,7 @@ async function execute(interaction) {
         }
         
         // Create main quest menu
-        await showQuestMenu(interaction, user);
+        await showQuestMenu(interaction, user, userId);
         
     } catch (error) {
         console.error('Error in quest command:', error);
@@ -26,7 +26,11 @@ async function execute(interaction) {
     }
 }
 
-async function showQuestMenu(interaction, user) {
+async function showQuestMenu(interaction, user, userId = null) {
+    // Extract userId if not provided
+    if (!userId) {
+        userId = interaction.author ? interaction.author.id : interaction.user.id;
+    }
     try {
         const availableQuests = await getAvailableQuests(user);
     
