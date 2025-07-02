@@ -306,9 +306,10 @@ async function claimQuestReward(user, questId) {
         // Remove from active quests
         user.activeQuests = user.activeQuests.filter(aq => aq.questId !== questId);
         
-        // Mark arrays as modified
+        // Mark arrays as modified and save
         user.markModified('completedQuests');
         user.markModified('activeQuests');
+        await user.save();
         
         return {
             success: true,

@@ -191,8 +191,10 @@ async function execute(message) {
     const username = message.author.username;
     const user = await getUserPullState(userId, username);
     
-    if (user.saga !== "East Blue") {
-        return message.reply("You haven't unlocked any saga beyond East Blue yet!");
+    // Set default saga if missing
+    if (!user.saga) {
+        user.saga = "East Blue";
+        await user.save();
     }
     
     // Check if 24+ hours have passed since last reset - ONLY reset when truly needed
