@@ -1,4 +1,3 @@
-
 const User = require('../db/models/User.js');
 const { EmbedBuilder } = require('discord.js');
 const fs = require('fs').promises;
@@ -67,6 +66,9 @@ class ResetSystem {
         const timeSinceLastPullReset = now - this.config.lastPullReset;
         const timeUntilNextPullReset = PULL_RESET_INTERVAL - (timeSinceLastPullReset % PULL_RESET_INTERVAL);
         
+        // Set global next pull reset time for timers command
+        global.nextPullReset = new Date(now + timeUntilNextPullReset);
+        
         console.log(`Next pull reset in ${Math.round(timeUntilNextPullReset / 1000 / 60)} minutes`);
         
         this.pullResetTimer = setTimeout(() => {
@@ -116,6 +118,9 @@ class ResetSystem {
 
             this.config.lastPullReset = Date.now();
             await this.saveConfig();
+            
+            // Update global next pull reset time for timers command
+            global.nextPullReset = new Date(Date.now() + PULL_RESET_INTERVAL);
 
             // Send notification
             if (this.config.pullResetChannelId) {

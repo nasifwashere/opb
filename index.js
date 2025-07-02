@@ -102,6 +102,26 @@ client.once('ready', async () => {
     } catch (error) {
         console.error('Error initializing reset system:', error);
     }
+    
+    // Auto-start drop timer if drops channel is configured
+    try {
+        const fs = require('fs').promises;
+        const path = require('path');
+        const CONFIG_PATH = path.join(__dirname, 'config.json');
+        
+        const configData = await fs.readFile(CONFIG_PATH, 'utf8');
+        const config = JSON.parse(configData);
+        
+        if (config.dropChannelId) {
+            const { startDropTimer } = require('./commands/mod/setDrops.js');
+            startDropTimer(client);
+            console.log('Auto-started card drop timer from config');
+        } else {
+            console.log('No drop channel configured in config.json');
+        }
+    } catch (error) {
+        console.log('No config found or drops not configured:', error.message);
+    }
 });
 
 // Handle prefix commands (op command)
