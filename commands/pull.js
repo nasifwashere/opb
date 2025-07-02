@@ -284,7 +284,10 @@ async function execute(message) {
     user.cards.push({
         name: card.name,
         rank: card.rank,
-        timesUpgraded: 0
+        level: 1,
+        experience: 0,
+        timesUpgraded: 0,
+        locked: false
     });
     
     // Save user data with retry mechanism

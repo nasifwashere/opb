@@ -190,7 +190,7 @@ async function execute(message, args) {
     switch (reward.type) {
       case 'card':
         if (!user.cards) user.cards = [];
-        user.cards.push({ name: reward.name, rank: reward.rank, level: 1, experience: 0, timesUpgraded: 0 });
+        user.cards.push({ name: reward.name, rank: reward.rank, level: 1, experience: 0, timesUpgraded: 0, locked: false });
         rewardText += `🎴 ${reward.name} (${reward.rank})\n`;
         break;
       case 'beli':

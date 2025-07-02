@@ -274,14 +274,16 @@ async function handleMarketBuy(message, user, args) {
     user.beli -= listing.price;
     seller.beli += sellerAmount;
 
-    // Transfer item
+    // Transfer item - Fixed to include all required properties
     if (listing.type === 'card') {
         if (!user.cards) user.cards = [];
         user.cards.push({
             name: listing.itemName,
             rank: listing.itemRank,
             level: listing.itemLevel || 1,
-            timesUpgraded: 0
+            experience: 0,
+            timesUpgraded: 0,
+            locked: false
         });
     } else {
         if (!user.inventory) user.inventory = [];
@@ -290,6 +292,10 @@ async function handleMarketBuy(message, user, args) {
 
     // Remove listing
     await MarketListing.findByIdAndUpdate(listing._id, { active: false });
+    
+    // Mark modified and save
+    user.markModified('cards');
+    user.markModified('inventory');
     await user.save();
     await seller.save();
 
@@ -441,6 +447,7 @@ async function handleMarketUnlist(message, user, args) {
             name: listing.itemName,
             rank: listing.itemRank,
             level: listing.itemLevel || 1,
+            experience: 0,
             timesUpgraded: 0,
             locked: false
         });
@@ -451,6 +458,10 @@ async function handleMarketUnlist(message, user, args) {
 
     // Remove listing
     await MarketListing.findByIdAndUpdate(listing._id, { active: false });
+    
+    // Mark modified and save
+    user.markModified('cards');
+    user.markModified('inventory');
     await user.save();
 
     return message.reply(`Successfully removed listing for **${listing.itemName}** and returned it to your ${listing.type === 'card' ? 'collection' : 'inventory'}.`);

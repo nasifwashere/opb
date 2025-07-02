@@ -123,6 +123,7 @@ async function purchaseItem(buyerId, listingId) {
         name: listing.itemName,
         rank: listing.itemRank,
         level: listing.itemLevel || 1,
+        experience: 0,
         timesUpgraded: 0,
         locked: false
       });
@@ -196,6 +197,7 @@ async function removeListing(userId, listingId) {
           name: listing.itemName,
           rank: listing.itemRank,
           level: listing.itemLevel || 1,
+          experience: 0,
           timesUpgraded: 0,
           locked: false
         });
