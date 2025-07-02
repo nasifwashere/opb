@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle  } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
 const fs = require('fs');
 const path = require('path');
@@ -43,10 +43,10 @@ function buildTeamEmbed(teamCards, username, totalPower) {
     if (card) {
       const lockStatus = card.locked ? ' 🔒' : '';
       teamDisplay += `**${slotNumber}.** Lv.${card.level} ${card.displayName}${lockStatus}\n`;
-      teamDisplay += `\`\`\`${card.power} PWR • ${card.health} HP • ${card.speed} SPD\`\`\`\n`;
+      teamDisplay += `${card.power} PWR • ${card.health} HP • ${card.speed} SPD\n\n`;
     } else {
       teamDisplay += `**${slotNumber}.** *Empty Slot*\n`;
-      teamDisplay += `\`\`\`Use 'op team add <card>' to fill this slot\`\`\`\n`;
+      teamDisplay += `Use \`op team add <card>\` to fill this slot\n\n`;
     }
   }
 
@@ -54,7 +54,7 @@ function buildTeamEmbed(teamCards, username, totalPower) {
     .setTitle(`${username}'s Team`)
     .setDescription(teamDisplay)
     .addFields({ name: "Total Power", value: `${totalPower}`, inline: true })
-    .setColor(0x2f3136)
+    .setColor(0x2b2d31)
     .setFooter({ text: "op team add <card> • op team remove <card>" });
 
   return embed;
@@ -93,7 +93,14 @@ async function execute(message, args) {
   sub = sub ? sub.toLowerCase() : "";
 
   let user = await User.findOne({ userId });
-  if (!user) return message.reply("You need to start first! Use `op start`.");
+  if (!user) {
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription('Start your journey with `op start` first!')
+      .setFooter({ text: 'Use op start to begin your adventure' });
+    
+    return message.reply({ embeds: [embed] });
+  }
 
   // Ensure username is set if missing
   if (!user.username) {
@@ -103,55 +110,120 @@ async function execute(message, args) {
 
   if (sub === "remove") {
     const cardName = rest.join(' ').trim();
-    if (!cardName) return message.reply("Please specify a card to remove. Usage: `op team remove <card name>`");
+    if (!cardName) {
+      const embed = new EmbedBuilder()
+        .setColor(0x2b2d31)
+        .setTitle('Remove from Team')
+        .setDescription('Remove a card from your team.')
+        .addFields({
+          name: 'Usage',
+          value: '`op team remove <card name>`',
+          inline: false
+        })
+        .setFooter({ text: 'Specify a card to remove' });
+      
+      return message.reply({ embeds: [embed] });
+    }
 
     const userCard = fuzzyFindCard(user.cards || [], cardName);
     if (!userCard) {
-      return message.reply(`Card not found in your collection. Use \`op collection\` to see your cards.`);
+      const embed = new EmbedBuilder()
+        .setColor(0x2b2d31)
+        .setDescription('Card not found in your collection.')
+        .setFooter({ text: 'Use op collection to see your cards' });
+      
+      return message.reply({ embeds: [embed] });
     }
 
     const originalTeam = [...(user.team || [])];
     user.team = user.team.filter(teamCardName => normalize(teamCardName) !== normalize(userCard.name));
 
     if (user.team.length === originalTeam.length) {
-      return message.reply(`Card not found in your team. Use \`op team\` to see your current team.`);
+      const embed = new EmbedBuilder()
+        .setColor(0x2b2d31)
+        .setDescription('Card not found in your team.')
+        .setFooter({ text: 'Use op team to see your current team' });
+      
+      return message.reply({ embeds: [embed] });
     }
 
     await user.save();
-    return message.reply(`Removed **${userCard.name}** from your crew.`);
+    
+    const embed = new EmbedBuilder()
+      .setTitle('Card Removed')
+      .setDescription(`Removed **${userCard.name}** from your crew.`)
+      .setColor(0x2b2d31)
+      .setFooter({ text: 'Team updated' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   if (sub === "add") {
     const cardName = rest.join(' ').trim();
-    if (!cardName) return message.reply("Please specify a card to add. Usage: `op team add <card name>`");
+    if (!cardName) {
+      const embed = new EmbedBuilder()
+        .setColor(0x2b2d31)
+        .setTitle('Add to Team')
+        .setDescription('Add a card to your team.')
+        .addFields({
+          name: 'Usage',
+          value: '`op team add <card name>`',
+          inline: false
+        })
+        .setFooter({ text: 'Specify a card to add' });
+      
+      return message.reply({ embeds: [embed] });
+    }
 
     if (!user.team) user.team = [];
     if (user.team.length >= 3) {
-      return message.reply("Your crew is full! Remove a card first using `op team remove <card>`.");
+      const embed = new EmbedBuilder()
+        .setColor(0x2b2d31)
+        .setDescription('Your crew is full! Remove a card first.')
+        .setFooter({ text: 'Maximum 3 cards per team' });
+      
+      return message.reply({ embeds: [embed] });
     }
 
     const userCard = fuzzyFindCard(user.cards || [], cardName);
 
     if (!userCard) {
-      return message.reply(`You don't own **${cardName}**. Use \`op collection\` to see your cards.`);
+      const embed = new EmbedBuilder()
+        .setColor(0x2b2d31)
+        .setDescription(`You don't own **${cardName}**.`)
+        .setFooter({ text: 'Use op collection to see your cards' });
+      
+      return message.reply({ embeds: [embed] });
     }
 
     if (user.team.some(teamCard => normalize(teamCard) === normalize(userCard.name))) {
-      return message.reply(`**${userCard.name}** is already in your crew.`);
+      const embed = new EmbedBuilder()
+        .setColor(0x2b2d31)
+        .setDescription(`**${userCard.name}** is already in your crew.`)
+        .setFooter({ text: 'Card already on team' });
+      
+      return message.reply({ embeds: [embed] });
     }
 
     user.team.push(userCard.name);
 
-        // Update quest progress for team changes
-        try {
-            const { updateQuestProgress } = require('../utils/questSystem.js');
-            await updateQuestProgress(user, 'team_change', 1);
-        } catch (error) {
-            console.log('Quest system not available');
-        }
+    // Update quest progress for team changes
+    try {
+        const { updateQuestProgress } = require('../utils/questSystem.js');
+        await updateQuestProgress(user, 'team_change', 1);
+    } catch (error) {
+        console.log('Quest system not available');
+    }
 
-        await user.save();
-        await message.reply(`✅ Added **${cardName}** to your team!`);
+    await user.save();
+    
+    const embed = new EmbedBuilder()
+      .setTitle('Card Added')
+      .setDescription(`Added **${userCard.name}** to your team!`)
+      .setColor(0x2b2d31)
+      .setFooter({ text: 'Team updated' });
+    
+    await message.reply({ embeds: [embed] });
   }
 
   // Display team (default behavior)

@@ -1,4 +1,3 @@
-
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const User = require('../db/models/User.js');
 
@@ -61,20 +60,20 @@ async function execute(message, args) {
     let user = await User.findOne({ userId });
 
     if (!user) {
-        return message.reply('Start your journey with `op start` first!');
+        const embed = new EmbedBuilder()
+            .setColor(0x2b2d31)
+            .setDescription('Start your journey with `op start` first!')
+            .setFooter({ text: 'Use op start to begin your adventure' });
+        
+        return message.reply({ embeds: [embed] });
     }
 
     if (!user.inventory || user.inventory.length === 0) {
         const embed = new EmbedBuilder()
-            .setColor(0x2C2F33)
-            .setDescription([
-                '**Your Inventory**',
-                '',
-                '*No items yet*',
-                '',
-                'Explore the world to find treasures and useful items!'
-            ].join('\n'))
-            .setFooter({ text: 'Inventory Management' });
+            .setTitle('Inventory')
+            .setDescription('No items yet.\n\nExplore the world to find treasures and useful items!')
+            .setColor(0x2b2d31)
+            .setFooter({ text: 'Use op explore to find items' });
 
         return message.reply({ embeds: [embed] });
     }
@@ -85,15 +84,11 @@ async function execute(message, args) {
 
     async function generateInventoryEmbed(categoryIndex) {
         const embed = new EmbedBuilder()
-            .setColor(0x2C2F33)
-            .setDescription(`**${user.username || message.author.username}'s Inventory**`);
+            .setTitle('Inventory')
+            .setColor(0x2b2d31);
 
         if (categories.length === 0) {
-            embed.addFields({
-                name: ' ',
-                value: '*No items found*',
-                inline: false
-            });
+            embed.setDescription('No items found');
             return embed;
         }
 
@@ -103,12 +98,12 @@ async function execute(message, args) {
         let itemText = '';
         Object.values(items).forEach(item => {
             const displayName = item.name.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-            itemText += `**${displayName}** ×${item.count}\n*${item.description}*\n\n`;
+            itemText += `**${displayName}** ×${item.count}\n${item.description}\n\n`;
         });
 
         embed.addFields({
-            name: `${getCategoryIcon(categoryName)} ${categoryName}`,
-            value: itemText || '*No items in this category*',
+            name: categoryName,
+            value: itemText || 'No items in this category',
             inline: false
         });
 
@@ -118,13 +113,13 @@ async function execute(message, args) {
             acc + Object.keys(category).length, 0);
 
         embed.addFields({
-            name: '📊 Summary',
-            value: `**Total Items:** ${totalItems} • **Unique Items:** ${uniqueItems}`,
+            name: 'Summary',
+            value: `**Total Items** ${totalItems} • **Unique Items** ${uniqueItems}`,
             inline: false
         });
 
         embed.setFooter({ 
-            text: `Category ${categoryIndex + 1}/${categories.length} • Use items with "op use <item>"` 
+            text: `Category ${categoryIndex + 1}/${categories.length} • Use items with op use <item>` 
         });
 
         return embed;
@@ -138,22 +133,22 @@ async function execute(message, args) {
             .addComponents(
                 new ButtonBuilder()
                     .setCustomId('inv_first')
-                    .setLabel('⏮️')
+                    .setLabel('First')
                     .setStyle(ButtonStyle.Secondary)
                     .setDisabled(currentCategory === 0),
                 new ButtonBuilder()
                     .setCustomId('inv_prev')
-                    .setLabel('◀️')
+                    .setLabel('Previous')
                     .setStyle(ButtonStyle.Secondary)
                     .setDisabled(currentCategory === 0),
                 new ButtonBuilder()
                     .setCustomId('inv_next')
-                    .setLabel('▶️')
+                    .setLabel('Next')
                     .setStyle(ButtonStyle.Secondary)
                     .setDisabled(currentCategory === categories.length - 1),
                 new ButtonBuilder()
                     .setCustomId('inv_last')
-                    .setLabel('⏭️')
+                    .setLabel('Last')
                     .setStyle(ButtonStyle.Secondary)
                     .setDisabled(currentCategory === categories.length - 1)
             );
@@ -169,7 +164,7 @@ async function execute(message, args) {
                 .setDisabled(!groupedItems.Consumables),
             new ButtonBuilder()
                 .setCustomId('inv_search')
-                .setLabel('Search Items')
+                .setLabel('Search Help')
                 .setStyle(ButtonStyle.Secondary)
         );
     components.push(actionRow);
@@ -211,22 +206,22 @@ async function execute(message, args) {
                 .addComponents(
                     new ButtonBuilder()
                         .setCustomId('inv_first')
-                        .setLabel('⏮️')
+                        .setLabel('First')
                         .setStyle(ButtonStyle.Secondary)
                         .setDisabled(currentCategory === 0),
                     new ButtonBuilder()
                         .setCustomId('inv_prev')
-                        .setLabel('◀️')
+                        .setLabel('Previous')
                         .setStyle(ButtonStyle.Secondary)
                         .setDisabled(currentCategory === 0),
                     new ButtonBuilder()
                         .setCustomId('inv_next')
-                        .setLabel('▶️')
+                        .setLabel('Next')
                         .setStyle(ButtonStyle.Secondary)
                         .setDisabled(currentCategory === categories.length - 1),
                     new ButtonBuilder()
                         .setCustomId('inv_last')
-                        .setLabel('⏭️')
+                        .setLabel('Last')
                         .setStyle(ButtonStyle.Secondary)
                         .setDisabled(currentCategory === categories.length - 1)
                 );
@@ -242,7 +237,7 @@ async function execute(message, args) {
                     .setDisabled(!groupedItems.Consumables),
                 new ButtonBuilder()
                     .setCustomId('inv_search')
-                    .setLabel('Search Items')
+                    .setLabel('Search Help')
                     .setStyle(ButtonStyle.Secondary)
             );
         newComponents.push(actionRow);
@@ -262,15 +257,11 @@ async function showConsumables(interaction, user) {
     });
 
     const embed = new EmbedBuilder()
-        .setColor(0x2C2F33)
-        .setDescription('**Usable Items**');
+        .setTitle('Usable Items')
+        .setColor(0x2b2d31);
 
     if (consumables.length === 0) {
-        embed.addFields({
-            name: ' ',
-            value: '*No consumable items*\n\nFind potions and food during your adventures!',
-            inline: false
-        });
+        embed.setDescription('No consumable items\n\nFind potions and food during your adventures!');
     } else {
         const grouped = {};
         consumables.forEach(item => {
@@ -285,27 +276,21 @@ async function showConsumables(interaction, user) {
         Object.values(grouped).forEach(item => {
             const info = getItemInfo(item.name);
             const displayName = item.name.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-            consumableText += `**${displayName}** ×${item.count}\n*${info.description}*\n\n`;
+            consumableText += `**${displayName}** ×${item.count}\n${info.description}\n\n`;
         });
 
-        embed.addFields({
-            name: ' ',
-            value: consumableText,
-            inline: false
-        });
+        embed.setDescription(consumableText);
     }
 
-    embed.setFooter({ text: 'Use items with "op use <item name>"' });
+    embed.setFooter({ text: 'Use items with op use <item name>' });
 
     await interaction.followUp({ embeds: [embed], ephemeral: true });
 }
 
 async function showSearchHelp(interaction) {
     const embed = new EmbedBuilder()
-        .setColor(0x2C2F33)
+        .setTitle('Item Search Help')
         .setDescription([
-            '**Item Search Help**',
-            '',
             '**Commands:**',
             '• `op use <item>` - Use a consumable item',
             '• `op info <item>` - Get detailed item information',
@@ -315,22 +300,10 @@ async function showSearchHelp(interaction) {
             '• You can use partial names',
             '• Check different categories for organization'
         ].join('\n'))
+        .setColor(0x2b2d31)
         .setFooter({ text: 'Inventory Help' });
 
     await interaction.followUp({ embeds: [embed], ephemeral: true });
-}
-
-function getCategoryIcon(category) {
-    const icons = {
-        'Treasures': '💎',
-        'Weapons': '⚔️',
-        'Tools': '🔧',
-        'Consumables': '🧪',
-        'Containers': '📦',
-        'Currency': '💰',
-        'Miscellaneous': '📋'
-    };
-    return icons[category] || '📋';
 }
 
 module.exports = { data, execute };
