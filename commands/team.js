@@ -173,6 +173,16 @@ async function execute(message, args) {
       return message.reply({ embeds: [embed] });
     }
 
+    // Check if card is in case (locked away)
+    if (user.case && user.case.find(c => normalize(c.name) === normalize(userCard.name))) {
+      const embed = new EmbedBuilder()
+        .setColor(0x2b2d31)
+        .setDescription(`**${userCard.name}** is locked in your case and can't be added to your team.`)
+        .setFooter({ text: 'Use op unlock to return it to your collection first' });
+      
+      return message.reply({ embeds: [embed] });
+    }
+
     const originalTeam = [...(user.team || [])];
     user.team = user.team.filter(teamCardName => normalize(teamCardName) !== normalize(userCard.name));
 
@@ -230,6 +240,16 @@ async function execute(message, args) {
         .setColor(0x2b2d31)
         .setDescription(`You don't own **${cardName}**.`)
         .setFooter({ text: 'Use op collection to see your cards' });
+      
+      return message.reply({ embeds: [embed] });
+    }
+
+    // Check if card is in case (locked away)
+    if (user.case && user.case.find(c => normalize(c.name) === normalize(userCard.name))) {
+      const embed = new EmbedBuilder()
+        .setColor(0x2b2d31)
+        .setDescription(`**${userCard.name}** is locked in your case and can't be added to your team.`)
+        .setFooter({ text: 'Use op unlock to return it to your collection first' });
       
       return message.reply({ embeds: [embed] });
     }

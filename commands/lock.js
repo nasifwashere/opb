@@ -64,32 +64,60 @@ async function execute(message, args) {
     return message.reply({ embeds: [embed] });
   }
 
-  // Check if card is already locked
-  if (userCard.locked) {
+  // Check if card is already in case
+  if (!user.case) user.case = [];
+  const alreadyInCase = user.case.find(c => normalize(c.name) === normalize(userCard.name));
+  if (alreadyInCase) {
     const embed = new EmbedBuilder()
       .setColor(0x2b2d31)
-      .setDescription(`"${userCard.name}" is already locked.`)
-      .setFooter({ text: 'Card is already protected' });
+      .setDescription(`"${userCard.name}" is already in your case.`)
+      .setFooter({ text: 'Card is already locked away' });
     
     return message.reply({ embeds: [embed] });
   }
 
-  // Lock the card
-  const cardIndex = user.cards.findIndex(c => normalize(c.name) === normalize(userCard.name));
-  user.cards[cardIndex].locked = true;
+  // Check if card is in team - can't lock team cards
+  if (user.team && user.team.includes(userCard.name)) {
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription(`"${userCard.name}" is in your team. Remove it from your team first.`)
+      .setFooter({ text: 'Cannot lock team cards' });
+    
+    return message.reply({ embeds: [embed] });
+  }
 
+  // Check if card is training - can't lock training cards
+  if (user.training && user.training.find(t => normalize(t.cardName) === normalize(userCard.name))) {
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription(`"${userCard.name}" is currently training. Untrain it first.`)
+      .setFooter({ text: 'Cannot lock training cards' });
+    
+    return message.reply({ embeds: [embed] });
+  }
+
+  // Move card to case and remove from cards
+  const cardIndex = user.cards.findIndex(c => normalize(c.name) === normalize(userCard.name));
+  const cardToMove = { ...user.cards[cardIndex] };
+  cardToMove.locked = true;
+  
+  user.case.push(cardToMove);
+  user.cards.splice(cardIndex, 1);
+  
+  user.markModified('case');
+  user.markModified('cards');
   await user.save();
 
   // Create success embed
   const embed = new EmbedBuilder()
-    .setTitle('Card Locked')
-    .setDescription(`**${userCard.name}** has been locked and is now protected.`)
+    .setTitle('Card Locked Away')
+    .setDescription(`**${userCard.name}** has been moved to your case and is now safely locked away.`)
     .addFields(
-      { name: 'Protection', value: 'Selling • Trading • Accidental deletion', inline: false },
-      { name: 'Unlock', value: 'Use `op unlock <card name>` to remove protection', inline: false }
+      { name: 'Restrictions', value: '• Cannot be sold or traded\n• Cannot be added to team\n• Cannot be leveled up\n• Not visible in collection', inline: false },
+      { name: 'Access', value: 'Use `op case` to view your locked cards\nUse `op unlock <card name>` to return it to your collection', inline: false }
     )
     .setColor(0x2b2d31)
-    .setFooter({ text: 'Card is now protected' });
+    .setFooter({ text: 'Card safely stored in your case' });
 
   await message.reply({ embeds: [embed] });
 }

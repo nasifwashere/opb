@@ -79,10 +79,12 @@ async function execute(message, args) {
           .addFields(
             { name: 'op pull', value: 'Pull new cards from packs', inline: true },
             { name: 'op collection', value: 'Browse your card collection', inline: true },
-            { name: 'op mycard <name>', value: 'View detailed card info', inline: true },
-            { name: 'op info <name>', value: 'View any card information', inline: true },
-            { name: 'op lock <name>', value: 'Protect cards from being sold', inline: true },
-            { name: 'op evolve <name>', value: 'Upgrade cards to higher ranks', inline: true }
+            { name: 'op mycard <n>', value: 'View detailed card info', inline: true },
+            { name: 'op info <n>', value: 'View any card information', inline: true },
+            { name: 'op lock <n>', value: 'Lock cards away in your case', inline: true },
+            { name: 'op unlock <n>', value: 'Return locked cards to collection', inline: true },
+            { name: 'op case', value: 'View all your locked cards', inline: true },
+            { name: 'op evolve <n>', value: 'Upgrade cards to higher ranks', inline: true }
           )
           .setColor(0x2b2d31)
           .setFooter({ text: 'Build your collection and evolve your cards' });
@@ -98,7 +100,7 @@ async function execute(message, args) {
             { name: 'op duel @user', value: 'Quick 1v1 card battle', inline: true },
             { name: 'op map', value: 'View current location', inline: true },
             { name: 'op quest', value: 'View and track your quests', inline: true },
-            { name: 'op level <name>', value: 'Level up your cards', inline: true }
+            { name: 'op level <n>', value: 'Level up your cards', inline: true }
           )
           .setColor(0x2b2d31)
           .setFooter({ text: 'Explore the Grand Line and grow stronger' });
@@ -110,7 +112,7 @@ async function execute(message, args) {
           .setDescription('Manage your wealth and trade with others')
           .addFields(
             { name: 'op shop', value: 'Buy items and card packs', inline: true },
-            { name: 'op sell <name>', value: 'Sell cards for Beli', inline: true },
+            { name: 'op sell <n>', value: 'Sell cards for Beli', inline: true },
             { name: 'op trade @user', value: 'Trade cards with players', inline: true },
             { name: 'op market', value: 'Browse player market', inline: true },
             { name: 'op buy <listing>', value: 'Purchase from market', inline: true },
@@ -126,8 +128,8 @@ async function execute(message, args) {
           .setDescription('Set up your team and manage equipment')
           .addFields(
             { name: 'op team', value: 'View and manage battle team', inline: true },
-            { name: 'op team add <name>', value: 'Add card to your team', inline: true },
-            { name: 'op team remove <name>', value: 'Remove card from team', inline: true },
+            { name: 'op team add <n>', value: 'Add card to your team', inline: true },
+            { name: 'op team remove <n>', value: 'Remove card from team', inline: true },
             { name: 'op equip <item> <card>', value: 'Equip items to cards', inline: true },
             { name: 'op unequip <card>', value: 'Remove equipped items', inline: true },
             { name: 'op train <card>', value: 'Train cards to gain XP (1/min)', inline: true },

@@ -9,6 +9,10 @@ function findUserCard(user, cardName) {
   return user.cards?.find(c => normalize(c.name) === normalize(cardName));
 }
 
+function findCaseCard(user, cardName) {
+  return user.case?.find(c => normalize(c.name) === normalize(cardName));
+}
+
 const data = new SlashCommandBuilder()
   .setName('unlock')
   .setDescription('Unlock a card to allow selling or trading.');
@@ -50,43 +54,42 @@ async function execute(message, args) {
 
   const cardName = args.join(' ').trim();
 
-  // Find the card in user's collection
-  const userCard = findUserCard(user, cardName);
-  if (!userCard) {
+  // Initialize case array if it doesn't exist
+  if (!user.case) user.case = [];
+
+  // Find the card in user's case (locked cards)
+  const caseCard = findCaseCard(user, cardName);
+  if (!caseCard) {
     const embed = new EmbedBuilder()
       .setColor(0x2b2d31)
-      .setDescription(`You don't own "${cardName}".`)
-      .setFooter({ text: 'Card not found in your collection' });
+      .setDescription(`"${cardName}" is not in your case. Only locked cards can be unlocked.`)
+      .setFooter({ text: 'Card not found in your case' });
     
     return message.reply({ embeds: [embed] });
   }
 
-  // Check if card is locked
-  if (!userCard.locked) {
-    const embed = new EmbedBuilder()
-      .setColor(0x2b2d31)
-      .setDescription(`"${userCard.name}" is not locked.`)
-      .setFooter({ text: 'Card is not protected' });
-    
-    return message.reply({ embeds: [embed] });
-  }
-
-  // Unlock the card
-  const cardIndex = user.cards.findIndex(c => normalize(c.name) === normalize(userCard.name));
-  user.cards[cardIndex].locked = false;
-
+  // Move card back to collection and remove from case
+  const caseIndex = user.case.findIndex(c => normalize(c.name) === normalize(caseCard.name));
+  const cardToMove = { ...user.case[caseIndex] };
+  cardToMove.locked = false;
+  
+  user.cards.push(cardToMove);
+  user.case.splice(caseIndex, 1);
+  
+  user.markModified('case');
+  user.markModified('cards');
   await user.save();
 
   // Create success embed
   const embed = new EmbedBuilder()
     .setTitle('Card Unlocked')
-    .setDescription(`**${userCard.name}** has been unlocked.`)
+    .setDescription(`**${caseCard.name}** has been moved back to your collection.`)
     .addFields(
-      { name: 'Status', value: 'This card can now be sold or traded', inline: false },
-      { name: 'Protection', value: 'Use `op lock <card name>` to protect it again', inline: false }
+      { name: 'Available Actions', value: '• Can be sold or traded\n• Can be added to team\n• Can be leveled up\n• Visible in collection', inline: false },
+      { name: 'Lock Again', value: 'Use `op lock <card name>` to move it back to your case', inline: false }
     )
     .setColor(0x2b2d31)
-    .setFooter({ text: 'Card protection removed' });
+    .setFooter({ text: 'Card returned to collection' });
 
   await message.reply({ embeds: [embed] });
 }

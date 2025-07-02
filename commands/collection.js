@@ -137,7 +137,14 @@ async function execute(message, args) {
     return message.reply("You have no cards!");
   }
 
-  let cardInstances = user.cards.filter(ci => ci && typeof ci === 'object' && !isCardInTraining(user, ci.name));
+  // Filter out training cards and case cards (locked away)
+  let cardInstances = user.cards.filter(ci => {
+    if (!ci || typeof ci !== 'object') return false;
+    if (isCardInTraining(user, ci.name)) return false;
+    // Exclude cards that are in the case (locked away)
+    if (user.case && user.case.find(c => c.name === ci.name)) return false;
+    return true;
+  });
   if (cardInstances.length === 0) {
     return message.reply("You have no cards!");
   }

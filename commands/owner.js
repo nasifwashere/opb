@@ -79,7 +79,7 @@ async function execute(message, args, client) {
           .addFields(
             { name: 'op owner give @user <amount> beli', value: 'Give Beli to a user', inline: false },
             { name: 'op owner give @user <amount> xp', value: 'Give XP to a user', inline: false },
-            { name: 'op owner give @user card <card_name> <rank>', value: 'Give a specific card to a user', inline: false },
+            { name: 'op owner give @user <card_name> <rank>', value: 'Give a specific card to a user', inline: false },
             { name: 'op owner reset @user', value: 'Reset user progress completely', inline: false },
             { name: 'op owner ban @user [reason]', value: 'Ban user from using the bot', inline: false },
             { name: 'op owner unban @user', value: 'Unban a user', inline: false }
@@ -190,17 +190,14 @@ async function handleOwnerCommand(message, args, client) {
 }
 
 async function handleGiveCommand(message, args) {
-  if (args.length < 4) {
-    return message.reply('❌ Usage: `op owner give @user <amount> <beli/xp>` or `op owner give @user card <card_name> <rank>`');
+  if (args.length < 3) {
+    return message.reply('❌ Usage: `op owner give @user <amount> <beli/xp>` or `op owner give @user <card_name> <rank>`');
   }
 
   const targetUser = message.mentions.users.first();
   if (!targetUser) {
     return message.reply('❌ Please mention a user to give items to.');
   }
-
-  const amount = parseInt(args[2]);
-  const type = args[3].toLowerCase();
 
   let user = await User.findOne({ userId: targetUser.id });
   if (!user) {
@@ -215,34 +212,42 @@ async function handleGiveCommand(message, args) {
     });
   }
 
-  if (type === 'beli' && !isNaN(amount)) {
-    user.beli = (user.beli || 0) + amount;
-    await user.save();
-    return message.reply(`✅ Gave ${amount} Beli to ${targetUser.username}`);
+  // Check if it's beli or xp (numeric amount)
+  const amount = parseInt(args[2]);
+  if (!isNaN(amount) && args[3]) {
+    const type = args[3].toLowerCase();
     
-  } else if (type === 'xp' && !isNaN(amount)) {
-    user.xp = (user.xp || 0) + amount;
-    await user.save();
-    return message.reply(`✅ Gave ${amount} XP to ${targetUser.username}`);
-    
-  } else if (type === 'card' && args[4]) {
-    const cardName = args[4];
-    const rank = args[5] || 'C';
-    
+    if (type === 'beli') {
+      user.beli = (user.beli || 0) + amount;
+      await user.save();
+      return message.reply(`✅ Gave ${amount} Beli to ${targetUser.username}`);
+      
+    } else if (type === 'xp') {
+      user.xp = (user.xp || 0) + amount;
+      await user.save();
+      return message.reply(`✅ Gave ${amount} XP to ${targetUser.username}`);
+    }
+  }
+  
+  // Otherwise treat as card name and rank
+  const cardName = args.slice(2, -1).join(' '); // All args except last one as card name
+  const rank = args[args.length - 1].toUpperCase(); // Last arg as rank
+  
+  if (cardName && rank && ['C', 'B', 'A', 'S', 'UR'].includes(rank)) {
     if (!user.cards) user.cards = [];
     user.cards.push({
       name: cardName,
-      rank: rank.toUpperCase(),
+      rank: rank,
       level: 1,
       experience: 0,
       timesUpgraded: 0,
       locked: false
     });
     await user.save();
-    return message.reply(`✅ Gave ${cardName} (${rank.toUpperCase()}) to ${targetUser.username}`);
+    return message.reply(`✅ Gave ${cardName} (${rank}) to ${targetUser.username}`);
   }
 
-  return message.reply('❌ Invalid command format.');
+  return message.reply('❌ Invalid command format. Use: `op owner give @user <amount> <beli/xp>` or `op owner give @user <card_name> <rank>`');
 }
 
 async function handleResetCommand(message, args) {

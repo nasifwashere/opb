@@ -55,7 +55,14 @@ async function execute(message, args, client) {
         def: 10,
         wins: 0,
         losses: 0,
-        cards: [],
+        cards: [{
+            name: "Monkey D. Luffy",
+            rank: "B",
+            level: 1,
+            experience: 0,
+            timesUpgraded: 0,
+            locked: false
+        }],
         inventory: [normalize("Basic Potion"), normalize("Basic Potion"), normalize("Normal Potion")],
         equipped: {},
         team: [],
@@ -84,6 +91,8 @@ async function execute(message, args, client) {
                 weekly: 0
             }
         },
+        activeQuests: [],
+        completedQuests: [],
         activeBoosts: [],
         createdAt: new Date(),
         lastActive: new Date()
@@ -103,12 +112,17 @@ async function execute(message, args, client) {
         
         const embed = new EmbedBuilder()
             .setTitle('Welcome to the Grand Line')
-            .setDescription(`**${username}**, your legendary journey begins now!`)
+            .setDescription(`**${username}**, your legendary journey begins now!\n\n🎩 You've received **Monkey D. Luffy** (B Rank) to start your crew!`)
             .setColor(0x2b2d31)
             .addFields(
                 { 
                     name: 'Starting Resources', 
                     value: `**${config.defaultCurrency}** Beli\n${startingItems}`, 
+                    inline: true 
+                },
+                { 
+                    name: 'Starting Card', 
+                    value: `**Monkey D. Luffy** (B Rank)`, 
                     inline: true 
                 },
                 { 

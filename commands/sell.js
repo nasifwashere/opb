@@ -87,9 +87,9 @@ async function execute(message, args) {
       return message.reply(`❌ "${userCard.name}" is currently in training and cannot be sold. Use \`op untrain ${userCard.name}\` to stop training first.`);
     }
     
-    // Check if card is locked
-    if (userCard.locked) {
-      return message.reply(`❌ "${userCard.name}" is locked and cannot be sold. Use \`op unlock ${userCard.name}\` to unlock it first.`);
+    // Check if card is in case (locked away)
+    if (user.case && user.case.find(c => normalize(c.name) === normalize(userCard.name))) {
+      return message.reply(`❌ "${userCard.name}" is locked in your case and cannot be sold. Use \`op unlock ${userCard.name}\` to return it to your collection first.`);
     }
 
     // Prevent selling UR cards (optional safety measure)

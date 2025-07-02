@@ -27,6 +27,16 @@ const userSchema = new mongoose.Schema({
 
   team: [{ type: String }], // Array of card names
 
+  // Locked cards stored separately
+  case: [{
+    name: { type: String, required: true },
+    rank: { type: String, required: true },
+    level: { type: Number, default: 1, min: 1 },
+    experience: { type: Number, default: 0, min: 0 },
+    timesUpgraded: { type: Number, default: 0, min: 0 },
+    locked: { type: Boolean, default: true }
+  }],
+
   inventory: [{ type: String }],
 
   // Equipment system - maps card names to equipped item names
@@ -145,6 +155,7 @@ userSchema.pre('save', function(next) {
   if (!this.activeQuests) this.activeQuests = [];
   if (!this.completedQuests) this.completedQuests = [];
   if (!this.training) this.training = [];
+  if (!this.case) this.case = [];
   
   // Ensure quest data structure exists
   if (!this.questData) {
