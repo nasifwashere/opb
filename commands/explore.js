@@ -4,6 +4,7 @@ const { calculateBattleStats, calculateDamage, resetTeamHP } = require('../utils
 const { distributeXPToTeam, XP_PER_LEVEL } = require('../utils/levelSystem.js');
 const path = require('path');
 const fs = require('fs');
+const { createProfessionalTeamDisplay, createEnemyDisplay, createBattleLogDisplay, createBattleStatusDisplay } = require('../utils/uiHelpers.js');
 
 // Location data based on your specifications
 const LOCATIONS = {
@@ -550,6 +551,41 @@ const data = {
     description: "Begin or continue your adventure in the One Piece world!"
 };
 
+// Utility function to handle database version conflicts with retry logic
+async function saveUserWithRetry(user, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            await user.save();
+            return; // Success!
+        } catch (error) {
+            if (error.name === 'VersionError' && attempt < maxRetries) {
+                // Refresh user data and retry
+                const freshUser = await User.findById(user._id);
+                if (freshUser) {
+                    // Copy current changes to fresh user
+                    Object.assign(freshUser, {
+                        stage: user.stage,
+                        lastExplore: user.lastExplore,
+                        exploreStates: user.exploreStates,
+                        coins: user.coins,
+                        xp: user.xp,
+                        inventory: user.inventory,
+                        cards: user.cards,
+                        team: user.team
+                    });
+                    user = freshUser;
+                    
+                    // Wait before retry with exponential backoff
+                    await new Promise(resolve => setTimeout(resolve, attempt * 100));
+                    continue;
+                }
+            }
+            // Re-throw if it's not a version error or we've exhausted retries
+            throw error;
+        }
+    }
+}
+
 async function execute(message, args, client) {
     const userId = message.author.id;
     let user = await User.findOne({ userId });
@@ -623,7 +659,9 @@ async function execute(message, args, client) {
             .setColor(0x2ecc71)
             .setFooter({ text: 'Your stage has been advanced to the next location!' });
         
-        return message.reply({ embeds: [embed] });
+        await saveUserWithRetry(user);
+        
+        await message.reply({ embeds: [embed] });
     }
 
     const stageData = locationData[localStage];
@@ -665,7 +703,7 @@ async function handleNarrative(message, user, stageData, currentLocation) {
         // console.log('Quest system not available');
     }
     
-    await user.save();
+    await saveUserWithRetry(user);
     
     await message.reply({ embeds: [embed] });
 }
@@ -724,7 +762,7 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
                 // console.log('Quest system not available');
             }
             
-            await user.save();
+            await saveUserWithRetry(user);
             
             await choiceMessage.edit({ embeds: [resultEmbed], components: [] });
         } catch (error) {
@@ -796,7 +834,7 @@ async function handleBattle(message, user, stageData, currentLocation, client) {
     user.exploreStates.currentStage = stageData;
     user.exploreStates.currentLocation = currentLocation;
     
-    await user.save();
+    await saveUserWithRetry(user);
 
     return await displayBattleState(message, user, client);
 }
@@ -814,52 +852,59 @@ async function displayBattleState(message, user, client) {
         user.exploreStates.inBossFight = false;
         user.exploreStates.battleState = null;
         user.exploreStates.currentStage = null;
-        await user.save();
+        await saveUserWithRetry(user);
         return message.reply('❌ Battle state corrupted. Please try exploring again.');
     }
 
+    // Create professional battle embed
     const embed = new EmbedBuilder()
         .setTitle(`⚔️ ${stageData.title}`)
         .setDescription(stageData.desc)
         .setColor(battleState.isBossFight ? 0xe74c3c : 0xf39c12);
 
-    // User team display
+    // Use enhanced team display
     const aliveTeamMembers = battleState.userTeam.filter(card => card.currentHp > 0);
     if (aliveTeamMembers.length > 0) {
-        const teamDisplay = createTeamDisplay(aliveTeamMembers, message.author.username);
-        
+        const teamDisplay = createProfessionalTeamDisplay(aliveTeamMembers, message.author.username);
         embed.addFields({
-            name: `${message.author.username}'s Team`,
+            name: `👑 ${message.author.username}'s Crew`,
             value: teamDisplay,
             inline: false
         });
     }
 
-    // Enemy HP bars
-    battleState.enemies.forEach((enemy, index) => {
-        if (enemy.currentHp > 0) {
-            const enemyHpBar = createEnhancedHealthBar(enemy.currentHp, enemy.maxHp);
-            embed.addFields({
-                name: `${enemy.name}`,
-                value: enemyHpBar,
-                inline: true
-            });
-        }
+    // Enhanced enemy display
+    const aliveEnemies = battleState.enemies.filter(enemy => enemy.currentHp > 0);
+    if (aliveEnemies.length > 0) {
+        const enemyDisplay = createEnemyDisplay(aliveEnemies);
+        embed.addFields({
+            name: `💀 Enemies`,
+            value: enemyDisplay,
+            inline: false
+        });
+    }
+
+    // Battle status display
+    const statusDisplay = createBattleStatusDisplay(battleState, battleState.turn, message.author.username);
+    embed.addFields({
+        name: `📊 Battle Status`,
+        value: statusDisplay,
+        inline: false
     });
 
-    // Create battle buttons
+    // Create enhanced battle buttons
     const battleButtons = [
         new ButtonBuilder()
             .setCustomId('battle_attack')
-            .setLabel('Attack')
+            .setLabel('⚔️ Attack')
             .setStyle(ButtonStyle.Danger),
         new ButtonBuilder()
             .setCustomId('battle_items')
-            .setLabel('Use Item')
+            .setLabel('🎒 Items')
             .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
             .setCustomId('battle_flee')
-            .setLabel('Flee')
+            .setLabel('🏃‍♂️ Flee')
             .setStyle(ButtonStyle.Secondary)
     ];
 
@@ -888,7 +933,7 @@ async function displayBattleState(message, user, client) {
                 user.exploreStates.inBossFight = false;
                 user.exploreStates.battleState = null;
                 user.exploreStates.currentStage = null;
-                await user.save();
+                await saveUserWithRetry(user);
             } catch (saveError) {
                 console.error('Error cleaning up battle state:', saveError);
             }
@@ -995,50 +1040,65 @@ async function handleBattleAttack(interaction, user, battleMessage) {
 
         battleState.turn++;
         freshUser.exploreStates.battleState = battleState;
-        await freshUser.save();
+        await saveUserWithRetry(freshUser);
 
+        // Create enhanced battle log display
+        const battleLogDisplay = createBattleLogDisplay([battleLog]);
+        
         // Update battle display
         const embed = new EmbedBuilder()
-            .setTitle(`⚔️ Turn ${battleState.turn}`)
-            .setDescription(battleLog)
+            .setTitle(`⚔️ Turn ${battleState.turn} - Battle Continues`)
             .setColor(0xf39c12);
 
-        // Team display
+        // Enhanced team display
         const aliveTeam = battleState.userTeam.filter(card => card.currentHp > 0);
         if (aliveTeam.length > 0) {
-            const teamDisplay = createTeamDisplay(aliveTeam, interaction.user.username);
-            
+            const teamDisplay = createProfessionalTeamDisplay(aliveTeam, interaction.user.username);
             embed.addFields({
-                name: `${interaction.user.username}'s Team`,
+                name: `👑 ${interaction.user.username}'s Crew`,
                 value: teamDisplay,
                 inline: false
             });
         }
 
-        // Enemy HP
-        battleState.enemies.forEach(enemy => {
-            if (enemy.currentHp > 0) {
-                const enemyHpBar = createEnhancedHealthBar(enemy.currentHp, enemy.maxHp);
-                embed.addFields({
-                    name: enemy.name,
-                    value: enemyHpBar,
-                    inline: true
-                });
-            }
+        // Enhanced enemy display
+        const aliveEnemies = battleState.enemies.filter(enemy => enemy.currentHp > 0);
+        if (aliveEnemies.length > 0) {
+            const enemyDisplay = createEnemyDisplay(aliveEnemies);
+            embed.addFields({
+                name: `💀 Enemies`,
+                value: enemyDisplay,
+                inline: false
+            });
+        }
+
+        // Battle log display
+        embed.addFields({
+            name: `📝 Recent Actions`,
+            value: battleLogDisplay,
+            inline: false
+        });
+
+        // Battle status
+        const statusDisplay = createBattleStatusDisplay(battleState, battleState.turn, interaction.user.username);
+        embed.addFields({
+            name: `📊 Battle Status`,
+            value: statusDisplay,
+            inline: false
         });
 
         const battleButtons = [
             new ButtonBuilder()
                 .setCustomId('battle_attack')
-                .setLabel('Attack')
+                .setLabel('⚔️ Attack')
                 .setStyle(ButtonStyle.Danger),
             new ButtonBuilder()
                 .setCustomId('battle_items')
-                .setLabel('Use Item')
+                .setLabel('🎒 Items')
                 .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
                 .setCustomId('battle_flee')
-                .setLabel('Flee')
+                .setLabel('🏃‍♂️ Flee')
                 .setStyle(ButtonStyle.Secondary)
         ];
 
@@ -1140,7 +1200,7 @@ async function handleBattleItems(interaction, user, battleMessage) {
                     effectText = `Defense increased by ${effect.amount}!`;
                 }
 
-                await currentUser.save();
+                await saveUserWithRetry(currentUser);
 
                 // Update battle display with item effect
                 const embed = new EmbedBuilder()
@@ -1220,50 +1280,65 @@ async function handleEnemyTurn(interaction, user, battleMessage) {
             });
         }
 
-        await freshUser.save();
+        await saveUserWithRetry(freshUser);
 
-        // Update battle display
+        // Create enhanced battle log display
+        const battleLogDisplay = createBattleLogDisplay([battleLog]);
+        
+        // Update battle display with enhanced UI
         const embed = new EmbedBuilder()
-            .setTitle(`Turn ${battleState.turn}`)
-            .setDescription(battleLog)
-            .setColor(0xf39c12);
+            .setTitle(`⚔️ Turn ${battleState.turn} - Enemy Turn`)
+            .setColor(0xe74c3c);
 
-        // Team display
+        // Enhanced team display
         const aliveTeam = battleState.userTeam.filter(card => card.currentHp > 0);
         if (aliveTeam.length > 0) {
-            const teamDisplay = createTeamDisplay(aliveTeam, interaction.user.username);
-            
+            const teamDisplay = createProfessionalTeamDisplay(aliveTeam, interaction.user.username);
             embed.addFields({
-                name: `${interaction.user.username}'s Team`,
+                name: `👑 ${interaction.user.username}'s Crew`,
                 value: teamDisplay,
                 inline: false
             });
         }
 
-        // Enemy HP
-        battleState.enemies.forEach(enemy => {
-            if (enemy.currentHp > 0) {
-                const enemyHpBar = createEnhancedHealthBar(enemy.currentHp, enemy.maxHp);
-                embed.addFields({
-                    name: enemy.name,
-                    value: enemyHpBar,
-                    inline: true
-                });
-            }
+        // Enhanced enemy display
+        const aliveEnemies = battleState.enemies.filter(enemy => enemy.currentHp > 0);
+        if (aliveEnemies.length > 0) {
+            const enemyDisplay = createEnemyDisplay(aliveEnemies);
+            embed.addFields({
+                name: `💀 Enemies`,
+                value: enemyDisplay,
+                inline: false
+            });
+        }
+
+        // Battle log display
+        embed.addFields({
+            name: `📝 Recent Actions`,
+            value: battleLogDisplay,
+            inline: false
+        });
+
+        // Battle status
+        const statusDisplay = createBattleStatusDisplay(battleState, battleState.turn, interaction.user.username);
+        embed.addFields({
+            name: `📊 Battle Status`,
+            value: statusDisplay,
+            inline: false
         });
 
         const battleButtons = [
             new ButtonBuilder()
                 .setCustomId('battle_attack')
-                .setLabel('Attack')
+                .setLabel('⚔️ Attack')
                 .setStyle(ButtonStyle.Danger),
             new ButtonBuilder()
                 .setCustomId('battle_items')
-                .setLabel('Use Item')
+                .setLabel('🎒 Items')
                 .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
                 .setCustomId('battle_flee')
-                .setLabel('Flee')
+                .setLabel('🏃‍♂️ Flee')
                 .setStyle(ButtonStyle.Secondary)
         ];
 
@@ -1294,7 +1369,7 @@ async function handleBattleFlee(interaction, user, battleMessage) {
         // Set flee cooldown
         freshUser.exploreStates.defeatCooldown = Date.now() + (30 * 60 * 1000); // 30 minute cooldown for fleeing
         
-        await freshUser.save();
+        await saveUserWithRetry(freshUser);
         
         const fleeEmbed = new EmbedBuilder()
             .setTitle('🏃‍♂️ Fled from Battle!')
@@ -1336,7 +1411,7 @@ async function handleBattleVictory(interaction, user, battleMessage, battleLog) 
         // console.log('Quest system not available');
     }
     
-    await user.save();
+    await saveUserWithRetry(user);
     
     const victoryEmbed = new EmbedBuilder()
         .setTitle('🎉 Victory!')
@@ -1361,7 +1436,7 @@ async function handleBattleDefeat(interaction, user, battleMessage, battleLog) {
     // Set defeat cooldown
     user.exploreStates.defeatCooldown = Date.now() + (stageData.loseCooldown || DEFEAT_COOLDOWN);
     
-    await user.save();
+    await saveUserWithRetry(user);
     
     const defeatEmbed = new EmbedBuilder()
         .setTitle('💀 Defeat!')
