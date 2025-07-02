@@ -905,301 +905,396 @@ async function displayBattleState(message, user, client) {
 }
 
 async function handleBattleAttack(interaction, user, battleMessage) {
-    const battleState = user.exploreStates.battleState;
-    
-    // Get the first alive team member to attack
-    const attacker = battleState.userTeam.find(card => card.currentHp > 0);
-    if (!attacker) return await handleBattleDefeat(interaction, user, battleMessage, 'Your team is defeated!');
-
-    // Find first enemy alive
-    const targetEnemy = battleState.enemies.find(e => e.currentHp > 0);
-    if (!targetEnemy) return;
-
-    // Calculate damage using the proper battle system
-    let attackDamage = calculateDamage(attacker, targetEnemy);
-    
-    // Apply user boosts
-    if (battleState.userBoosts.attack_boost) {
-        attackDamage += battleState.userBoosts.attack_boost.amount;
-        battleState.userBoosts.attack_boost.duration--;
-        if (battleState.userBoosts.attack_boost.duration <= 0) {
-            delete battleState.userBoosts.attack_boost;
+    try {
+        // Refresh user data from database to ensure we have the latest state
+        const freshUser = await User.findOne({ userId: interaction.user.id });
+        if (!freshUser) {
+            return await interaction.followUp({ content: '❌ User data not found!', ephemeral: true });
         }
-    }
-    
-    targetEnemy.currentHp = Math.max(0, targetEnemy.currentHp - attackDamage);
-    
-    let battleLog = `⚔️ ${attacker.name} attacks ${targetEnemy.name} for ${attackDamage} damage!`;
-    
-    if (targetEnemy.currentHp <= 0) {
-        battleLog += `\n💀 ${targetEnemy.name} is defeated!`;
-    }
 
-    // Check if all enemies defeated
-    if (battleState.enemies.every(e => e.currentHp <= 0)) {
-        return await handleBattleVictory(interaction, user, battleMessage, battleLog);
-    }
-
-    // Enemy attacks back - target random team member
-    const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
-    const aliveTeamMembers = battleState.userTeam.filter(card => card.currentHp > 0);
-    
-    for (const enemy of aliveEnemies) {
-        if (aliveTeamMembers.length === 0) break;
-        
-        const target = aliveTeamMembers[Math.floor(Math.random() * aliveTeamMembers.length)];
-        const damage = calculateDamage(enemy, target);
-        
-        target.currentHp = Math.max(0, target.currentHp - damage);
-        battleLog += `\n💥 ${enemy.name} attacks ${target.name} for ${damage} damage!`;
-        
-        if (target.currentHp <= 0) {
-            battleLog += `\n💀 ${target.name} is defeated!`;
-        }
-    }
-
-    // Check if all team members defeated
-    if (battleState.userTeam.every(card => card.currentHp <= 0)) {
-        return await handleBattleDefeat(interaction, user, battleMessage, battleLog);
-    }
-
-    battleState.turn++;
-    user.exploreStates.battleState = battleState;
-    await user.save();
-
-    // Update battle display
-    const embed = new EmbedBuilder()
-        .setTitle(`⚔️ Turn ${battleState.turn}`)
-        .setDescription(battleLog)
-        .setColor(0xf39c12);
-
-    // Team display
-    const aliveTeam = battleState.userTeam.filter(card => card.currentHp > 0);
-    if (aliveTeam.length > 0) {
-        const teamDisplay = createTeamDisplay(aliveTeam, message.author.username);
-        
-        embed.addFields({
-            name: `${interaction.user.username}'s Team`,
-            value: teamDisplay,
-            inline: false
-        });
-    }
-
-    // Enemy HP
-    battleState.enemies.forEach(enemy => {
-        if (enemy.currentHp > 0) {
-            const enemyHpBar = createEnhancedHealthBar(enemy.currentHp, enemy.maxHp);
-            embed.addFields({
-                name: enemy.name,
-                value: enemyHpBar,
-                inline: true
+        // Check if battle state exists
+        if (!freshUser.exploreStates || !freshUser.exploreStates.battleState) {
+            return await interaction.followUp({ 
+                content: '❌ Battle state lost! Please start exploring again with `op explore`.', 
+                ephemeral: true 
             });
         }
-    });
 
-    const battleButtons = [
-        new ButtonBuilder()
-            .setCustomId('battle_attack')
-            .setLabel('Attack')
-            .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-            .setCustomId('battle_items')
-            .setLabel('Use Item')
-            .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-            .setCustomId('battle_flee')
-            .setLabel('Flee')
-            .setStyle(ButtonStyle.Secondary)
-    ];
+        const battleState = freshUser.exploreStates.battleState;
+        
+        // Validate battle state has required properties
+        if (!battleState.userTeam || !battleState.enemies) {
+            return await interaction.followUp({ 
+                content: '❌ Invalid battle state! Please start exploring again with `op explore`.', 
+                ephemeral: true 
+            });
+        }
 
-    const row = new ActionRowBuilder().addComponents(battleButtons);
+        // Get the first alive team member to attack
+        const attacker = battleState.userTeam.find(card => card.currentHp > 0);
+        if (!attacker) {
+            return await handleBattleDefeat(interaction, freshUser, battleMessage, 'Your team is defeated!');
+        }
 
-    await battleMessage.edit({ embeds: [embed], components: [row] });
+        // Find first enemy alive
+        const targetEnemy = battleState.enemies.find(e => e.currentHp > 0);
+        if (!targetEnemy) {
+            return await interaction.followUp({ 
+                content: '❌ No enemies to attack!', 
+                ephemeral: true 
+            });
+        }
+
+        // Calculate damage using the proper battle system
+        let attackDamage = calculateDamage(attacker, targetEnemy);
+        
+        // Apply user boosts
+        if (battleState.userBoosts && battleState.userBoosts.attack_boost) {
+            attackDamage += battleState.userBoosts.attack_boost.amount;
+            battleState.userBoosts.attack_boost.duration--;
+            if (battleState.userBoosts.attack_boost.duration <= 0) {
+                delete battleState.userBoosts.attack_boost;
+            }
+        }
+        
+        targetEnemy.currentHp = Math.max(0, targetEnemy.currentHp - attackDamage);
+        
+        let battleLog = `⚔️ ${attacker.name} attacks ${targetEnemy.name} for ${attackDamage} damage!`;
+        
+        if (targetEnemy.currentHp <= 0) {
+            battleLog += `\n💀 ${targetEnemy.name} is defeated!`;
+        }
+
+        // Check if all enemies defeated
+        if (battleState.enemies.every(e => e.currentHp <= 0)) {
+            return await handleBattleVictory(interaction, freshUser, battleMessage, battleLog);
+        }
+
+        // Enemy attacks back - target random team member
+        const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
+        const aliveTeamMembers = battleState.userTeam.filter(card => card.currentHp > 0);
+        
+        for (const enemy of aliveEnemies) {
+            if (aliveTeamMembers.length === 0) break;
+            
+            const target = aliveTeamMembers[Math.floor(Math.random() * aliveTeamMembers.length)];
+            const damage = calculateDamage(enemy, target);
+            
+            target.currentHp = Math.max(0, target.currentHp - damage);
+            battleLog += `\n💥 ${enemy.name} attacks ${target.name} for ${damage} damage!`;
+            
+            if (target.currentHp <= 0) {
+                battleLog += `\n💀 ${target.name} is defeated!`;
+            }
+        }
+
+        // Check if all team members defeated
+        if (battleState.userTeam.every(card => card.currentHp <= 0)) {
+            return await handleBattleDefeat(interaction, freshUser, battleMessage, battleLog);
+        }
+
+        battleState.turn++;
+        freshUser.exploreStates.battleState = battleState;
+        await freshUser.save();
+
+        // Update battle display
+        const embed = new EmbedBuilder()
+            .setTitle(`⚔️ Turn ${battleState.turn}`)
+            .setDescription(battleLog)
+            .setColor(0xf39c12);
+
+        // Team display
+        const aliveTeam = battleState.userTeam.filter(card => card.currentHp > 0);
+        if (aliveTeam.length > 0) {
+            const teamDisplay = createTeamDisplay(aliveTeam, interaction.user.username);
+            
+            embed.addFields({
+                name: `${interaction.user.username}'s Team`,
+                value: teamDisplay,
+                inline: false
+            });
+        }
+
+        // Enemy HP
+        battleState.enemies.forEach(enemy => {
+            if (enemy.currentHp > 0) {
+                const enemyHpBar = createEnhancedHealthBar(enemy.currentHp, enemy.maxHp);
+                embed.addFields({
+                    name: enemy.name,
+                    value: enemyHpBar,
+                    inline: true
+                });
+            }
+        });
+
+        const battleButtons = [
+            new ButtonBuilder()
+                .setCustomId('battle_attack')
+                .setLabel('Attack')
+                .setStyle(ButtonStyle.Danger),
+            new ButtonBuilder()
+                .setCustomId('battle_items')
+                .setLabel('Use Item')
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId('battle_flee')
+                .setLabel('Flee')
+                .setStyle(ButtonStyle.Secondary)
+        ];
+
+        const row = new ActionRowBuilder().addComponents(battleButtons);
+
+        await battleMessage.edit({ embeds: [embed], components: [row] });
+
+    } catch (error) {
+        console.error('Error in handleBattleAttack:', error);
+        return await interaction.followUp({ 
+            content: '❌ An error occurred during the attack. Please try exploring again with `op explore`.', 
+            ephemeral: true 
+        });
+    }
 }
 
 async function handleBattleItems(interaction, user, battleMessage) {
-    const usableItems = ['healthpotion', 'strengthpotion', 'speedboostfood', 'defensepotion'];
-    const availableItems = usableItems.filter(item => canUseInventoryItem(user, item));
-    
-    if (availableItems.length === 0) {
-        return await interaction.followUp({ content: 'You have no usable items!', ephemeral: true });
-    }
-    
-    const itemButtons = availableItems.map(item => 
-        new ButtonBuilder()
-            .setCustomId(`use_${item}`)
-            .setLabel(item.charAt(0).toUpperCase() + item.slice(1).replace(/([A-Z])/g, ' $1'))
-            .setStyle(ButtonStyle.Primary)
-    );
-    
-    const itemRow = new ActionRowBuilder().addComponents(itemButtons.slice(0, 5));
-    
-    const itemMessage = await interaction.followUp({ 
-        content: 'Choose an item to use:', 
-        components: [itemRow], 
-        ephemeral: true 
-    });
-
-    // Handle item selection
-    const itemFilter = i => i.user.id === interaction.user.id && i.customId.startsWith('use_');
-    const itemCollector = itemMessage.createMessageComponentCollector({ filter: itemFilter, time: 30000 });
-
-    itemCollector.on('collect', async itemInteraction => {
-        await itemInteraction.deferUpdate();
-        
-        const itemName = itemInteraction.customId.replace('use_', '');
-        const effect = useInventoryItem(user, itemName);
-        
-        if (!effect) {
-            return await itemInteraction.followUp({ content: 'Item could not be used!', ephemeral: true });
+    try {
+        // Refresh user data from database
+        const freshUser = await User.findOne({ userId: interaction.user.id });
+        if (!freshUser || !freshUser.exploreStates || !freshUser.exploreStates.battleState) {
+            return await interaction.followUp({ 
+                content: '❌ Battle state lost! Please start exploring again with `op explore`.', 
+                ephemeral: true 
+            });
         }
 
-        const battleState = user.exploreStates.battleState;
-        let effectText = '';
+        const usableItems = ['healthpotion', 'strengthpotion', 'speedboostfood', 'defensepotion'];
+        const availableItems = usableItems.filter(item => canUseInventoryItem(freshUser, item));
+        
+        if (availableItems.length === 0) {
+            return await interaction.followUp({ content: 'You have no usable items!', ephemeral: true });
+        }
+        
+        const itemButtons = availableItems.map(item => 
+            new ButtonBuilder()
+                .setCustomId(`use_${item}`)
+                .setLabel(item.charAt(0).toUpperCase() + item.slice(1).replace(/([A-Z])/g, ' $1'))
+                .setStyle(ButtonStyle.Primary)
+        );
+        
+        const itemRow = new ActionRowBuilder().addComponents(itemButtons.slice(0, 5));
+        
+        const itemMessage = await interaction.followUp({ 
+            content: 'Choose an item to use:', 
+            components: [itemRow], 
+            ephemeral: true 
+        });
 
-        // Apply item effects
-        if (effect.type === 'heal') {
-            // Heal the first injured team member
-            const injuredCard = battleState.userTeam.find(card => card.currentHp < card.maxHp && card.currentHp > 0);
-            if (injuredCard) {
-                const healAmount = Math.min(effect.amount, injuredCard.maxHp - injuredCard.currentHp);
-                injuredCard.currentHp += healAmount;
-                effectText = `Healed ${injuredCard.name} for ${healAmount} HP!`;
-            } else {
-                effectText = `No injured team members to heal!`;
+        // Handle item selection
+        const itemFilter = i => i.user.id === interaction.user.id && i.customId.startsWith('use_');
+        const itemCollector = itemMessage.createMessageComponentCollector({ filter: itemFilter, time: 30000 });
+
+        itemCollector.on('collect', async itemInteraction => {
+            try {
+                await itemInteraction.deferUpdate();
+                
+                // Refresh user data again for item use
+                const currentUser = await User.findOne({ userId: interaction.user.id });
+                if (!currentUser || !currentUser.exploreStates || !currentUser.exploreStates.battleState) {
+                    return await itemInteraction.followUp({ 
+                        content: '❌ Battle state lost during item use!', 
+                        ephemeral: true 
+                    });
+                }
+                
+                const itemName = itemInteraction.customId.replace('use_', '');
+                const effect = useInventoryItem(currentUser, itemName);
+                
+                if (!effect) {
+                    return await itemInteraction.followUp({ content: 'Item could not be used!', ephemeral: true });
+                }
+
+                const battleState = currentUser.exploreStates.battleState;
+                let effectText = '';
+
+                // Apply item effects
+                if (effect.type === 'heal') {
+                    // Heal the first injured team member
+                    const injuredCard = battleState.userTeam.find(card => card.currentHp < card.maxHp && card.currentHp > 0);
+                    if (injuredCard) {
+                        const healAmount = Math.min(effect.amount, injuredCard.maxHp - injuredCard.currentHp);
+                        injuredCard.currentHp += healAmount;
+                        effectText = `Healed ${injuredCard.name} for ${healAmount} HP!`;
+                    } else {
+                        effectText = `No injured team members to heal!`;
+                    }
+                } else if (effect.type === 'attack_boost') {
+                    if (!battleState.userBoosts) battleState.userBoosts = {};
+                    battleState.userBoosts.attack_boost = { amount: effect.amount, duration: effect.duration };
+                    effectText = `Attack increased by ${effect.amount}!`;
+                } else if (effect.type === 'speed_boost') {
+                    if (!battleState.userBoosts) battleState.userBoosts = {};
+                    battleState.userBoosts.speed_boost = { amount: effect.amount, duration: effect.duration };
+                    effectText = `Speed increased by ${effect.amount}!`;
+                } else if (effect.type === 'defense_boost') {
+                    if (!battleState.userBoosts) battleState.userBoosts = {};
+                    battleState.userBoosts.defense_boost = { amount: effect.amount, duration: effect.duration };
+                    effectText = `Defense increased by ${effect.amount}!`;
+                }
+
+                await currentUser.save();
+
+                // Update battle display with item effect
+                const embed = new EmbedBuilder()
+                    .setTitle(`Item Used: ${itemName.charAt(0).toUpperCase() + itemName.slice(1)}`)
+                    .setDescription(effectText)
+                    .setColor(0x2ecc71);
+
+                await itemInteraction.editReply({ embeds: [embed], components: [] });
+
+                // Continue battle
+                battleState.turn++;
+                await handleEnemyTurn(interaction, currentUser, battleMessage);
+            } catch (error) {
+                console.error('Error in item use:', error);
+                await itemInteraction.followUp({ 
+                    content: '❌ Error using item. Please try again.', 
+                    ephemeral: true 
+                });
             }
-        } else if (effect.type === 'attack_boost') {
-            if (!battleState.userBoosts) battleState.userBoosts = {};
-            battleState.userBoosts.attack_boost = { amount: effect.amount, duration: effect.duration };
-            effectText = `Attack increased by ${effect.amount}!`;
-        } else if (effect.type === 'speed_boost') {
-            if (!battleState.userBoosts) battleState.userBoosts = {};
-            battleState.userBoosts.speed_boost = { amount: effect.amount, duration: effect.duration };
-            effectText = `Speed increased by ${effect.amount}!`;
-        } else if (effect.type === 'defense_boost') {
-            if (!battleState.userBoosts) battleState.userBoosts = {};
-            battleState.userBoosts.defense_boost = { amount: effect.amount, duration: effect.duration };
-            effectText = `Defense increased by ${effect.amount}!`;
-        }
-
-        await user.save();
-
-        // Update battle display with item effect
-        const embed = new EmbedBuilder()
-            .setTitle(`Item Used: ${itemName.charAt(0).toUpperCase() + itemName.slice(1)}`)
-            .setDescription(effectText)
-            .setColor(0x2ecc71);
-
-        await itemInteraction.editReply({ embeds: [embed], components: [] });
-
-        // Continue battle
-        battleState.turn++;
-        await handleEnemyTurn(interaction, user, battleMessage);
-    });
+        });
+    } catch (error) {
+        console.error('Error in handleBattleItems:', error);
+        return await interaction.followUp({ 
+            content: '❌ An error occurred accessing items. Please try exploring again.', 
+            ephemeral: true 
+        });
+    }
 }
 
 async function handleEnemyTurn(interaction, user, battleMessage) {
-    const battleState = user.exploreStates.battleState;
-    let battleLog = '';
-
-    // Each alive enemy attacks a random team member
-    const aliveTeamMembers = battleState.userTeam.filter(card => card.currentHp > 0);
-    
-    for (const enemy of battleState.enemies) {
-        if (enemy.currentHp <= 0 || aliveTeamMembers.length === 0) continue;
-
-        const target = aliveTeamMembers[Math.floor(Math.random() * aliveTeamMembers.length)];
-        const damage = calculateDamage(enemy, target);
-        
-        target.currentHp = Math.max(0, target.currentHp - damage);
-        battleLog += `${enemy.name} attacks ${target.name} for ${damage} damage!\n`;
-
-        if (target.currentHp <= 0) {
-            battleLog += `${target.name} is defeated!\n`;
-            // Remove defeated card from alive members array
-            const index = aliveTeamMembers.indexOf(target);
-            if (index > -1) aliveTeamMembers.splice(index, 1);
-        }
-
-        if (aliveTeamMembers.length === 0) {
-            return await handleBattleDefeat(interaction, user, battleMessage, battleLog);
-        }
-    }
-
-    // Reduce boost durations
-    if (battleState.userBoosts) {
-        Object.keys(battleState.userBoosts).forEach(key => {
-            if (battleState.userBoosts[key].duration) {
-                battleState.userBoosts[key].duration--;
-                if (battleState.userBoosts[key].duration <= 0) {
-                    delete battleState.userBoosts[key];
-                }
-            }
-        });
-    }
-
-    await user.save();
-
-    // Update battle display
-    const embed = new EmbedBuilder()
-        .setTitle(`Turn ${battleState.turn}`)
-        .setDescription(battleLog)
-        .setColor(0xf39c12);
-
-    // Team display
-    const aliveTeam = battleState.userTeam.filter(card => card.currentHp > 0);
-    if (aliveTeam.length > 0) {
-        const teamDisplay = createTeamDisplay(aliveTeam, message.author.username);
-        
-        embed.addFields({
-            name: `${interaction.user.username}'s Team`,
-            value: teamDisplay,
-            inline: false
-        });
-    }
-
-    // Enemy HP
-    battleState.enemies.forEach(enemy => {
-        if (enemy.currentHp > 0) {
-            const enemyHpBar = createEnhancedHealthBar(enemy.currentHp, enemy.maxHp);
-            embed.addFields({
-                name: enemy.name,
-                value: enemyHpBar,
-                inline: true
+    try {
+        // Refresh user data from database to ensure we have the latest state
+        const freshUser = await User.findOne({ userId: interaction.user.id });
+        if (!freshUser || !freshUser.exploreStates || !freshUser.exploreStates.battleState) {
+            return await interaction.followUp({ 
+                content: '❌ Battle state lost during enemy turn!', 
+                ephemeral: true 
             });
         }
-    });
 
-    const battleButtons = [
-        new ButtonBuilder()
-            .setCustomId('battle_attack')
-            .setLabel('Attack')
-            .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-            .setCustomId('battle_items')
-            .setLabel('Use Item')
-            .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-            .setCustomId('battle_flee')
-            .setLabel('Flee')
-            .setStyle(ButtonStyle.Secondary)
-    ];
+        const battleState = freshUser.exploreStates.battleState;
+        let battleLog = '';
 
-    const row = new ActionRowBuilder().addComponents(battleButtons);
-    await battleMessage.edit({ embeds: [embed], components: [row] });
+        // Each alive enemy attacks a random team member
+        const aliveTeamMembers = battleState.userTeam.filter(card => card.currentHp > 0);
+        
+        for (const enemy of battleState.enemies) {
+            if (enemy.currentHp <= 0 || aliveTeamMembers.length === 0) continue;
+
+            const target = aliveTeamMembers[Math.floor(Math.random() * aliveTeamMembers.length)];
+            const damage = calculateDamage(enemy, target);
+            
+            target.currentHp = Math.max(0, target.currentHp - damage);
+            battleLog += `${enemy.name} attacks ${target.name} for ${damage} damage!\n`;
+
+            if (target.currentHp <= 0) {
+                battleLog += `${target.name} is defeated!\n`;
+                // Remove defeated card from alive members array
+                const index = aliveTeamMembers.indexOf(target);
+                if (index > -1) aliveTeamMembers.splice(index, 1);
+            }
+
+            if (aliveTeamMembers.length === 0) {
+                return await handleBattleDefeat(interaction, freshUser, battleMessage, battleLog);
+            }
+        }
+
+        // Reduce boost durations
+        if (battleState.userBoosts) {
+            Object.keys(battleState.userBoosts).forEach(key => {
+                if (battleState.userBoosts[key].duration) {
+                    battleState.userBoosts[key].duration--;
+                    if (battleState.userBoosts[key].duration <= 0) {
+                        delete battleState.userBoosts[key];
+                    }
+                }
+            });
+        }
+
+        await freshUser.save();
+
+        // Update battle display
+        const embed = new EmbedBuilder()
+            .setTitle(`Turn ${battleState.turn}`)
+            .setDescription(battleLog)
+            .setColor(0xf39c12);
+
+        // Team display
+        const aliveTeam = battleState.userTeam.filter(card => card.currentHp > 0);
+        if (aliveTeam.length > 0) {
+            const teamDisplay = createTeamDisplay(aliveTeam, interaction.user.username);
+            
+            embed.addFields({
+                name: `${interaction.user.username}'s Team`,
+                value: teamDisplay,
+                inline: false
+            });
+        }
+
+        // Enemy HP
+        battleState.enemies.forEach(enemy => {
+            if (enemy.currentHp > 0) {
+                const enemyHpBar = createEnhancedHealthBar(enemy.currentHp, enemy.maxHp);
+                embed.addFields({
+                    name: enemy.name,
+                    value: enemyHpBar,
+                    inline: true
+                });
+            }
+        });
+
+        const battleButtons = [
+            new ButtonBuilder()
+                .setCustomId('battle_attack')
+                .setLabel('Attack')
+                .setStyle(ButtonStyle.Danger),
+            new ButtonBuilder()
+                .setCustomId('battle_items')
+                .setLabel('Use Item')
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId('battle_flee')
+                .setLabel('Flee')
+                .setStyle(ButtonStyle.Secondary)
+        ];
+
+        const row = new ActionRowBuilder().addComponents(battleButtons);
+        await battleMessage.edit({ embeds: [embed], components: [row] });
+    } catch (error) {
+        console.error('Error in handleEnemyTurn:', error);
+        return await interaction.followUp({ 
+            content: '❌ An error occurred during enemy turn. Please try exploring again.', 
+            ephemeral: true 
+        });
+    }
 }
 
 async function handleBattleFlee(interaction, user, battleMessage) {
     try {
+        // Refresh user data from database
+        const freshUser = await User.findOne({ userId: interaction.user.id });
+        if (!freshUser) {
+            return await interaction.followUp({ content: '❌ User data not found!', ephemeral: true });
+        }
+
         // Clean up battle state properly
-        user.exploreStates.inBossFight = false;
-        user.exploreStates.battleState = null;
-        user.exploreStates.currentStage = null;
+        freshUser.exploreStates.inBossFight = false;
+        freshUser.exploreStates.battleState = null;
+        freshUser.exploreStates.currentStage = null;
         
         // Set flee cooldown
-        user.exploreStates.defeatCooldown = Date.now() + (30 * 60 * 1000); // 30 minute cooldown for fleeing
+        freshUser.exploreStates.defeatCooldown = Date.now() + (30 * 60 * 1000); // 30 minute cooldown for fleeing
         
-        await user.save();
+        await freshUser.save();
         
         const fleeEmbed = new EmbedBuilder()
             .setTitle('🏃‍♂️ Fled from Battle!')
