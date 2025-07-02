@@ -1008,10 +1008,10 @@ async function handleBattleAttack(interaction, user, battleMessage) {
         
         targetEnemy.currentHp = Math.max(0, targetEnemy.currentHp - attackDamage);
         
-        let battleLog = `⚔️ ${attacker.name} attacks ${targetEnemy.name} for ${attackDamage} damage!`;
+        let battleLog = `${attacker.name} attacks ${targetEnemy.name} for ${attackDamage} damage!`;
         
         if (targetEnemy.currentHp <= 0) {
-            battleLog += `\n💀 ${targetEnemy.name} is defeated!`;
+            battleLog += `\n${targetEnemy.name} is defeated!`;
         }
 
         // Check if all enemies defeated
@@ -1030,10 +1030,10 @@ async function handleBattleAttack(interaction, user, battleMessage) {
             const damage = calculateDamage(enemy, target);
             
             target.currentHp = Math.max(0, target.currentHp - damage);
-            battleLog += `\n💥 ${enemy.name} attacks ${target.name} for ${damage} damage!`;
+            battleLog += `\n${enemy.name} attacks ${target.name} for ${damage} damage!`;
             
             if (target.currentHp <= 0) {
-                battleLog += `\n💀 ${target.name} is defeated!`;
+                battleLog += `\n${target.name} is defeated!`;
             }
         }
 
