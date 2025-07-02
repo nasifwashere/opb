@@ -955,21 +955,23 @@ async function displayBattleState(message, user, client) {
 
 async function handleBattleAttack(interaction, user, battleMessage) {
     try {
-        // Refresh user data from database to ensure we have the latest state
-        const freshUser = await User.findOne({ userId: interaction.user.id });
-        if (!freshUser) {
-            return await interaction.followUp({ content: '❌ User data not found!', ephemeral: true });
+        // Use the passed-in user first, only refresh if battle state is missing
+        let currentUser = user;
+        
+        // Check if battle state exists in current user
+        if (!currentUser.exploreStates || !currentUser.exploreStates.battleState) {
+            // Try refreshing from database as fallback
+            const freshUser = await User.findOne({ userId: interaction.user.id });
+            if (!freshUser || !freshUser.exploreStates || !freshUser.exploreStates.battleState) {
+                return await interaction.followUp({ 
+                    content: '❌ Battle state lost! Please start exploring again with `op explore`.', 
+                    ephemeral: true 
+                });
+            }
+            currentUser = freshUser;
         }
 
-        // Check if battle state exists
-        if (!freshUser.exploreStates || !freshUser.exploreStates.battleState) {
-            return await interaction.followUp({ 
-                content: '❌ Battle state lost! Please start exploring again with `op explore`.', 
-                ephemeral: true 
-            });
-        }
-
-        const battleState = freshUser.exploreStates.battleState;
+        const battleState = currentUser.exploreStates.battleState;
         
         // Validate battle state has required properties
         if (!battleState.userTeam || !battleState.enemies) {
@@ -982,7 +984,7 @@ async function handleBattleAttack(interaction, user, battleMessage) {
         // Get the first alive team member to attack
         const attacker = battleState.userTeam.find(card => card.currentHp > 0);
         if (!attacker) {
-            return await handleBattleDefeat(interaction, freshUser, battleMessage, 'Your team is defeated!');
+            return await handleBattleDefeat(interaction, currentUser, battleMessage, 'Your team is defeated!');
         }
 
         // Find first enemy alive
@@ -1016,7 +1018,7 @@ async function handleBattleAttack(interaction, user, battleMessage) {
 
         // Check if all enemies defeated
         if (battleState.enemies.every(e => e.currentHp <= 0)) {
-            return await handleBattleVictory(interaction, freshUser, battleMessage, battleLog);
+            return await handleBattleVictory(interaction, currentUser, battleMessage, battleLog);
         }
 
         // Enemy attacks back - target random team member
@@ -1039,12 +1041,12 @@ async function handleBattleAttack(interaction, user, battleMessage) {
 
         // Check if all team members defeated
         if (battleState.userTeam.every(card => card.currentHp <= 0)) {
-            return await handleBattleDefeat(interaction, freshUser, battleMessage, battleLog);
+            return await handleBattleDefeat(interaction, currentUser, battleMessage, battleLog);
         }
 
         battleState.turn++;
-        freshUser.exploreStates.battleState = battleState;
-        await saveUserWithRetry(freshUser);
+        currentUser.exploreStates.battleState = battleState;
+        await saveUserWithRetry(currentUser);
 
         // Create enhanced battle log display
         const battleLogDisplay = createBattleLogDisplay([battleLog]);
@@ -1113,17 +1115,24 @@ async function handleBattleAttack(interaction, user, battleMessage) {
 
 async function handleBattleItems(interaction, user, battleMessage) {
     try {
-        // Refresh user data from database
-        const freshUser = await User.findOne({ userId: interaction.user.id });
-        if (!freshUser || !freshUser.exploreStates || !freshUser.exploreStates.battleState) {
-            return await interaction.followUp({ 
-                content: '❌ Battle state lost! Please start exploring again with `op explore`.', 
-                ephemeral: true 
-            });
+        // Use the passed-in user first, only refresh if battle state is missing
+        let currentUser = user;
+        
+        // Check if battle state exists in current user
+        if (!currentUser.exploreStates || !currentUser.exploreStates.battleState) {
+            // Try refreshing from database as fallback
+            const freshUser = await User.findOne({ userId: interaction.user.id });
+            if (!freshUser || !freshUser.exploreStates || !freshUser.exploreStates.battleState) {
+                return await interaction.followUp({ 
+                    content: '❌ Battle state lost! Please start exploring again with `op explore`.', 
+                    ephemeral: true 
+                });
+            }
+            currentUser = freshUser;
         }
 
         const usableItems = ['healthpotion', 'strengthpotion', 'speedboostfood', 'defensepotion'];
-        const availableItems = usableItems.filter(item => canUseInventoryItem(freshUser, item));
+        const availableItems = usableItems.filter(item => canUseInventoryItem(currentUser, item));
         
         if (availableItems.length === 0) {
             return await interaction.followUp({ content: 'You have no usable items!', ephemeral: true });
@@ -1152,15 +1161,8 @@ async function handleBattleItems(interaction, user, battleMessage) {
             try {
                 await itemInteraction.deferUpdate();
                 
-                // Refresh user data again for item use
-                const currentUser = await User.findOne({ userId: interaction.user.id });
-                if (!currentUser || !currentUser.exploreStates || !currentUser.exploreStates.battleState) {
-                    return await itemInteraction.followUp({ 
-                        content: '❌ Battle state lost during item use!', 
-                        ephemeral: true 
-                    });
-                }
-                
+                // Use the outer currentUser directly instead of refreshing
+                // This prevents battle state loss from database consistency issues
                 const itemName = itemInteraction.customId.replace('use_', '');
                 const effect = useInventoryItem(currentUser, itemName);
                 
@@ -1228,16 +1230,23 @@ async function handleBattleItems(interaction, user, battleMessage) {
 
 async function handleEnemyTurn(interaction, user, battleMessage) {
     try {
-        // Refresh user data from database to ensure we have the latest state
-        const freshUser = await User.findOne({ userId: interaction.user.id });
-        if (!freshUser || !freshUser.exploreStates || !freshUser.exploreStates.battleState) {
-            return await interaction.followUp({ 
-                content: '❌ Battle state lost during enemy turn!', 
-                ephemeral: true 
-            });
+        // Use the passed-in user first, only refresh if battle state is missing
+        let currentUser = user;
+        
+        // Check if battle state exists in current user
+        if (!currentUser.exploreStates || !currentUser.exploreStates.battleState) {
+            // Try refreshing from database as fallback
+            const freshUser = await User.findOne({ userId: interaction.user.id });
+            if (!freshUser || !freshUser.exploreStates || !freshUser.exploreStates.battleState) {
+                return await interaction.followUp({ 
+                    content: '❌ Battle state lost during enemy turn!', 
+                    ephemeral: true 
+                });
+            }
+            currentUser = freshUser;
         }
 
-        const battleState = freshUser.exploreStates.battleState;
+        const battleState = currentUser.exploreStates.battleState;
         let battleLog = '';
 
         // Each alive enemy attacks a random team member
@@ -1260,7 +1269,7 @@ async function handleEnemyTurn(interaction, user, battleMessage) {
             }
 
             if (aliveTeamMembers.length === 0) {
-                return await handleBattleDefeat(interaction, freshUser, battleMessage, battleLog);
+                return await handleBattleDefeat(interaction, currentUser, battleMessage, battleLog);
             }
         }
 
@@ -1276,7 +1285,7 @@ async function handleEnemyTurn(interaction, user, battleMessage) {
             });
         }
 
-        await saveUserWithRetry(freshUser);
+        await saveUserWithRetry(currentUser);
 
         // Create enhanced battle log display
         const battleLogDisplay = createBattleLogDisplay([battleLog]);
@@ -1343,21 +1352,27 @@ async function handleEnemyTurn(interaction, user, battleMessage) {
 
 async function handleBattleFlee(interaction, user, battleMessage) {
     try {
-        // Refresh user data from database
-        const freshUser = await User.findOne({ userId: interaction.user.id });
-        if (!freshUser) {
-            return await interaction.followUp({ content: '❌ User data not found!', ephemeral: true });
+        // Use the passed-in user first, only refresh if needed
+        let currentUser = user;
+        
+        // If no exploreStates, refresh from database
+        if (!currentUser.exploreStates) {
+            const freshUser = await User.findOne({ userId: interaction.user.id });
+            if (!freshUser) {
+                return await interaction.followUp({ content: '❌ User data not found!', ephemeral: true });
+            }
+            currentUser = freshUser;
         }
 
         // Clean up battle state properly
-        freshUser.exploreStates.inBossFight = false;
-        freshUser.exploreStates.battleState = null;
-        freshUser.exploreStates.currentStage = null;
+        currentUser.exploreStates.inBossFight = false;
+        currentUser.exploreStates.battleState = null;
+        currentUser.exploreStates.currentStage = null;
         
         // Set flee cooldown
-        freshUser.exploreStates.defeatCooldown = Date.now() + (30 * 60 * 1000); // 30 minute cooldown for fleeing
+        currentUser.exploreStates.defeatCooldown = Date.now() + (30 * 60 * 1000); // 30 minute cooldown for fleeing
         
-        await saveUserWithRetry(freshUser);
+        await saveUserWithRetry(currentUser);
         
         const fleeEmbed = new EmbedBuilder()
             .setTitle('🏃‍♂️ Fled from Battle!')
