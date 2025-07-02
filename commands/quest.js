@@ -26,13 +26,9 @@ async function execute(interaction) {
     }
 }
 
-async function showQuestMenu(interaction, user, userId = null) {
-    // Extract userId if not provided
-    if (!userId) {
-        userId = interaction.author ? interaction.author.id : interaction.user.id;
-    }
-    try {
-        const availableQuests = await getAvailableQuests(user);
+// Helper function to build main quest menu content
+async function buildQuestMenuContent(user) {
+    const availableQuests = await getAvailableQuests(user);
     
     // Categorize quests
     const dailyQuests = availableQuests.filter(q => q.type === 'daily');
@@ -81,6 +77,35 @@ async function showQuestMenu(interaction, user, userId = null) {
                 .setStyle(ButtonStyle.Primary)
                 .setDisabled(claimableCount === 0)
         );
+    
+    return { embed, row };
+}
+
+// Helper function to update back to main quest menu
+async function updateToQuestMenu(interaction, user) {
+    try {
+        const { embed, row } = await buildQuestMenuContent(user);
+        await interaction.update({ embeds: [embed], components: [row] });
+    } catch (error) {
+        console.error('Error updating to quest menu:', error);
+        await interaction.update({
+            embeds: [new EmbedBuilder()
+                .setColor(0x2b2d31)
+                .setTitle('Error')
+                .setDescription('An error occurred while loading quests. Please try again.')
+            ],
+            components: []
+        });
+    }
+}
+
+async function showQuestMenu(interaction, user, userId = null) {
+    // Extract userId if not provided
+    if (!userId) {
+        userId = interaction.author ? interaction.author.id : interaction.user.id;
+    }
+    try {
+        const { embed, row } = await buildQuestMenuContent(user);
     
     const response = await interaction.reply({ embeds: [embed], components: [row] });
     
@@ -136,7 +161,7 @@ async function showQuestsByType(interaction, user, questType) {
     const filteredQuests = availableQuests.filter(q => q.type === questType);
     
     if (filteredQuests.length === 0) {
-        return interaction.update({
+        await interaction.update({
             embeds: [new EmbedBuilder()
                 .setColor(0x2b2d31)
                 .setTitle(`${questType.charAt(0).toUpperCase() + questType.slice(1)} Quests`)
@@ -149,6 +174,17 @@ async function showQuestsByType(interaction, user, questType) {
                     .setStyle(ButtonStyle.Secondary)
             )]
         });
+        
+        // Handle back button for empty quest screen
+        const collector = interaction.message.createMessageComponentCollector({ time: 300000 });
+        
+        collector.on('collect', async (buttonInteraction) => {
+            if (buttonInteraction.customId === 'quest_back') {
+                await updateToQuestMenu(buttonInteraction, user);
+            }
+        });
+        
+        return;
     }
     
     const embed = new EmbedBuilder()
@@ -241,7 +277,7 @@ async function showQuestsByType(interaction, user, questType) {
     
     collector.on('collect', async (buttonInteraction) => {
         if (buttonInteraction.customId === 'quest_back') {
-            await showQuestMenu(buttonInteraction, user);
+            await updateToQuestMenu(buttonInteraction, user);
         }
     });
 }
@@ -291,7 +327,7 @@ async function claimAllQuests(interaction, user) {
     }
     
     if (claimedQuests.length === 0) {
-        return interaction.update({
+        await interaction.update({
             embeds: [new EmbedBuilder()
                 .setColor(0x2b2d31)
                 .setTitle('Claim Rewards')
@@ -304,6 +340,17 @@ async function claimAllQuests(interaction, user) {
                     .setStyle(ButtonStyle.Secondary)
             )]
         });
+        
+        // Handle back button for empty claim screen
+        const collector = interaction.message.createMessageComponentCollector({ time: 300000 });
+        
+        collector.on('collect', async (buttonInteraction) => {
+            if (buttonInteraction.customId === 'quest_back') {
+                await updateToQuestMenu(buttonInteraction, user);
+            }
+        });
+        
+        return;
     }
     
     // Build rewards summary
@@ -336,9 +383,9 @@ async function claimAllQuests(interaction, user) {
     
     collector.on('collect', async (buttonInteraction) => {
         if (buttonInteraction.customId === 'quest_back') {
-            // Refresh user data and show menu
+            // Refresh user data and update to menu
             const refreshedUser = await User.findOne({ userId: user.userId });
-            await showQuestMenu(buttonInteraction, refreshedUser);
+            await updateToQuestMenu(buttonInteraction, refreshedUser);
         }
     });
 }
