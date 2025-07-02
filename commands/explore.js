@@ -868,11 +868,21 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
 }
 
 async function handleBattle(message, user, stageData, currentLocation, client) {
+    // Validate user has a team set up
+    if (!user.team || user.team.length === 0) {
+        return message.reply('❌ You need to set up your team first! Use `op team add <card>` to add cards to your team.');
+    }
+
+    // Validate user has cards
+    if (!user.cards || user.cards.length === 0) {
+        return message.reply('❌ You don\'t have any cards! Pull some cards first with `op pull`.');
+    }
+
     // Get user's team using the battle system
     const battleTeam = calculateBattleStats(user);
 
     if (!battleTeam || battleTeam.length === 0) {
-        return message.reply('❌ You need to set up your team first! Use `op team add <card>` to add cards to your team.');
+        return message.reply('❌ Your team is invalid or cards are missing. Please check your team with `op team` and fix any issues.');
     }
 
     // Fix HP property - ensure we're using maxHp correctly
@@ -1010,9 +1020,18 @@ async function displayBattleState(message, user, client) {
 
     collector.on('collect', async interaction => {
         try {
-            // Check if interaction is still valid
-            if (!interaction.isRepliable()) {
-                console.log('Battle interaction no longer repliable');
+            // Check if interaction is still valid (not expired)
+            const interactionAge = Date.now() - interaction.createdTimestamp;
+            if (interactionAge > 14 * 60 * 1000) { // 14 minutes
+                console.log('Battle interaction expired, cleaning up');
+                collector.stop();
+                return;
+            }
+
+            // Check if interaction is repliable
+            if (!interaction.isRepliable() || interaction.replied || interaction.deferred) {
+                console.log('Battle interaction not repliable, stopping');
+                collector.stop();
                 return;
             }
 
@@ -1023,14 +1042,42 @@ async function displayBattleState(message, user, client) {
             if (!freshUser || !freshUser.exploreStates.inBossFight) {
                 // Battle state was cleared, stop collector
                 collector.stop();
-                await battleMessage.edit({ 
-                    content: '⚠️ Battle state was reset. Please use `op explore` to continue.',
-                    embeds: [],
-                    components: [] 
-                });
+                try {
+                    await battleMessage.edit({ 
+                        content: '⚠️ Battle state was reset. Please use `op explore` to continue.',
+                        embeds: [],
+                        components: [] 
+                    });
+                } catch (editError) {
+                    console.log('Could not edit expired battle message');
+                }
                 return;
             }
 
+            // Validate battle state before processing
+            const battleState = freshUser.exploreStates.battleState;
+            if (!battleState || !battleState.userTeam || !battleState.enemies) {
+                console.log('Battle state corrupted, cleaning up');
+                freshUser.exploreStates.inBossFight = false;
+                freshUser.exploreStates.battleState = null;
+                freshUser.exploreStates.currentStage = null;
+                freshUser.exploreStates.currentLocation = null;
+                await freshUser.save();
+                collector.stop();
+                
+                try {
+                    await battleMessage.edit({ 
+                        content: '⚠️ Battle state corrupted. Please use `op explore` to restart.',
+                        embeds: [],
+                        components: [] 
+                    });
+                } catch (editError) {
+                    console.log('Could not edit battle message after corruption');
+                }
+                return;
+            }
+
+            // Process the battle action
             if (interaction.customId === 'battle_attack') {
                 await handleBattleAttack(interaction, freshUser, battleMessage);
             } else if (interaction.customId === 'battle_items') {
@@ -1039,8 +1086,16 @@ async function displayBattleState(message, user, client) {
                 await handleBattleFlee(interaction, freshUser, battleMessage);
             }
         } catch (error) {
-            console.error('Battle interaction error:', error);
-            // Attempt to clean up battle state on error
+            console.error('Battle interaction error:', error.code || error.message);
+            
+            // Don't try to respond to expired interactions
+            if (error.code === 10062 || error.code === 10063) {
+                console.log('Interaction expired, stopping collector');
+                collector.stop();
+                return;
+            }
+
+            // For other errors, attempt cleanup
             try {
                 const errorUser = await User.findOne({ userId: user.userId });
                 if (errorUser) {
@@ -1055,14 +1110,19 @@ async function displayBattleState(message, user, client) {
             }
 
             collector.stop();
-            try {
-                await battleMessage.edit({ 
-                    content: '❌ An error occurred in battle. Your battle state has been reset. Use `op explore` to continue.',
-                    embeds: [],
-                    components: [] 
-                });
-            } catch (editError) {
-                console.error('Error editing battle message:', editError);
+            
+            // Only try to edit if interaction hasn't expired
+            const interactionAge = Date.now() - interaction.createdTimestamp;
+            if (interactionAge < 14 * 60 * 1000) {
+                try {
+                    await battleMessage.edit({ 
+                        content: '❌ Battle error occurred. Battle state reset. Use `op explore` to continue.',
+                        embeds: [],
+                        components: [] 
+                    });
+                } catch (editError) {
+                    console.log('Could not edit battle message after error');
+                }
             }
         }
     });
@@ -1082,13 +1142,22 @@ async function displayBattleState(message, user, client) {
                     await timeoutUser.save();
                 }
                 
-                await battleMessage.edit({ 
-                    content: '⏰ Battle timed out! Your exploration state has been reset. Use `op explore` to continue.',
-                    embeds: [],
-                    components: [] 
-                });
-            } else {
-                await battleMessage.edit({ components: [] });
+                try {
+                    await battleMessage.edit({ 
+                        content: '⏰ Battle timed out! Your exploration state has been reset. Use `op explore` to continue.',
+                        embeds: [],
+                        components: [] 
+                    });
+                } catch (editError) {
+                    console.log('Could not edit battle message on timeout');
+                }
+            } else if (reason !== 'error') {
+                // Only edit if not an error (to avoid double editing)
+                try {
+                    await battleMessage.edit({ components: [] });
+                } catch (editError) {
+                    console.log('Could not remove battle components');
+                }
             }
         } catch (error) {
             console.error('Error handling battle collector end:', error);
@@ -1100,81 +1169,99 @@ async function handleBattleAttack(interaction, user, battleMessage) {
     try {
         const battleState = user.exploreStates.battleState;
 
-        // Check if battle state exists
-        if (!battleState || !battleState.userTeam) {
-            return await interaction.followUp({ content: 'Battle state corrupted. Please restart the battle.', ephemeral: true });
+        // Check if battle state exists and is valid
+        if (!battleState || !battleState.userTeam || !battleState.enemies) {
+            console.log('Battle state corrupted in handleBattleAttack');
+            if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
+                return await interaction.followUp({ content: 'Battle state corrupted. Please use `op explore` to restart.', ephemeral: true });
+            }
+            return;
         }
 
-    // Get first alive card from team
-    const activeCard = battleState.userTeam.find(card => card.currentHp > 0);
-    if (!activeCard) {
-        return await handleBattleDefeat(interaction, user, battleMessage, 'All your crew members are defeated!');
-    }
-
-    // User attacks first enemy alive
-    const targetEnemy = battleState.enemies.find(e => e.currentHp > 0);
-    if (!targetEnemy) return;
-
-    let attackDamage = calculateDamage(activeCard, targetEnemy, 'normal');
-
-    targetEnemy.currentHp = Math.max(0, targetEnemy.currentHp - attackDamage);
-
-    let battleLog = `⚔️ ${activeCard.name} attacks ${targetEnemy.name} for ${attackDamage} damage!`;
-
-    if (targetEnemy.currentHp <= 0) {
-        battleLog += `\n💀 ${targetEnemy.name} is defeated!`;    }
-
-    // Check if all enemies defeated
-    if (battleState.enemies.every(e => e.currentHp <= 0)) {
-        return await handleBattleVictory(interaction, user, battleMessage, battleLog);
-    }
-
-    // Enemy attacks back
-    const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
-    for (const enemy of aliveEnemies) {
-        const targetCard = battleState.userTeam.find(card => card.currentHp > 0);
-        if (!targetCard) break;
-
-        const enemyDamage = calculateDamage(enemy, targetCard, 'normal');
-
-        targetCard.currentHp = Math.max(0, targetCard.currentHp - enemyDamage);
-        battleLog += `\n💥 ${enemy.name} attacks ${targetCard.name} for ${enemyDamage} damage!`;
-
-        if (targetCard.currentHp <= 0) {
-            battleLog += `\n💀 ${targetCard.name} is defeated!`;
+        // Get first alive card from team
+        const activeCard = battleState.userTeam.find(card => card.currentHp > 0);
+        if (!activeCard) {
+            return await handleBattleDefeat(interaction, user, battleMessage, 'All your crew members are defeated!');
         }
-    }
 
-    // Check if all team defeated
-    if (battleState.userTeam.every(card => card.currentHp <= 0)) {
-        return await handleBattleDefeat(interaction, user, battleMessage, battleLog);
-    }
+        // User attacks first enemy alive
+        const targetEnemy = battleState.enemies.find(e => e.currentHp > 0);
+        if (!targetEnemy) {
+            console.log('No target enemy found');
+            return;
+        }
 
-    battleState.turn++;
-    user.exploreStates.battleState = battleState;
-    await user.save();
+        let attackDamage = calculateDamage(activeCard, targetEnemy, 'normal');
 
-    // Update battle display
-    await updateBattleDisplay(interaction, user, battleMessage, battleLog);
+        targetEnemy.currentHp = Math.max(0, targetEnemy.currentHp - attackDamage);
+
+        let battleLog = `⚔️ ${activeCard.name} attacks ${targetEnemy.name} for ${attackDamage} damage!`;
+
+        if (targetEnemy.currentHp <= 0) {
+            battleLog += `\n💀 ${targetEnemy.name} is defeated!`;
+        }
+
+        // Check if all enemies defeated
+        if (battleState.enemies.every(e => e.currentHp <= 0)) {
+            return await handleBattleVictory(interaction, user, battleMessage, battleLog);
+        }
+
+        // Enemy attacks back
+        const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
+        for (const enemy of aliveEnemies) {
+            const targetCard = battleState.userTeam.find(card => card.currentHp > 0);
+            if (!targetCard) break;
+
+            const enemyDamage = calculateDamage(enemy, targetCard, 'normal');
+
+            targetCard.currentHp = Math.max(0, targetCard.currentHp - enemyDamage);
+            battleLog += `\n💥 ${enemy.name} attacks ${targetCard.name} for ${enemyDamage} damage!`;
+
+            if (targetCard.currentHp <= 0) {
+                battleLog += `\n💀 ${targetCard.name} is defeated!`;
+            }
+        }
+
+        // Check if all team defeated
+        if (battleState.userTeam.every(card => card.currentHp <= 0)) {
+            return await handleBattleDefeat(interaction, user, battleMessage, battleLog);
+        }
+
+        battleState.turn++;
+        user.exploreStates.battleState = battleState;
+        await user.save();
+
+        // Update battle display
+        await updateBattleDisplay(interaction, user, battleMessage, battleLog);
     } catch (error) {
-        console.error('Error in handleBattleAttack:', error);
+        console.error('Error in handleBattleAttack:', error.code || error.message);
+        
+        // Don't try to respond to expired interactions
+        if (error.code === 10062 || error.code === 10063) {
+            console.log('Cannot respond to expired interaction in handleBattleAttack');
+            return;
+        }
+        
         try {
-            await interaction.followUp({ content: 'An error occurred during battle. Please try again.', ephemeral: true });
+            if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
+                await interaction.followUp({ content: 'An error occurred during battle. Please try again.', ephemeral: true });
+            }
         } catch (followUpError) {
-            console.error('Error sending error message:', followUpError);
+            console.log('Could not send error message in handleBattleAttack');
         }
     }
 }
 
 async function updateBattleDisplay(interaction, user, battleMessage, battleLog) {
-    const battleState = user.exploreStates.battleState;
-    const stageData = user.exploreStates.currentStage;
-    const currentLocation = user.exploreStates.currentLocation;
+    try {
+        const battleState = user.exploreStates.battleState;
+        const stageData = user.exploreStates.currentStage;
+        const currentLocation = user.exploreStates.currentLocation;
 
-    if (!battleState || !stageData || !currentLocation) {
-        console.error('Battle state corrupted during update');
-        return;
-    }
+        if (!battleState || !stageData || !currentLocation) {
+            console.error('Battle state corrupted during update');
+            return;
+        }
     const localStage = getLocalStage(user.stage);
     const totalStages = getTotalStagesInLocation(currentLocation);
 
@@ -1236,6 +1323,10 @@ async function updateBattleDisplay(interaction, user, battleMessage, battleLog) 
 
     const row = new ActionRowBuilder().addComponents(battleButtons);
     await battleMessage.edit({ embeds: [embed], components: [row] });
+    } catch (error) {
+        console.error('Error updating battle display:', error.code || error.message);
+        // If we can't update the display, the battle state will handle cleanup
+    }
 }
 
 async function handleBattleItems(interaction, user, battleMessage) {
