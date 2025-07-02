@@ -199,11 +199,11 @@ async function updateQuestProgress(user, actionType, amount = 1) {
                 }
             }
             
-            // Save progress if there was a matching requirement
+            // Mark progress as modified if there was a matching requirement
             if (hasMatchingRequirement) {
                 // Mark the document as modified for the activeQuests array
                 user.markModified('activeQuests');
-                await user.save();
+                // Don't save here - let the calling function handle saving to avoid multiple saves
             }
             
             // Only mark as completed if quest has matching requirements and is fully completed
