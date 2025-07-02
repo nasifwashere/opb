@@ -127,6 +127,14 @@ async function execute(message, args) {
 
   await user.save();
 
+  // Update quest progress for evolution
+  try {
+    const { updateQuestProgress } = require('../utils/questSystem.js');
+    await updateQuestProgress(user, 'evolve', 1);
+  } catch (error) {
+    console.error('Error updating evolution quest progress:', error);
+  }
+
   // Create success embed
   const embed = new EmbedBuilder()
     .setTitle('<:sucess:1375872950321811547> Evolution Success!')

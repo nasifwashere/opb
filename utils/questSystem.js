@@ -311,7 +311,9 @@ async function claimQuestReward(user, questId) {
                     
                 case 'item':
                     if (!user.inventory) user.inventory = [];
-                    user.inventory.push(reward.itemName.toLowerCase().replace(/\s+/g, ''));
+                    // Normalize item name for inventory storage
+                    const normalizedItemName = reward.itemName.toLowerCase().replace(/\s+/g, '');
+                    user.inventory.push(normalizedItemName);
                     rewardText += `+${reward.itemName} `;
                     break;
                     

@@ -142,10 +142,10 @@ async function purchaseItem(buyerId, listingId) {
       listing.save()
     ]);
 
-    // Update quest progress for market transactions
-    const { updateQuestProgress } = require('./questSystem');
-    await updateQuestProgress(buyer, 'market_buy', 1);
-    await updateQuestProgress(seller, 'market_sell', 1);
+            // Update quest progress for market transactions
+        const { updateQuestProgress } = require('./questSystem');
+        await updateQuestProgress(buyer, 'market_transaction', 1);
+        await updateQuestProgress(seller, 'market_transaction', 1);
 
     return {
       success: true,

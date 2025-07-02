@@ -69,7 +69,7 @@
       },
       {
         "type": "item",
-        "itemName": "healingpotion"
+        "itemName": "Basic Potion"
       }
     ],
     "unlockRequirements": {},
@@ -145,7 +145,7 @@
       },
       {
         "type": "item",
-        "itemName": "luckycharm"
+        "itemName": "Rusty Cutlass"
       }
     ],
     "unlockRequirements": {},
@@ -173,7 +173,7 @@
       },
       {
         "type": "item",
-        "itemName": "powerboost"
+        "itemName": "Normal Potion"
       }
     ],
     "unlockRequirements": {},
@@ -201,7 +201,7 @@
       },
       {
         "type": "item",
-        "itemName": "treasuremapfragment"
+        "itemName": "Leather Vest"
       }
     ],
     "unlockRequirements": {},
@@ -282,7 +282,7 @@
       },
       {
         "type": "item",
-        "itemName": "strawhat"
+        "itemName": "Rusty Cutlass"
       }
     ],
     "unlockRequirements": {
@@ -343,7 +343,7 @@
       },
       {
         "type": "item",
-        "itemName": "healingpotion"
+        "itemName": "Basic Potion"
       }
     ],
     "unlockRequirements": {
@@ -373,7 +373,7 @@
       },
       {
         "type": "item",
-        "itemName": "luckycharm"
+        "itemName": "Flintlock Pistol"
       }
     ],
     "unlockRequirements": {
@@ -403,7 +403,7 @@
       },
       {
         "type": "item",
-        "itemName": "trainingmanual"
+        "itemName": "Marine Saber"
       }
     ],
     "unlockRequirements": {
@@ -466,7 +466,7 @@
       },
       {
         "type": "item",
-        "itemName": "powerboost"
+        "itemName": "Marine Coat"
       }
     ],
     "unlockRequirements": {
@@ -524,7 +524,7 @@
       },
       {
         "type": "item",
-        "itemName": "treasuremapfragment"
+        "itemName": "Marine Rifle"
       }
     ],
     "unlockRequirements": {
