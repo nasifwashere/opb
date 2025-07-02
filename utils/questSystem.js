@@ -7,8 +7,8 @@ const path = require('path');
 
 const questsPath = path.resolve('data', 'quests.json');
 
-// Configuration for quest logging - set to true to enable debugging
-const ENABLE_QUEST_LOGGING = true; // Temporarily enabled for debugging
+// Configuration for quest logging - set to false to reduce spam
+const ENABLE_QUEST_LOGGING = false; // Disabled after debugging confirmed working
 
 // Silent logging function that only logs when debugging is enabled
 function questLog(message) {
