@@ -1,6 +1,10 @@
 
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const User = require('../db/models/User.js');
+const { calculateBattleStats, calculateDamage, resetTeamHP } = require('../utils/battleSystem.js');
+const { distributeXPToTeam, XP_PER_LEVEL } = require('../utils/levelSystem.js');
+const path = require('path');
+const fs = require('fs');
 
 // Location data based on your specifications
 const LOCATIONS = {
@@ -330,12 +334,36 @@ function addToInventory(user, item) {
     }
 }
 
-function addXP(user, amount) {
+async function addXP(user, amount) {
     const xpBoost = user.activeBoosts?.find(boost => 
         boost.type === 'double_xp' && boost.expiresAt > Date.now()
     );
     const finalAmount = xpBoost ? amount * 2 : amount;
+
+    // Add to user's total XP
     user.xp = (user.xp || 0) + finalAmount;
+
+    // Distribute XP to team members and handle level ups
+    if (user.team && user.team.length > 0) {
+        const levelUpChanges = distributeXPToTeam(user, finalAmount);
+
+        // Store level up information for display
+        if (levelUpChanges && levelUpChanges.length > 0) {
+            if (!user.recentLevelUps) user.recentLevelUps = [];
+            user.recentLevelUps.push(...levelUpChanges);
+        }
+
+        // Mark the user document as modified to ensure cards array is saved
+        user.markModified('cards');
+
+        // Save the user document to persist XP changes
+        try {
+            await user.save();
+            console.log('User XP data saved successfully');
+        } catch (error) {
+            console.error('Error saving user XP data:', error);
+        }
+    }
 }
 
 function prettyTime(ms) {
@@ -418,23 +446,7 @@ function calculateEquippedBonuses(user) {
     return bonuses;
 }
 
-// Get user's battle stats including equipped item bonuses
-function getUserBattleStats(user) {
-    const baseStats = {
-        hp: 100 + (user.level || 1) * 10,
-        atk: 15 + (user.level || 1) * 2,
-        spd: 50 + (user.level || 1) * 3
-    };
-    
-    const equipped = calculateEquippedBonuses(user);
-    
-    return {
-        hp: baseStats.hp + equipped.hp,
-        atk: baseStats.atk + equipped.atk,
-        spd: baseStats.spd + equipped.spd,
-        def: equipped.def
-    };
-}
+// Legacy function removed - now using team-based battle system
 
 // Check if user can use inventory items in battle
 function canUseInventoryItem(user, itemName) {
@@ -633,8 +645,24 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
 }
 
 async function handleBattle(message, user, stageData, currentLocation, client) {
-    // Initialize battle state
-    const userStats = getUserBattleStats(user);
+    // Validate user has a team set up
+    if (!user.team || user.team.length === 0) {
+        return message.reply('❌ You need to set up your team first! Use `op team add <card>` to add cards to your team.');
+    }
+
+    // Validate user has cards
+    if (!user.cards || user.cards.length === 0) {
+        return message.reply('❌ You don\'t have any cards! Pull some cards first with `op pull`.');
+    }
+
+    // Get user's team using the proper battle system
+    const battleTeam = calculateBattleStats(user);
+
+    if (!battleTeam || battleTeam.length === 0) {
+        return message.reply('❌ Your team is invalid or cards are missing. Please check your team with `op team` and fix any issues.');
+    }
+
+    // Initialize enemies
     let enemies = [];
     
     if (stageData.type === 'multi_enemy') {
@@ -652,8 +680,7 @@ async function handleBattle(message, user, stageData, currentLocation, client) {
     }
 
     const battleState = {
-        userHp: userStats.hp,
-        userMaxHp: userStats.hp,
+        userTeam: battleTeam,
         enemies: enemies,
         turn: 1,
         userBoosts: {},
@@ -698,13 +725,20 @@ async function displayBattleState(message, user, client) {
         .setDescription(stageData.desc)
         .setColor(battleState.isBossFight ? 0xe74c3c : 0xf39c12);
 
-    // User HP bar
-    const userHpBar = createHpBar(battleState.userHp, battleState.userMaxHp);
-    embed.addFields({
-        name: `${message.author.username} (You)`,
-        value: `❤️ ${battleState.userHp}/${battleState.userMaxHp} ${userHpBar}`,
-        inline: false
-    });
+    // User team display
+    const aliveTeamMembers = battleState.userTeam.filter(card => card.currentHp > 0);
+    if (aliveTeamMembers.length > 0) {
+        const teamDisplay = aliveTeamMembers.map(card => {
+            const hpBar = createHpBar(card.currentHp, card.maxHp);
+            return `${card.name} (Lv.${card.level}) | ${hpBar} | ${card.currentHp}/${card.maxHp}`;
+        }).join('\n');
+        
+        embed.addFields({
+            name: `${message.author.username}'s Team`,
+            value: teamDisplay,
+            inline: false
+        });
+    }
 
     // Enemy HP bars
     battleState.enemies.forEach((enemy, index) => {
@@ -777,13 +811,17 @@ async function displayBattleState(message, user, client) {
 
 async function handleBattleAttack(interaction, user, battleMessage) {
     const battleState = user.exploreStates.battleState;
-    const userStats = getUserBattleStats(user);
     
-    // User attacks first enemy alive
+    // Get the first alive team member to attack
+    const attacker = battleState.userTeam.find(card => card.currentHp > 0);
+    if (!attacker) return await handleBattleDefeat(interaction, user, battleMessage, 'Your team is defeated!');
+
+    // Find first enemy alive
     const targetEnemy = battleState.enemies.find(e => e.currentHp > 0);
     if (!targetEnemy) return;
 
-    let attackDamage = Math.floor(Math.random() * (userStats.atk - 10) + 10);
+    // Calculate damage using the proper battle system
+    let attackDamage = calculateDamage(attacker, targetEnemy);
     
     // Apply user boosts
     if (battleState.userBoosts.attack_boost) {
@@ -796,7 +834,7 @@ async function handleBattleAttack(interaction, user, battleMessage) {
     
     targetEnemy.currentHp = Math.max(0, targetEnemy.currentHp - attackDamage);
     
-    let battleLog = `⚔️ You attack ${targetEnemy.name} for ${attackDamage} damage!`;
+    let battleLog = `⚔️ ${attacker.name} attacks ${targetEnemy.name} for ${attackDamage} damage!`;
     
     if (targetEnemy.currentHp <= 0) {
         battleLog += `\n💀 ${targetEnemy.name} is defeated!`;
@@ -807,26 +845,27 @@ async function handleBattleAttack(interaction, user, battleMessage) {
         return await handleBattleVictory(interaction, user, battleMessage, battleLog);
     }
 
-    // Enemy attacks back
+    // Enemy attacks back - target random team member
     const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
+    const aliveTeamMembers = battleState.userTeam.filter(card => card.currentHp > 0);
+    
     for (const enemy of aliveEnemies) {
-        const enemyAttack = Array.isArray(enemy.atk) ? 
-            Math.floor(Math.random() * (enemy.atk[1] - enemy.atk[0] + 1)) + enemy.atk[0] :
-            enemy.atk;
+        if (aliveTeamMembers.length === 0) break;
         
-        let damage = enemyAttack;
+        const target = aliveTeamMembers[Math.floor(Math.random() * aliveTeamMembers.length)];
+        const damage = calculateDamage(enemy, target);
         
-        // Apply defense from equipment
-        if (userStats.def > 0) {
-            damage = Math.max(1, damage - userStats.def);
+        target.currentHp = Math.max(0, target.currentHp - damage);
+        battleLog += `\n💥 ${enemy.name} attacks ${target.name} for ${damage} damage!`;
+        
+        if (target.currentHp <= 0) {
+            battleLog += `\n💀 ${target.name} is defeated!`;
         }
-        
-        battleState.userHp = Math.max(0, battleState.userHp - damage);
-        battleLog += `\n💥 ${enemy.name} attacks you for ${damage} damage!`;
-        
-        if (battleState.userHp <= 0) {
-            return await handleBattleDefeat(interaction, user, battleMessage, battleLog);
-        }
+    }
+
+    // Check if all team members defeated
+    if (battleState.userTeam.every(card => card.currentHp <= 0)) {
+        return await handleBattleDefeat(interaction, user, battleMessage, battleLog);
     }
 
     battleState.turn++;
@@ -839,13 +878,20 @@ async function handleBattleAttack(interaction, user, battleMessage) {
         .setDescription(battleLog)
         .setColor(0xf39c12);
 
-    // User HP
-    const userHpBar = createHpBar(battleState.userHp, battleState.userMaxHp);
-    embed.addFields({
-        name: `${interaction.user.username} (You)`,
-        value: `❤️ ${battleState.userHp}/${battleState.userMaxHp} ${userHpBar}`,
-        inline: false
-    });
+    // Team display
+    const aliveTeam = battleState.userTeam.filter(card => card.currentHp > 0);
+    if (aliveTeam.length > 0) {
+        const teamDisplay = aliveTeam.map(card => {
+            const hpBar = createHpBar(card.currentHp, card.maxHp);
+            return `${card.name} (Lv.${card.level}) | ${hpBar} | ${card.currentHp}/${card.maxHp}`;
+        }).join('\n');
+        
+        embed.addFields({
+            name: `${interaction.user.username}'s Team`,
+            value: teamDisplay,
+            inline: false
+        });
+    }
 
     // Enemy HP
     battleState.enemies.forEach(enemy => {
@@ -921,9 +967,15 @@ async function handleBattleItems(interaction, user, battleMessage) {
 
         // Apply item effects
         if (effect.type === 'heal') {
-            const healAmount = Math.min(effect.amount, battleState.userMaxHp - battleState.userHp);
-            battleState.userHp += healAmount;
-            effectText = `Healed ${healAmount} HP!`;
+            // Heal the first injured team member
+            const injuredCard = battleState.userTeam.find(card => card.currentHp < card.maxHp && card.currentHp > 0);
+            if (injuredCard) {
+                const healAmount = Math.min(effect.amount, injuredCard.maxHp - injuredCard.currentHp);
+                injuredCard.currentHp += healAmount;
+                effectText = `Healed ${injuredCard.name} for ${healAmount} HP!`;
+            } else {
+                effectText = `No injured team members to heal!`;
+            }
         } else if (effect.type === 'attack_boost') {
             if (!battleState.userBoosts) battleState.userBoosts = {};
             battleState.userBoosts.attack_boost = { amount: effect.amount, duration: effect.duration };
@@ -956,24 +1008,28 @@ async function handleBattleItems(interaction, user, battleMessage) {
 
 async function handleEnemyTurn(interaction, user, battleMessage) {
     const battleState = user.exploreStates.battleState;
-    const userStats = getUserBattleStats(user);
     let battleLog = '';
 
-    // Each alive enemy attacks
+    // Each alive enemy attacks a random team member
+    const aliveTeamMembers = battleState.userTeam.filter(card => card.currentHp > 0);
+    
     for (const enemy of battleState.enemies) {
-        if (enemy.currentHp <= 0) continue;
+        if (enemy.currentHp <= 0 || aliveTeamMembers.length === 0) continue;
 
-        const enemyDamage = Array.isArray(enemy.atk) 
-            ? Math.floor(Math.random() * (enemy.atk[1] - enemy.atk[0] + 1)) + enemy.atk[0]
-            : enemy.atk;
-
-        const userDefense = battleState.userBoosts?.defense_boost?.amount || 0;
-        const finalDamage = Math.max(1, enemyDamage - userDefense);
+        const target = aliveTeamMembers[Math.floor(Math.random() * aliveTeamMembers.length)];
+        const damage = calculateDamage(enemy, target);
         
-        battleState.userHp = Math.max(0, battleState.userHp - finalDamage);
-        battleLog += `${enemy.name} attacks for ${finalDamage} damage!\n`;
+        target.currentHp = Math.max(0, target.currentHp - damage);
+        battleLog += `${enemy.name} attacks ${target.name} for ${damage} damage!\n`;
 
-        if (battleState.userHp <= 0) {
+        if (target.currentHp <= 0) {
+            battleLog += `${target.name} is defeated!\n`;
+            // Remove defeated card from alive members array
+            const index = aliveTeamMembers.indexOf(target);
+            if (index > -1) aliveTeamMembers.splice(index, 1);
+        }
+
+        if (aliveTeamMembers.length === 0) {
             return await handleBattleDefeat(interaction, user, battleMessage, battleLog);
         }
     }
@@ -998,13 +1054,20 @@ async function handleEnemyTurn(interaction, user, battleMessage) {
         .setDescription(battleLog)
         .setColor(0xf39c12);
 
-    // User HP
-    const userHpBar = createHpBar(battleState.userHp, battleState.userMaxHp);
-    embed.addFields({
-        name: `${interaction.user.username} (You)`,
-        value: `❤️ ${battleState.userHp}/${battleState.userMaxHp} ${userHpBar}`,
-        inline: false
-    });
+    // Team display
+    const aliveTeam = battleState.userTeam.filter(card => card.currentHp > 0);
+    if (aliveTeam.length > 0) {
+        const teamDisplay = aliveTeam.map(card => {
+            const hpBar = createHpBar(card.currentHp, card.maxHp);
+            return `${card.name} (Lv.${card.level}) | ${hpBar} | ${card.currentHp}/${card.maxHp}`;
+        }).join('\n');
+        
+        embed.addFields({
+            name: `${interaction.user.username}'s Team`,
+            value: teamDisplay,
+            inline: false
+        });
+    }
 
     // Enemy HP
     battleState.enemies.forEach(enemy => {
@@ -1127,9 +1190,9 @@ async function applyReward(user, reward) {
     if (!reward) return;
     
     if (reward.type === 'xp') {
-        addXP(user, reward.amount);
+        await addXP(user, reward.amount);
     } else if (reward.type === 'beli') {
-        user.beli = (user.beli || 0) + reward.amount;
+        user.coins = (user.coins || 0) + reward.amount;
     } else if (reward.type === 'item') {
         addToInventory(user, reward.name);
         if (reward.count && reward.count > 1) {
