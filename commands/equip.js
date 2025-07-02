@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
 
 // Normalize string for fuzzy matching
@@ -66,65 +66,68 @@ async function execute(message, args, client) {
     const cardName = cardParts.join(' ');
 
     if (!itemName || !cardName) {
-        return message.reply({
-            embeds: [{
-                color: 0x2C2F33,
-                title: 'Usage',
-                description: '```\nop equip [item] [card]\n```\nExample: `op equip strawhat luffy`',
-                footer: { text: 'Equip an item to boost your card’s stats.' }
-            }]
-        });
+        const embed = new EmbedBuilder()
+            .setColor(0x2b2d31)
+            .setTitle('Equip Item')
+            .setDescription('Equip an item to boost your card\'s stats.')
+            .addFields(
+                { name: 'Usage', value: '`op equip <item> <card>`', inline: false },
+                { name: 'Example', value: '`op equip strawhat luffy`', inline: false }
+            )
+            .setFooter({ text: 'Items provide stat bonuses when equipped' });
+
+        return message.reply({ embeds: [embed] });
     }
 
     const user = await User.findOne({ userId });
     if (!user) {
-        return message.reply({
-            embeds: [{
-                color: 0x2C2F33,
-                description: 'Start your journey with `op start` first.',
-            }]
-        });
+        const embed = new EmbedBuilder()
+            .setColor(0x2b2d31)
+            .setDescription('Start your journey with `op start` first!')
+            .setFooter({ text: 'Use op start to begin your adventure' });
+
+        return message.reply({ embeds: [embed] });
     }
 
     if (!Array.isArray(user.inventory) || user.inventory.length === 0) {
-        return message.reply({
-            embeds: [{
-                color: 0x2C2F33,
-                description: 'Your inventory is empty.',
-            }]
-        });
+        const embed = new EmbedBuilder()
+            .setColor(0x2b2d31)
+            .setDescription('Your inventory is empty.')
+            .setFooter({ text: 'Use op shop to buy items' });
+
+        return message.reply({ embeds: [embed] });
     }
 
     const ownedItem = fuzzyFind(user.inventory, itemName);
     if (!ownedItem) {
-        return message.reply({
-            embeds: [{
-                color: 0x2C2F33,
-                description: `You don’t have **${itemName}** in your inventory.`,
-            }]
-        });
+        const embed = new EmbedBuilder()
+            .setColor(0x2b2d31)
+            .setDescription(`You don't have **${itemName}** in your inventory.`)
+            .setFooter({ text: 'Check your inventory with op inventory' });
+
+        return message.reply({ embeds: [embed] });
     }
 
     const cardObj = fuzzyFindCard(user.cards || [], cardName);
     if (!cardObj) {
-        return message.reply({
-            embeds: [{
-                color: 0x2C2F33,
-                description: `You don’t have a card named **${cardName}**.`,
-            }]
-        });
+        const embed = new EmbedBuilder()
+            .setColor(0x2b2d31)
+            .setDescription(`You don't have a card named **${cardName}**.`)
+            .setFooter({ text: 'Check your collection with op collection' });
+
+        return message.reply({ embeds: [embed] });
     }
 
     const normItem = normalize(ownedItem);
     const normCard = normalize(cardObj.name);
 
     if (normItem === 'strawhat' && !normCard.includes('luffy')) {
-        return message.reply({
-            embeds: [{
-                color: 0x992D22,
-                description: 'The Strawhat can only be equipped on Monkey D. Luffy.',
-            }]
-        });
+        const embed = new EmbedBuilder()
+            .setColor(0x2b2d31)
+            .setDescription('The Strawhat can only be equipped on Monkey D. Luffy.')
+            .setFooter({ text: 'Some items have specific requirements' });
+
+        return message.reply({ embeds: [embed] });
     }
 
     if (!user.equipped) user.equipped = {};
@@ -153,14 +156,18 @@ async function execute(message, args, client) {
 
     await user.save();
 
-    return message.reply({
-        embeds: [{
-            color: 0x2C2F33,
-            title: `Equipped ${ownedItem} to ${cardObj.name}`,
-            description: `**Stat Bonuses:** ${statsText.trim()}`,
-            footer: { text: 'Use `op unequip [card]` to remove equipment.' }
-        }]
-    });
+    const embed = new EmbedBuilder()
+        .setTitle('Item Equipped')
+        .setDescription(`Equipped **${ownedItem}** to **${cardObj.name}**`)
+        .addFields({
+            name: 'Stat Bonuses',
+            value: statsText.trim(),
+            inline: false
+        })
+        .setColor(0x2b2d31)
+        .setFooter({ text: 'Use op unequip to remove equipment' });
+
+    return message.reply({ embeds: [embed] });
 }
 
 module.exports = { data, execute };

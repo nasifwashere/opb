@@ -33,7 +33,12 @@ async function execute(message, args) {
   let user = await User.findOne({ userId });
 
   if (!user) {
-    return message.reply('Start your journey with `op start` first!');
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription('Start your journey with `op start` first!')
+      .setFooter({ text: 'Use op start to begin your adventure' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   // Ensure username is set if missing
@@ -43,21 +48,41 @@ async function execute(message, args) {
   }
 
   if (!args.length) {
-    return message.reply("Usage: `op use <item_name>`\n\nUsable items: Time Crystal, Energy Potion, Speed Boost Food");
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setTitle('Use Item')
+      .setDescription('Use consumable items from your inventory.')
+      .addFields(
+        { name: 'Usage', value: '`op use <item name>`', inline: false },
+        { name: 'Usable Items', value: 'Time Crystal • Energy Potion • Speed Boost Food', inline: false }
+      )
+      .setFooter({ text: 'Use items to gain various effects' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   const itemName = args.join(' ').toLowerCase().replace(/\s+/g, '');
   const item = USABLE_ITEMS[itemName];
 
   if (!item) {
-    return message.reply("That item cannot be used or doesn't exist!");
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription("That item cannot be used or doesn't exist!")
+      .setFooter({ text: 'Check your inventory for usable items' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   if (!user.inventory) user.inventory = [];
   const itemIndex = user.inventory.indexOf(itemName);
 
   if (itemIndex === -1) {
-    return message.reply(`You don't have any ${item.name}!`);
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription(`You don't have any ${item.name}!`)
+      .setFooter({ text: 'Item not found in inventory' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   // Apply item effect
@@ -92,9 +117,10 @@ async function execute(message, args) {
   await user.save();
 
   const embed = new EmbedBuilder()
-    .setTitle(`✨ Used ${item.name}`)
+    .setTitle(`Used ${item.name}`)
     .setDescription(`${item.description}\n\n${effectMessage}`)
-    .setColor(0x27ae60);
+    .setColor(0x2b2d31)
+    .setFooter({ text: 'Item effect applied' });
 
   return message.reply({ embeds: [embed] });
 }

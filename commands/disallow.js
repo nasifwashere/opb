@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
 const fs = require('fs');
 const path = require('path');
@@ -17,12 +17,28 @@ async function execute(message, args) {
   );
 
   if (!hasAdminRole && message.author.id !== message.guild.ownerId) {
-    return message.reply(' You need admin permissions to use this command.');
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription('You need admin permissions to use this command.')
+      .setFooter({ text: 'Admin only command' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   const cardName = args.join(' ').trim();
   if (!cardName) {
-    return message.reply('Usage: `op disallow <card name>`');
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setTitle('Disallow Card')
+      .setDescription('Disable a card from being used in battles.')
+      .addFields({
+        name: 'Usage',
+        value: '`op disallow <card name>`',
+        inline: false
+      })
+      .setFooter({ text: 'Admin command to manage card availability' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   // Load cards to verify the card exists
@@ -35,7 +51,12 @@ async function execute(message, args) {
   );
 
   if (!card) {
-    return message.reply(` Card "${cardName}" not found in the database.`);
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription(`Card "${cardName}" not found in the database.`)
+      .setFooter({ text: 'Card not found' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   // Add card to global disallowed list (stored in admin user document)
@@ -54,7 +75,12 @@ async function execute(message, args) {
   }
 
   if (adminUser.disallowedCards.includes(card.name)) {
-    return message.reply(` "${card.name}" is already disallowed.`);
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription(`"${card.name}" is already disallowed.`)
+      .setFooter({ text: 'Card already disabled' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   adminUser.disallowedCards.push(card.name);
@@ -66,8 +92,13 @@ async function execute(message, args) {
     { $pull: { team: card.name } }
   );
 
-  await message.reply(`<:sucess:1375872950321811547> "${card.name}" has been disallowed and removed from all teams. Players cannot use this card in battles until it's re-allowed.`);
-}
+  const embed = new EmbedBuilder()
+    .setTitle('Card Disallowed')
+    .setDescription(`"${card.name}" has been disallowed and removed from all teams.\n\nPlayers cannot use this card in battles until it's re-allowed.`)
+    .setColor(0x2b2d31)
+    .setFooter({ text: 'Card disabled globally' });
 
+  await message.reply({ embeds: [embed] });
+}
 
 module.exports = { data, execute };

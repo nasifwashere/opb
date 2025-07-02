@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
 
 // Normalize string for fuzzy matching
@@ -39,7 +39,12 @@ async function execute(message, args) {
   let user = await User.findOne({ userId });
 
   if (!user) {
-    return message.reply('Start your journey with `op start` first!');
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription('Start your journey with `op start` first!')
+      .setFooter({ text: 'Use op start to begin your adventure' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   // Ensure username is set if missing
@@ -49,20 +54,41 @@ async function execute(message, args) {
   }
 
   if (args.length === 0) {
-    return message.reply('Usage: `op unequip <card name>`');
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setTitle('Unequip Item')
+      .setDescription('Remove equipment from a card and return it to your inventory.')
+      .addFields({
+        name: 'Usage',
+        value: '`op unequip <card name>`',
+        inline: false
+      })
+      .setFooter({ text: 'Remove equipment to change your setup' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   const cardInput = args.join(' ');
   const userCard = fuzzyFindCard(user.cards || [], cardInput);
 
   if (!userCard) {
-    return message.reply(`You don't own a card named "${cardInput}".`);
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription(`You don't own a card named "${cardInput}".`)
+      .setFooter({ text: 'Check your collection with op collection' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   const normCard = normalize(userCard.name);
 
   if (!user.equipped || !user.equipped[normCard]) {
-    return message.reply(`${userCard.name} has no equipment to unequip.`);
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription(`${userCard.name} has no equipment to unequip.`)
+      .setFooter({ text: 'This card has no items equipped' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   const equippedItem = user.equipped[normCard];
@@ -74,7 +100,13 @@ async function execute(message, args) {
 
   await user.save();
 
-  return message.reply(`<:sucess:1375872950321811547> Unequipped ${equippedItem} from ${userCard.name}!`);
+  const embed = new EmbedBuilder()
+    .setTitle('Item Unequipped')
+    .setDescription(`Unequipped **${equippedItem}** from **${userCard.name}**`)
+    .setColor(0x2b2d31)
+    .setFooter({ text: 'Item returned to inventory' });
+
+  return message.reply({ embeds: [embed] });
 }
 
 module.exports = { data, execute };

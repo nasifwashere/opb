@@ -1,15 +1,14 @@
-
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
 
 function getCurrentLocation(stage) {
-    if (stage < 7) return 'WINDMILL VILLAGE';
-    if (stage < 16) return 'SHELLS TOWN';
-    if (stage < 24) return 'ORANGE TOWN';
-    if (stage < 29) return 'SYRUP VILLAGE';
-    if (stage < 34) return 'BARATIE';
-    if (stage < 43) return 'ARLONG PARK';
-    return 'COMPLETED';
+    if (stage < 7) return 'Windmill Village';
+    if (stage < 16) return 'Shells Town';
+    if (stage < 24) return 'Orange Town';
+    if (stage < 29) return 'Syrup Village';
+    if (stage < 34) return 'Baratie';
+    if (stage < 43) return 'Arlong Park';
+    return 'East Blue Complete';
 }
 
 function getLocalStage(globalStage) {
@@ -24,12 +23,12 @@ function getLocalStage(globalStage) {
 
 function getTotalStagesInLocation(location) {
     const stageCounts = {
-        'WINDMILL VILLAGE': 7,
-        'SHELLS TOWN': 9,
-        'ORANGE TOWN': 8,
-        'SYRUP VILLAGE': 5,
-        'BARATIE': 5,
-        'ARLONG PARK': 9
+        'Windmill Village': 7,
+        'Shells Town': 9,
+        'Orange Town': 8,
+        'Syrup Village': 5,
+        'Baratie': 5,
+        'Arlong Park': 9
     };
     return stageCounts[location] || 0;
 }
@@ -43,7 +42,12 @@ async function execute(message, args) {
     let user = await User.findOne({ userId });
 
     if (!user) {
-        return message.reply('Start your journey with `op start` first!');
+        const embed = new EmbedBuilder()
+            .setColor(0x2b2d31)
+            .setDescription('Start your journey with `op start` first!')
+            .setFooter({ text: 'Use op start to begin your adventure' });
+        
+        return message.reply({ embeds: [embed] });
     }
 
     const currentStage = user.stage || 0;
@@ -56,23 +60,22 @@ async function execute(message, args) {
     const overallProgress = Math.min(Math.floor((currentStage / totalPossibleStages) * 100), 100);
 
     const embed = new EmbedBuilder()
-        .setColor(0x3498db)
-        .setTitle('🗺️ Adventure Map')
-        .setDescription([
-            `**${user.username || message.author.username}'s Journey**`,
-            '',
-            `📍 **Current Location:** ${currentLocation}`,
-            currentLocation === 'COMPLETED' ? '🎉 **East Blue Saga Complete!**' : `🗺️ **Stage Progress:** ${localStage}/${totalStages}`
-        ].join('\n'));
+        .setColor(0x2b2d31)
+        .setTitle('Adventure Map')
+        .addFields(
+            { name: 'Current Location', value: currentLocation, inline: true },
+            { name: 'Stage Progress', value: currentLocation === 'East Blue Complete' ? 'Complete!' : `${localStage}/${totalStages}`, inline: true },
+            { name: 'Overall Progress', value: `${overallProgress}%`, inline: true }
+        );
 
-    // Location progress bars
+    // Location progress
     const locations = [
-        { name: 'WINDMILL VILLAGE', stages: 7, unlocked: currentStage >= 0, startStage: 0 },
-        { name: 'SHELLS TOWN', stages: 9, unlocked: currentStage >= 7, startStage: 7 },
-        { name: 'ORANGE TOWN', stages: 8, unlocked: currentStage >= 16, startStage: 16 },
-        { name: 'SYRUP VILLAGE', stages: 5, unlocked: currentStage >= 24, startStage: 24 },
-        { name: 'BARATIE', stages: 5, unlocked: currentStage >= 29, startStage: 29 },
-        { name: 'ARLONG PARK', stages: 9, unlocked: currentStage >= 34, startStage: 34 }
+        { name: 'Windmill Village', stages: 7, unlocked: currentStage >= 0, startStage: 0 },
+        { name: 'Shells Town', stages: 9, unlocked: currentStage >= 7, startStage: 7 },
+        { name: 'Orange Town', stages: 8, unlocked: currentStage >= 16, startStage: 16 },
+        { name: 'Syrup Village', stages: 5, unlocked: currentStage >= 24, startStage: 24 },
+        { name: 'Baratie', stages: 5, unlocked: currentStage >= 29, startStage: 29 },
+        { name: 'Arlong Park', stages: 9, unlocked: currentStage >= 34, startStage: 34 }
     ];
 
     let progressText = '';
@@ -82,53 +85,31 @@ async function execute(message, args) {
         
         let status = '';
         let progress = 0;
-        let progressIcon = '';
 
         if (!location.unlocked) {
-            status = '🔒 Locked';
-            progressIcon = '⚫';
+            status = 'Locked';
         } else if (currentStage >= locationEnd) {
-            status = '✅ Complete';
+            status = 'Complete';
             progress = location.stages;
-            progressIcon = '🟢';
         } else if (currentStage >= location.startStage) {
-            status = '🔍 Current';
+            status = 'Current';
             progress = currentStage - location.startStage;
-            progressIcon = '🔵';
         } else {
-            status = '⏳ Upcoming';
-            progressIcon = '⚪';
+            status = 'Upcoming';
         }
 
         const progressBar = createProgressBar(progress, location.stages);
-        progressText += `${progressIcon} **${location.name}**\n`;
-        progressText += `${progressBar} \`${progress}/${location.stages}\` ${status}\n\n`;
+        progressText += `**${location.name}** ${progressBar} ${progress}/${location.stages} - ${status}\n`;
     });
 
     embed.addFields({
-        name: '🌊 East Blue Saga Progress',
+        name: 'East Blue Saga',
         value: progressText,
         inline: false
     });
 
-    // Add quest information if available
-    if (user.questData && user.questData.activeQuests) {
-        const activeQuests = Object.values(user.questData.activeQuests).filter(q => !q.completed);
-        if (activeQuests.length > 0) {
-            const questText = activeQuests.slice(0, 3).map(quest => 
-                `🎯 ${quest.name} \`${quest.progress}/${quest.target}\``
-            ).join('\n');
-
-            embed.addFields({
-                name: '📜 Active Quests',
-                value: questText,
-                inline: false
-            });
-        }
-    }
-
     embed.setFooter({ 
-        text: `Overall Progress: ${overallProgress}% • Use "op explore" to continue your adventure` 
+        text: 'Use op explore to continue your adventure' 
     });
 
     await message.reply({ embeds: [embed] });
@@ -136,11 +117,11 @@ async function execute(message, args) {
 
 function createProgressBar(current, max) {
     const percentage = Math.min(current / max, 1);
-    const barLength = 12;
+    const barLength = 10;
     const filledBars = Math.floor(percentage * barLength);
     const emptyBars = barLength - filledBars;
 
-    return '█'.repeat(filledBars) + '░'.repeat(emptyBars);
+    return `[${'█'.repeat(filledBars)}${'░'.repeat(emptyBars)}]`;
 }
 
 module.exports = { data, execute };
