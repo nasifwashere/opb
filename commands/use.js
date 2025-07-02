@@ -14,8 +14,8 @@ const USABLE_ITEMS = {
     effect: 'clear_defeat_cooldown',
     consumable: true
   },
-  'speedboostfood': {
-    name: 'Speed Boost Food',
+  'energydrink': {
+    name: 'Energy Drink',
     description: 'Temporary speed boost for your team',
     effect: 'speed_boost',
     consumable: true,
@@ -54,7 +54,7 @@ async function execute(message, args) {
       .setDescription('Use consumable items from your inventory.')
       .addFields(
         { name: 'Usage', value: '`op use <item name>`', inline: false },
-        { name: 'Usable Items', value: 'Time Crystal • Energy Potion • Speed Boost Food', inline: false }
+        { name: 'Usable Items', value: 'Time Crystal • Energy Potion • Energy Drink', inline: false }
       )
       .setFooter({ text: 'Use items to gain various effects' });
     
