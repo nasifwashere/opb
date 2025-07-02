@@ -1,18 +1,7 @@
 /**
- * Clean UI components for Discord bot battles
- * Using Discord embeds instead of colorful code blocks
+ * Modern UI components for Discord bot battles
+ * Clean, minimal design with professional appearance
  */
-
-// Character icons for different ranks and types
-const CHARACTER_ICONS = {
-    'C': '🔵',
-    'B': '🟢', 
-    'A': '🟡',
-    'S': '🔴',
-    'UR': '🟣',
-    'enemy': '⚫',
-    'boss': '🔴'
-};
 
 function createRoundedHealthBar(current, max, length = 12) {
     const percentage = Math.max(0, current / max);
@@ -43,7 +32,7 @@ function createRoundedHealthBar(current, max, length = 12) {
 
 function createTeamDisplay(team, teamName, showStats = true) {
     if (!team || team.length === 0) {
-        return `**${teamName}'s Team**\n*No active crew members*`;
+        return `*No active crew members*`;
     }
     
     let display = '';
@@ -52,22 +41,21 @@ function createTeamDisplay(team, teamName, showStats = true) {
     aliveMembers.forEach((card, index) => {
         const level = card.level || 1;
         const rank = card.rank || 'C';
-        const icon = CHARACTER_ICONS[rank] || CHARACTER_ICONS['C'];
         
-        // Character line with circular icon
-        display += `${icon} **${card.name}** | Lv.${level} ${rank}\n`;
+        // Clean character line
+        display += `**${card.name}** • Level ${level} • Rank ${rank}\n`;
         
-        // Health bar with rounded ends
+        // Simple health bar
         const healthBar = createRoundedHealthBar(card.currentHp, card.maxHp || card.hp);
         const percentage = Math.round((card.currentHp / (card.maxHp || card.hp)) * 100);
         display += `${healthBar} ${card.currentHp}/${card.maxHp || card.hp} (${percentage}%)\n`;
         
-        // Stats (simplified)
+        // Clean stats
         if (showStats) {
             const power = card.power || card.atk || 100;
             const speed = card.speed || card.spd || 50;
             const hp = card.maxHp || card.hp || 100;
-            display += `⚔️ ${power} • ❤️ ${hp} • ⚡ ${speed}\n`;
+            display += `${power} PWR • ${hp} HP • ${speed} SPD\n`;
         }
         
         if (index < aliveMembers.length - 1) display += '\n';
@@ -78,7 +66,7 @@ function createTeamDisplay(team, teamName, showStats = true) {
 
 function createEnemyDisplay(enemies) {
     if (!enemies || enemies.length === 0) {
-        return '**Enemies**\n*No enemies remaining*';
+        return '*No enemies remaining*';
     }
     
     let display = '';
@@ -86,12 +74,12 @@ function createEnemyDisplay(enemies) {
     enemies.filter(enemy => enemy.currentHp > 0).forEach((enemy, index) => {
         const rank = enemy.rank || 'C';
         const isBoss = rank === 'A' || rank === 'S' || rank === 'UR';
-        const icon = isBoss ? CHARACTER_ICONS['boss'] : CHARACTER_ICONS['enemy'];
+        const prefix = isBoss ? 'BOSS' : 'Enemy';
         
-        // Enemy name with icon
-        display += `${icon} **${enemy.name}** | Rank ${rank}\n`;
+        // Clean enemy name
+        display += `**${enemy.name}** • ${prefix} • Rank ${rank}\n`;
         
-        // Health bar with rounded ends
+        // Simple health bar
         const healthBar = createRoundedHealthBar(enemy.currentHp, enemy.maxHp || enemy.hp);
         const percentage = Math.round((enemy.currentHp / (enemy.maxHp || enemy.hp)) * 100);
         display += `${healthBar} ${enemy.currentHp}/${enemy.maxHp || enemy.hp} (${percentage}%)\n`;
@@ -104,23 +92,15 @@ function createEnemyDisplay(enemies) {
 
 function createBattleLogDisplay(battleLog, maxLines = 3) {
     if (!battleLog || battleLog.length === 0) {
-        return '**Recent Actions**\n*No actions yet*';
+        return '*No recent actions*';
     }
     
     const recentActions = battleLog.slice(-maxLines);
     let display = '';
     
     recentActions.forEach(action => {
-        // Simple formatting without excessive colors
-        if (action.includes('attacks')) {
-            display += `⚔️ ${action}\n`;
-        } else if (action.includes('defeated')) {
-            display += `💀 ${action}\n`;
-        } else if (action.includes('healed')) {
-            display += `❤️ ${action}\n`;
-        } else {
-            display += `• ${action}\n`;
-        }
+        // Clean formatting without emojis
+        display += `• ${action}\n`;
     });
     
     return display.trim();
@@ -163,9 +143,8 @@ function createStatsDisplay(card) {
     const speed = card.speed || card.spd || 50;
     const rank = card.rank || 'C';
     const level = card.level || 1;
-    const icon = CHARACTER_ICONS[rank] || CHARACTER_ICONS['C'];
     
-    return `${icon} **${card.name}** | Lv. ${level} **${rank}**\n⚔️ ${power} PWR • ❤️ ${hp} HP • ⚡ ${speed} SPD`;
+    return `**${card.name}** • Level ${level} • Rank ${rank}\n${power} PWR • ${hp} HP • ${speed} SPD`;
 }
 
 function createProgressDisplay(current, max, label = 'Progress') {
@@ -188,6 +167,5 @@ module.exports = {
     createAdvancedHealthBar,
     createProfessionalTeamDisplay,
     createBattleStatusDisplay,
-    createRoundedHealthBar,
-    CHARACTER_ICONS
+    createRoundedHealthBar
 };

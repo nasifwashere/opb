@@ -35,11 +35,12 @@ function calculateCardStats(cardDef, level) {
 }
 
 function buildTeamEmbed(teamCards, username, totalPower) {
-  let teamDisplay = '';
+  const embed = new EmbedBuilder()
+    .setTitle(`${username}'s Team`)
+    .setColor(0x2b2d31)
+    .setFooter({ text: "op team add <card> • op team remove <card>" });
 
-  // Enhanced team header
-  teamDisplay += `**═══${username}'s Crew═══**\n\n`;
-
+  // Add team slots as individual fields for a cleaner layout
   for (let i = 0; i < 3; i++) {
     const slotNumber = i + 1;
     const card = teamCards[i];
@@ -48,29 +49,32 @@ function buildTeamEmbed(teamCards, username, totalPower) {
       const lockStatus = card.locked ? ' 🔒' : '';
       const rank = card.rank || 'C';
       
-      teamDisplay += `**${slotNumber}.** 🔸 **${card.displayName}** | Lv.${card.level} **${rank}**${lockStatus}\n`;
+      const cardValue = `**${card.displayName}** ${lockStatus}\n` +
+        `Level ${card.level} • Rank ${rank}\n` +
+        `**${card.power}** PWR • **${card.health}** HP • **${card.speed}** SPD`;
       
-      // Create health bar for display (showing max HP)
-      const healthEmoji = '🟢';
-      const healthBar = '🟩'.repeat(10);
-      teamDisplay += `${healthEmoji} ${healthBar} ${card.health}/${card.health}\n`;
-      teamDisplay += `⚔️ ${card.power} PWR • ❤️ ${card.health} HP • ⚡ ${card.speed} SPD\n\n`;
+      embed.addFields({
+        name: `Slot ${slotNumber}`,
+        value: cardValue,
+        inline: true
+      });
     } else {
-      teamDisplay += `**${slotNumber}.** *Empty Slot*\n`;
-      teamDisplay += `Use \`op team add <card>\` to fill this slot\n\n`;
+      embed.addFields({
+        name: `Slot ${slotNumber}`,
+        value: `*Empty*\nUse \`op team add <card>\``,
+        inline: true
+      });
     }
   }
 
-  const embed = new EmbedBuilder()
-    .setTitle(`👑 ${username}'s Crew`)
-    .setDescription(teamDisplay)
-    .addFields({ 
-      name: "⚡ Total Power", 
-      value: `**${totalPower}** PWR`, 
-      inline: true 
-    })
-    .setColor(0x3498db)
-    .setFooter({ text: "op team add <card> • op team remove <card>" });
+  // Add total power as a separate field
+  if (totalPower > 0) {
+    embed.addFields({
+      name: 'Team Stats',
+      value: `**Total Power:** ${totalPower}`,
+      inline: false
+    });
+  }
 
   return embed;
 }

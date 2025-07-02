@@ -1,5 +1,6 @@
 const Quest = require('../db/models/Quest.js');
 const User = require('../db/models/User.js');
+const { saveUserWithRetry } = require('./saveWithRetry.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -336,7 +337,7 @@ async function claimQuestReward(user, questId) {
         // Mark arrays as modified and save
         user.markModified('completedQuests');
         user.markModified('activeQuests');
-        await user.save();
+        await saveUserWithRetry(user);
         
         return {
             success: true,
@@ -438,7 +439,7 @@ async function ensureQuestDataStructure(user, autoSave = false) {
     }
     
     if (needsSave && autoSave) {
-        await user.save();
+        await saveUserWithRetry(user);
     }
     
     return needsSave;

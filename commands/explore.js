@@ -840,11 +840,11 @@ async function displayBattleState(message, user, client) {
         return message.reply('❌ Battle state corrupted. Please try exploring again.');
     }
 
-    // Create professional battle embed
+    // Create clean battle embed
     const embed = new EmbedBuilder()
-        .setTitle(`⚔️ ${stageData.title}`)
+        .setTitle(stageData.title)
         .setDescription(stageData.desc)
-        .setColor(battleState.isBossFight ? 0xe74c3c : 0xf39c12);
+        .setColor(0x2b2d31);
 
     // Use enhanced team display
     const aliveTeamMembers = battleState.userTeam.filter(card => card.currentHp > 0);
@@ -862,7 +862,7 @@ async function displayBattleState(message, user, client) {
         if (fixedTeam.length > 0) {
             const teamDisplay = createProfessionalTeamDisplay(fixedTeam, message.author.username);
             embed.addFields({
-                name: `👑 ${message.author.username}'s Crew`,
+                name: `${message.author.username}'s Team`,
                 value: teamDisplay,
                 inline: false
             });
@@ -877,7 +877,7 @@ async function displayBattleState(message, user, client) {
     } else {
         const teamDisplay = createProfessionalTeamDisplay(aliveTeamMembers, message.author.username);
         embed.addFields({
-            name: `👑 ${message.author.username}'s Crew`,
+            name: `${message.author.username}'s Team`,
             value: teamDisplay,
             inline: false
         });
@@ -888,7 +888,7 @@ async function displayBattleState(message, user, client) {
     if (activeEnemies.length > 0) {
         const enemyDisplay = createEnemyDisplay(activeEnemies);
         embed.addFields({
-            name: `💀 Enemies`,
+            name: `Enemies`,
             value: enemyDisplay,
             inline: false
         });
@@ -896,19 +896,19 @@ async function displayBattleState(message, user, client) {
 
 
 
-    // Create enhanced battle buttons
+    // Create clean battle buttons
     const battleButtons = [
         new ButtonBuilder()
             .setCustomId('battle_attack')
-            .setLabel('⚔️ Attack')
+            .setLabel('Attack')
             .setStyle(ButtonStyle.Danger),
         new ButtonBuilder()
             .setCustomId('battle_items')
-            .setLabel('🎒 Items')
+            .setLabel('Items')
             .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
             .setCustomId('battle_flee')
-            .setLabel('🏃‍♂️ Flee')
+            .setLabel('Flee')
             .setStyle(ButtonStyle.Secondary)
     ];
 
@@ -1051,15 +1051,15 @@ async function handleBattleAttack(interaction, user, battleMessage) {
         
         // Update battle display
         const embed = new EmbedBuilder()
-            .setTitle(`⚔️ Turn ${battleState.turn} - Battle Continues`)
-            .setColor(0xf39c12);
+            .setTitle(`Turn ${battleState.turn} - Battle Continues`)
+            .setColor(0x2b2d31);
 
         // Enhanced team display
         const aliveTeam = battleState.userTeam.filter(card => card.currentHp > 0);
         if (aliveTeam.length > 0) {
             const teamDisplay = createProfessionalTeamDisplay(aliveTeam, interaction.user.username);
             embed.addFields({
-                name: `👑 ${interaction.user.username}'s Crew`,
+                name: `${interaction.user.username}'s Team`,
                 value: teamDisplay,
                 inline: false
             });
@@ -1070,7 +1070,7 @@ async function handleBattleAttack(interaction, user, battleMessage) {
         if (currentEnemies.length > 0) {
             const enemyDisplay = createEnemyDisplay(currentEnemies);
             embed.addFields({
-                name: `💀 Enemies`,
+                name: `Enemies`,
                 value: enemyDisplay,
                 inline: false
             });
@@ -1078,7 +1078,7 @@ async function handleBattleAttack(interaction, user, battleMessage) {
 
         // Battle log display
         embed.addFields({
-            name: `📝 Recent Actions`,
+            name: `Recent Actions`,
             value: battleLogDisplay,
             inline: false
         });
@@ -1086,15 +1086,15 @@ async function handleBattleAttack(interaction, user, battleMessage) {
         const battleButtons = [
             new ButtonBuilder()
                 .setCustomId('battle_attack')
-                .setLabel('⚔️ Attack')
+                .setLabel('Attack')
                 .setStyle(ButtonStyle.Danger),
             new ButtonBuilder()
                 .setCustomId('battle_items')
-                .setLabel('🎒 Items')
+                .setLabel('Items')
                 .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
                 .setCustomId('battle_flee')
-                .setLabel('🏃‍♂️ Flee')
+                .setLabel('Flee')
                 .setStyle(ButtonStyle.Secondary)
         ];
 
@@ -1283,15 +1283,15 @@ async function handleEnemyTurn(interaction, user, battleMessage) {
         
         // Update battle display with enhanced UI
         const embed = new EmbedBuilder()
-            .setTitle(`⚔️ Turn ${battleState.turn} - Enemy Turn`)
-            .setColor(0xe74c3c);
+            .setTitle(`Turn ${battleState.turn} - Enemy Turn`)
+            .setColor(0x2b2d31);
 
         // Enhanced team display
         const aliveTeam = battleState.userTeam.filter(card => card.currentHp > 0);
         if (aliveTeam.length > 0) {
             const teamDisplay = createProfessionalTeamDisplay(aliveTeam, interaction.user.username);
             embed.addFields({
-                name: `👑 ${interaction.user.username}'s Crew`,
+                name: `${interaction.user.username}'s Team`,
                 value: teamDisplay,
                 inline: false
             });
@@ -1302,7 +1302,7 @@ async function handleEnemyTurn(interaction, user, battleMessage) {
         if (remainingEnemies.length > 0) {
             const enemyDisplay = createEnemyDisplay(remainingEnemies);
             embed.addFields({
-                name: `💀 Enemies`,
+                name: `Enemies`,
                 value: enemyDisplay,
                 inline: false
             });
@@ -1310,7 +1310,7 @@ async function handleEnemyTurn(interaction, user, battleMessage) {
 
         // Battle log display
         embed.addFields({
-            name: `📝 Recent Actions`,
+            name: `Recent Actions`,
             value: battleLogDisplay,
             inline: false
         });
@@ -1318,15 +1318,15 @@ async function handleEnemyTurn(interaction, user, battleMessage) {
         const battleButtons = [
             new ButtonBuilder()
                 .setCustomId('battle_attack')
-                .setLabel('⚔️ Attack')
+                .setLabel('Attack')
                 .setStyle(ButtonStyle.Danger),
             new ButtonBuilder()
                 .setCustomId('battle_items')
-                .setLabel('🎒 Items')
+                .setLabel('Items')
                 .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
                 .setCustomId('battle_flee')
-                .setLabel('🏃‍♂️ Flee')
+                .setLabel('Flee')
                 .setStyle(ButtonStyle.Secondary)
         ];
 
