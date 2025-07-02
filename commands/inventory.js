@@ -1,19 +1,30 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const User = require('../db/models/User.js');
+const fs = require('fs');
+const path = require('path');
 
-// Item descriptions and categories
+// Load shop data for item info
+const shopPath = path.resolve('data', 'shop.json');
+const shopData = JSON.parse(fs.readFileSync(shopPath, 'utf8'));
+
+// Item descriptions and categories for new system
 const itemData = {
-    'strawhat': { category: 'Treasures', description: 'Shanks\' precious straw hat, a symbol of dreams' },
-    'marinesword': { category: 'Weapons', description: 'A standard Marine-issued sword' },
-    'townmap': { category: 'Tools', description: 'A detailed map of the local area' },
-    'battlebanner': { category: 'Treasures', description: 'A rallying banner from an epic battle' },
-    'healthpotion': { category: 'Consumables', description: 'Restores 50 HP to a crew member' },
-    'strengthpotion': { category: 'Consumables', description: 'Temporarily boosts attack power' },
-    'speedboostfood': { category: 'Consumables', description: 'Enhances speed for a short time' },
-    'defensepotion': { category: 'Consumables', description: 'Increases defensive capabilities' },
-    'treasurechest': { category: 'Containers', description: 'A mysterious chest that may contain rewards' },
-    'goldcoin': { category: 'Currency', description: 'A valuable gold coin' },
-    'silvercoin': { category: 'Currency', description: 'A standard silver coin' }
+    'basicpotion': { category: 'Potions', description: 'Restores 10% HP to a card during battle' },
+    'normalpotion': { category: 'Potions', description: 'Restores 20% HP to a card during battle' },
+    'maxpotion': { category: 'Potions', description: 'Restores 30% HP to a card during battle' },
+    'rustycutlass': { category: 'Weapons', description: 'A worn but functional sword (+5% power/speed)' },
+    'marinesaber': { category: 'Weapons', description: 'Standard Marine sword (+10% power, +8% speed)' },
+    'flintlockpistol': { category: 'Weapons', description: 'Basic firearm (+8% power, +12% speed)' },
+    'marinerifle': { category: 'Weapons', description: 'Military rifle (+12% power, +10% speed)' },
+    'leathervest': { category: 'Armor', description: 'Basic protection (+5% health)' },
+    'marinecoat': { category: 'Armor', description: 'Marine officer coat (+10% health)' },
+    'wadoichimonji': { category: 'Legendary Weapons', description: "Zoro's legendary katana (+20% power, +18% speed)" },
+    'climatact': { category: 'Legendary Weapons', description: "Nami's weather weapon (+18% power, +20% speed)" },
+    'piratekingscoat': { category: 'Legendary Armor', description: 'Legendary armor (+20% health)' },
+    'gomugomunoMi': { category: 'Devil Fruits', description: 'Rubber paramecia (+15% all stats)' },
+    'merameranoMi': { category: 'Devil Fruits', description: 'Fire logia (+25% power/speed, +20% health)' },
+    'hiehienoMi': { category: 'Devil Fruits', description: 'Ice logia (+25% power/speed, +20% health)' },
+    'yamiyaminoMi': { category: 'Devil Fruits', description: 'Darkness logia (+30% power/speed, +25% health)' }
 };
 
 function normalizeItemName(item) {
@@ -22,7 +33,32 @@ function normalizeItemName(item) {
 
 function getItemInfo(itemName) {
     const normalized = normalizeItemName(itemName);
-    return itemData[normalized] || { 
+    
+    // Check our predefined items first
+    if (itemData[normalized]) {
+        return itemData[normalized];
+    }
+    
+    // Try to find in shop data
+    const allItems = [...shopData.items, ...(shopData.devilFruits || [])];
+    const shopItem = allItems.find(item => 
+        normalizeItemName(item.name) === normalized
+    );
+    
+    if (shopItem) {
+        let category = 'Miscellaneous';
+        if (shopItem.type === 'potion') category = 'Potions';
+        else if (shopItem.subtype === 'sword' || shopItem.subtype === 'gun') category = 'Weapons';
+        else if (shopItem.subtype === 'armor') category = 'Armor';
+        else if (shopItem.subtype === 'devil_fruit') category = 'Devil Fruits';
+        
+        return {
+            category: category,
+            description: shopItem.description
+        };
+    }
+    
+    return { 
         category: 'Miscellaneous', 
         description: 'A mysterious item from your adventures' 
     };
@@ -107,6 +143,21 @@ async function execute(message, args) {
             inline: false
         });
 
+        // Add equipment instructions for relevant categories
+        if (['Weapons', 'Armor', 'Legendary Weapons', 'Legendary Armor', 'Devil Fruits'].includes(categoryName)) {
+            embed.addFields({
+                name: '⚔️ Equipment Instructions',
+                value: 'Use `op equip <item> <card>` to equip items to your cards for stat bonuses!\nExample: `op equip Rusty Cutlass Luffy`',
+                inline: false
+            });
+        } else if (categoryName === 'Potions') {
+            embed.addFields({
+                name: '💊 Potion Usage',
+                value: 'Potions can be used during battles by clicking the "Items" button!\nThey heal your cards based on their max HP.',
+                inline: false
+            });
+        }
+
         // Add summary
         const totalItems = user.inventory.length;
         const uniqueItems = Object.values(groupedItems).reduce((acc, category) => 
@@ -119,7 +170,7 @@ async function execute(message, args) {
         });
 
         embed.setFooter({ 
-            text: `Category ${categoryIndex + 1}/${categories.length} • Use items with op use <item>` 
+            text: `Category ${categoryIndex + 1}/${categories.length} • Use op equip <item> <card> for equipment` 
         });
 
         return embed;
@@ -158,13 +209,13 @@ async function execute(message, args) {
     const actionRow = new ActionRowBuilder()
         .addComponents(
             new ButtonBuilder()
-                .setCustomId('inv_consumables')
-                .setLabel('Quick Use')
+                .setCustomId('inv_potions')
+                .setLabel('View Potions')
                 .setStyle(ButtonStyle.Primary)
-                .setDisabled(!groupedItems.Consumables),
+                .setDisabled(!groupedItems.Potions),
             new ButtonBuilder()
-                .setCustomId('inv_search')
-                .setLabel('Search Help')
+                .setCustomId('inv_equipment')
+                .setLabel('Equipment Help')
                 .setStyle(ButtonStyle.Secondary)
         );
     components.push(actionRow);
@@ -190,11 +241,11 @@ async function execute(message, args) {
             case 'inv_last':
                 currentCategory = categories.length - 1;
                 break;
-            case 'inv_consumables':
-                await showConsumables(interaction, user);
+            case 'inv_potions':
+                await showPotions(interaction, user);
                 return;
-            case 'inv_search':
-                await showSearchHelp(interaction);
+            case 'inv_equipment':
+                await showEquipmentHelp(interaction);
                 return;
         }
 
@@ -231,13 +282,13 @@ async function execute(message, args) {
         const actionRow = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
-                    .setCustomId('inv_consumables')
-                    .setLabel('Quick Use')
+                    .setCustomId('inv_potions')
+                    .setLabel('View Potions')
                     .setStyle(ButtonStyle.Primary)
-                    .setDisabled(!groupedItems.Consumables),
+                    .setDisabled(!groupedItems.Potions),
                 new ButtonBuilder()
-                    .setCustomId('inv_search')
-                    .setLabel('Search Help')
+                    .setCustomId('inv_equipment')
+                    .setLabel('Equipment Help')
                     .setStyle(ButtonStyle.Secondary)
             );
         newComponents.push(actionRow);
@@ -250,21 +301,21 @@ async function execute(message, args) {
     });
 }
 
-async function showConsumables(interaction, user) {
-    const consumables = user.inventory.filter(item => {
+async function showPotions(interaction, user) {
+    const potions = user.inventory.filter(item => {
         const info = getItemInfo(item);
-        return info.category === 'Consumables';
+        return info.category === 'Potions';
     });
 
     const embed = new EmbedBuilder()
-        .setTitle('Usable Items')
+        .setTitle('💊 Healing Potions')
         .setColor(0x2b2d31);
 
-    if (consumables.length === 0) {
-        embed.setDescription('No consumable items\n\nFind potions and food during your adventures!');
+    if (potions.length === 0) {
+        embed.setDescription('No healing potions\n\nFind potions during your adventures or buy them from the shop!');
     } else {
         const grouped = {};
-        consumables.forEach(item => {
+        potions.forEach(item => {
             const normalized = normalizeItemName(item);
             if (!grouped[normalized]) {
                 grouped[normalized] = { name: item, count: 0 };
@@ -272,36 +323,49 @@ async function showConsumables(interaction, user) {
             grouped[normalized].count++;
         });
 
-        let consumableText = '';
+        let potionText = '';
         Object.values(grouped).forEach(item => {
             const info = getItemInfo(item.name);
             const displayName = item.name.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-            consumableText += `**${displayName}** ×${item.count}\n${info.description}\n\n`;
+            potionText += `**${displayName}** ×${item.count}\n${info.description}\n\n`;
         });
 
-        embed.setDescription(consumableText);
+        embed.setDescription(potionText);
+        embed.addFields({
+            name: 'How to Use',
+            value: 'During battles (explore or duels), click the **Items** button to use potions!\nPotions heal based on percentage of max HP.',
+            inline: false
+        });
     }
-
-    embed.setFooter({ text: 'Use items with op use <item name>' });
 
     await interaction.followUp({ embeds: [embed], ephemeral: true });
 }
 
-async function showSearchHelp(interaction) {
+async function showEquipmentHelp(interaction) {
     const embed = new EmbedBuilder()
-        .setTitle('Item Search Help')
+        .setTitle('⚔️ Equipment System')
         .setDescription([
-            '**Commands:**',
-            '• `op use <item>` - Use a consumable item',
-            '• `op info <item>` - Get detailed item information',
+            '**How to Equip Items:**',
+            '• `op equip <item> <card>` - Equip an item to a card',
+            '• `op equip` - View all equipped items',
+            '',
+            '**Equipment Types:**',
+            '• **Weapons** (Swords/Guns) - Boost power and speed',
+            '• **Armor** - Boosts health',  
+            '• **Devil Fruits** - Boost all stats (very rare)',
+            '',
+            '**Examples:**',
+            '• `op equip Rusty Cutlass Luffy`',
+            '• `op equip Marine Coat Zoro`',
+            '• `op equip Gomu Gomu no Mi Luffy`',
             '',
             '**Tips:**',
-            '• Item names are case-insensitive',
-            '• You can use partial names',
-            '• Check different categories for organization'
+            '• Equipment bonuses show in `op mycard` and `op team`',
+            '• Bonuses are applied in all battles',
+            '• You can only equip one item per card'
         ].join('\n'))
         .setColor(0x2b2d31)
-        .setFooter({ text: 'Inventory Help' });
+        .setFooter({ text: 'Equipment Help' });
 
     await interaction.followUp({ embeds: [embed], ephemeral: true });
 }

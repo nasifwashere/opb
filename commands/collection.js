@@ -43,17 +43,14 @@ function cardEmbed(cardInstance, cardDef, ownerName, index, total, user, duplica
   health = (isNaN(health) || health === null || health === undefined) ? 50 : Math.floor(Number(health));
   speed = (isNaN(speed) || speed === null || speed === undefined) ? 30 : Math.floor(Number(speed));
 
-  // Stat boost: If this card has strawhat equipped, boost stats regardless of the card
-  let boostText = '';
-  let normCard = normalize(cardDef.name);
-  let equippedItem = user && user.equipped && user.equipped[normCard];
-
-  if (equippedItem === 'strawhat') {
-    power = Math.ceil(power * 1.3);
-    health = Math.ceil(health * 1.3);
-    speed = Math.ceil(speed * 1.3);
-    boostText = "\n**Strawhat equipped! Stats boosted by 30%.**";
-  }
+          // Equipment bonuses are now handled by the new equipment system
+        let boostText = '';
+        let equippedItem = user && user.equipped && user.equipped[cardDef.name];
+        
+        if (equippedItem) {
+            // Equipment bonuses are calculated in the display - this is just for compatibility
+            boostText = `\n**${equippedItem} equipped!**`;
+        }
 
   const rankMultipliers = {
     'C': 0.08,
@@ -219,12 +216,10 @@ async function execute(message, args) {
       let equippedItem = user && user.equipped && user.equipped[normCard];
       let boostText = '';
 
-      if (equippedItem === 'strawhat') {
-        power = Math.round(power * 1.3);
-        health = Math.round(health * 1.3);
-        speed = Math.round(speed * 1.3);
-        boostText = '\n**Equipment**: Strawhat (+30% all stats)';
-      }
+              if (equippedItem) {
+            // Equipment bonuses are handled by the new system in mycard.js and team.js
+            boostText = `\n**Equipment**: ${equippedItem}`;
+        }
 
       const rankMultipliers = {
         'C': 0.08,

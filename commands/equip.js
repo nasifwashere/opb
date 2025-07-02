@@ -41,30 +41,13 @@ function fuzzyFindCard(cards, input) {
     return bestMatch;
 }
 
-// Get equipment stats for calculation
-function getEquipmentStats(itemName) {
-    const normalizedItem = normalize(itemName);
-
-    // Equipment stat bonuses
-    const itemStats = {
-        'strawhat': { hp: 10, atk: 5, spd: 5, def: 2 },
-        'marinesword': { atk: 15, spd: 5, def: 1 },
-        'townmap': { spd: 10, hp: 5 },
-        'battlebanner': { hp: 20, atk: 10, def: 3 },
-        'speedboostfood': { spd: 25, hp: 5 },
-        'defensearmor': { def: 20, hp: 15 },
-        'powergloves': { atk: 12, spd: 3 },
-        'luckycharm': { hp: 8, atk: 3, spd: 3, def: 2 }
-    };
-
-    return itemStats[normalizedItem] || { hp: 0, atk: 0, spd: 0, def: 0 };
-}
+// This function has been removed - equipment stats are now handled by shop.json data
 
 const data = new SlashCommandBuilder()
   .setName('equip')
   .setDescription('Equip items to your cards for stat bonuses');
 
-// Usage: op equip strawhat luffy
+// Usage: op equip <item> <card>
 async function execute(message, args) {
     const userId = message.author.id;
     const username = message.author.username;

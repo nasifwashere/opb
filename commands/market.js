@@ -195,7 +195,7 @@ async function execute(message, args) {
             return;
         } else if (interaction.customId === 'market_list') {
             await interaction.followUp({
-                content: 'To list an item for sale, use: `op market list <type> <item name> <price> [description]`\n\nExamples:\n• `op market list card Luffy 1000 Great starter card!`\n• `op market list item strawhat 500`\n\n**To remove a listing:**\n1. Use `op market` and click "My Listings" to see your listing IDs\n2. Use `op market unlist <listing ID>` to remove it\n\nExample: `op market unlist MKT12345` removes your listing with ID MKT12345',
+                content: 'To list an item for sale, use: `op market list <type> <item name> <price> [description]`\n\nExamples:\n• `op market list card Luffy 1000 Great starter card!`\n• `op market list item Basic Potion 25`\n\n**To remove a listing:**\n1. Use `op market` and click "My Listings" to see your listing IDs\n2. Use `op market unlist <listing ID>` to remove it\n\nExample: `op market unlist MKT12345` removes your listing with ID MKT12345',
                 ephemeral: true
             });
             return;

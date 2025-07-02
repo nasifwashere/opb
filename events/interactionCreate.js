@@ -277,7 +277,7 @@ async function handleBossInteraction(interaction, client) {
     }
 
     const usableItems = user.inventory.filter(item =>
-      ['healingpotion', 'statbuffer', 'speedboostfood'].includes(item.toLowerCase().replace(/\s+/g, ''))
+                          ['basicpotion', 'normalpotion', 'maxpotion'].includes(item.toLowerCase().replace(/\s+/g, ''))
     );
 
     if (usableItems.length === 0) {
@@ -509,37 +509,28 @@ async function handleItemUsage(interaction, client) {
   let battleLog = battleData.battleLog;
   let effectApplied = false;
 
-  switch (item.toLowerCase()) {
-    case 'healingpotion':
-      const healAmount = Math.floor(activePlayerCard.hp * 0.5); // Heal 50% of max HP
+  switch (item.toLowerCase().replace(/\s+/g, '')) {
+    case 'basicpotion':
+      const healAmount = Math.floor(activePlayerCard.hp * 0.10); // Heal 10% of max HP
       const actualHeal = Math.min(healAmount, activePlayerCard.hp - activePlayerCard.currentHp);
       activePlayerCard.currentHp = Math.min(activePlayerCard.hp, activePlayerCard.currentHp + healAmount);
-      battleLog.push(`💚 ${activePlayerCard.name} uses a Healing Potion and recovers ${actualHeal} HP!`);
+      battleLog.push(`💚 ${activePlayerCard.name} uses a Basic Potion and recovers ${actualHeal} HP!`);
       effectApplied = true;
       break;
-
-    case 'statbuffer':
-    case 'powerboost':
-      // Apply temporary attack buff
-      if (!activePlayerCard.tempBuffs) activePlayerCard.tempBuffs = [];
-      activePlayerCard.tempBuffs.push({
-        type: 'attack_boost',
-        multiplier: 1.25,
-        duration: 3 // Lasts 3 turns
-      });
-      battleLog.push(`⚡ ${activePlayerCard.name} uses a Power Boost! Attack increased by 25% for 3 turns!`);
+      
+    case 'normalpotion':
+      const healAmount2 = Math.floor(activePlayerCard.hp * 0.20); // Heal 20% of max HP
+      const actualHeal2 = Math.min(healAmount2, activePlayerCard.hp - activePlayerCard.currentHp);
+      activePlayerCard.currentHp = Math.min(activePlayerCard.hp, activePlayerCard.currentHp + healAmount2);
+      battleLog.push(`💚 ${activePlayerCard.name} uses a Normal Potion and recovers ${actualHeal2} HP!`);
       effectApplied = true;
       break;
-
-    case 'speedboostfood':
-      // Apply temporary speed buff
-      if (!activePlayerCard.tempBuffs) activePlayerCard.tempBuffs = [];
-      activePlayerCard.tempBuffs.push({
-        type: 'speed_boost',
-        multiplier: 1.5,
-        duration: 3 // Lasts 3 turns
-      });
-      battleLog.push(`🏃 ${activePlayerCard.name} uses Speed Boost Food! Speed increased by 50% for 3 turns!`);
+      
+    case 'maxpotion':
+      const healAmount3 = Math.floor(activePlayerCard.hp * 0.30); // Heal 30% of max HP
+      const actualHeal3 = Math.min(healAmount3, activePlayerCard.hp - activePlayerCard.currentHp);
+      activePlayerCard.currentHp = Math.min(activePlayerCard.hp, activePlayerCard.currentHp + healAmount3);
+      battleLog.push(`💚 ${activePlayerCard.name} uses a Max Potion and recovers ${actualHeal3} HP!`);
       effectApplied = true;
       break;
 
@@ -764,7 +755,7 @@ async function handleDuelInteraction(interaction, client) {
       }
 
       const usableItems = user.inventory.filter(item =>
-        ['healingpotion', 'statbuffer', 'powerboost', 'speedboostfood'].includes(item.toLowerCase())
+        ['basicpotion', 'normalpotion', 'maxpotion'].includes(item.toLowerCase().replace(/\s+/g, ''))
       );
 
       if (usableItems.length === 0) {

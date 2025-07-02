@@ -17,7 +17,7 @@ const rankValues = {
 
 // Item values (simple mapping for common items)
 const itemValues = {
-  'strawhat': 100,
+      'basicpotion': 25,
   'luckycharm': 50,
   'treasuremap': 200,
   'healingpotion': 75,
@@ -71,7 +71,7 @@ async function execute(message, args) {
   }
 
   if (args.length === 0) {
-    return message.reply('Usage: `op sell <card/item name>`\n\nExample: `op sell Nami` or `op sell strawhat`');
+            return message.reply('Usage: `op sell <card/item name>`\n\nExample: `op sell Nami` or `op sell Basic Potion`');
   }
 
   const itemName = args.join(' ').trim();
@@ -131,9 +131,7 @@ async function execute(message, args) {
   if (userItem) {
     // Check for special items that shouldn't be sold
     const normalizedItem = normalize(userItem);
-    if (normalizedItem === 'strawhat') {
-      return message.reply(`❌ The Strawhat is too precious to sell! It's Luffy's treasure.`);
-    }
+    
     
     const sellValue = calculateItemValue(userItem);
     
