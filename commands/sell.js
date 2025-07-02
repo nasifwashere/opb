@@ -1,5 +1,6 @@
-const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
+const { isCardInTraining } = require('../utils/trainingSystem.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -80,6 +81,11 @@ async function execute(message, args) {
   const userCard = findUserCard(user, itemName);
   if (userCard) {
     const cardDef = findCard(userCard.name);
+    
+    // Check if card is in training
+    if (isCardInTraining(user, userCard.name)) {
+      return message.reply(`❌ "${userCard.name}" is currently in training and cannot be sold. Use \`op untrain ${userCard.name}\` to stop training first.`);
+    }
     
     // Check if card is locked
     if (userCard.locked) {

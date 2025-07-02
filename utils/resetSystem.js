@@ -2,6 +2,7 @@ const User = require('../db/models/User.js');
 const { EmbedBuilder } = require('discord.js');
 const fs = require('fs').promises;
 const path = require('path');
+const { autoUntrainExpiredCards } = require('./trainingSystem.js');
 
 const CONFIG_PATH = path.join(__dirname, '..', 'resetConfig.json');
 
@@ -9,6 +10,7 @@ const CONFIG_PATH = path.join(__dirname, '..', 'resetConfig.json');
 const PULL_RESET_INTERVAL = 5 * 60 * 60 * 1000; // 5 hours
 const DAILY_QUEST_RESET_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
 const WEEKLY_QUEST_RESET_INTERVAL = 7 * 24 * 60 * 60 * 1000; // 7 days
+const TRAINING_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
 
 class ResetSystem {
     constructor() {
@@ -16,6 +18,7 @@ class ResetSystem {
         this.pullResetTimer = null;
         this.dailyQuestResetTimer = null;
         this.weeklyQuestResetTimer = null;
+        this.trainingCheckTimer = null;
         this.config = {
             pullResetChannelId: null,
             questResetChannelId: null,
@@ -100,6 +103,12 @@ class ResetSystem {
             // Set up recurring timer for weekly resets
             this.weeklyQuestResetTimer = setInterval(() => this.resetWeeklyQuests(), WEEKLY_QUEST_RESET_INTERVAL);
         }, timeUntilMonday);
+
+        // Training check timer (runs every hour)
+        this.trainingCheckTimer = setInterval(() => this.checkExpiredTraining(), TRAINING_CHECK_INTERVAL);
+        
+        // Run initial training check
+        this.checkExpiredTraining();
     }
 
     async resetPulls() {
@@ -207,6 +216,17 @@ class ResetSystem {
         }
     }
 
+    async checkExpiredTraining() {
+        try {
+            const autoUntrainedCount = await autoUntrainExpiredCards();
+            if (autoUntrainedCount > 0) {
+                console.log(`[TRAINING] Auto-untrained ${autoUntrainedCount} expired training cards`);
+            }
+        } catch (error) {
+            console.error('Error checking expired training:', error);
+        }
+    }
+
     async sendPullResetNotification() {
         try {
             const channel = this.client.channels.cache.get(this.config.pullResetChannelId);
@@ -273,6 +293,7 @@ class ResetSystem {
         if (this.pullResetTimer) clearTimeout(this.pullResetTimer);
         if (this.dailyQuestResetTimer) clearTimeout(this.dailyQuestResetTimer);
         if (this.weeklyQuestResetTimer) clearTimeout(this.weeklyQuestResetTimer);
+        if (this.trainingCheckTimer) clearInterval(this.trainingCheckTimer);
     }
 }
 

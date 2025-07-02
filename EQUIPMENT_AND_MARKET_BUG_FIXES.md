@@ -1,4 +1,4 @@
-# Equipment and Market Bug Fixes Summary
+# Bug Fixes and New Training System Summary
 
 ## Issues Identified and Fixed
 
@@ -95,12 +95,49 @@ These fixes ensure all card objects have the complete schema as defined in the U
 }
 ```
 
+## New Feature: Training System
+
+### Overview
+Added a complete training system that allows players to train cards to gain experience while they're away from the game.
+
+### Key Features:
+- **XP Rate**: 1 XP per minute of training
+- **Capacity**: Maximum 3 cards can be trained simultaneously  
+- **Duration Limit**: Cards auto-untrain after 1 week with notification
+- **Accessibility**: Training cards cannot be accessed through any other commands
+
+### Implementation:
+- **New Database Schema**: Added `training` array to User model
+- **Core System**: `utils/trainingSystem.js` handles all training logic
+- **Commands**:
+  - `op train <card>` - Start training a card
+  - `op untrain <card>` - Stop training and get card back with accumulated XP
+  - `op train` (no args) - View current training status
+- **Integration**: Auto-untrain functionality integrated into existing reset system
+- **Protection**: Updated commands to prevent interaction with training cards:
+  - `team.js` - Cannot add training cards to team
+  - `sell.js` - Cannot sell training cards  
+  - `collection.js` - Training cards hidden from collection view
+
+### Files Created/Modified:
+- `db/models/User.js` - Added training schema
+- `utils/trainingSystem.js` - Core training functionality
+- `utils/resetSystem.js` - Added auto-untrain cleanup
+- `commands/train.js` - Training command
+- `commands/untrain.js` - Untrain command
+- `commands/team.js` - Added training card protection
+- `commands/sell.js` - Added training card protection
+- `commands/collection.js` - Filter out training cards
+- `commands/help.js` - Added training commands to help
+
 ## Impact
 
-These fixes should resolve:
-- Equipment not showing properly for users
-- Market purchases failing to deliver items
-- Data inconsistency issues between different commands
-- Potential save issues with Mongoose Mixed types
-- Cards created with incomplete schemas causing undefined property errors
-- Consistency across all card creation points in the codebase
+These fixes and new features provide:
+- Equipment not showing properly for users ✅ **FIXED**
+- Market purchases failing to deliver items ✅ **FIXED** 
+- Data inconsistency issues between different commands ✅ **FIXED**
+- Potential save issues with Mongoose Mixed types ✅ **FIXED**
+- Cards created with incomplete schemas causing undefined property errors ✅ **FIXED**
+- Consistency across all card creation points in the codebase ✅ **FIXED**
+- **NEW**: Complete training system for late-game progression ✅ **ADDED**
+- **NEW**: Automatic cleanup of expired training sessions ✅ **ADDED**

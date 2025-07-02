@@ -32,6 +32,18 @@ const userSchema = new mongoose.Schema({
   // Equipment system - maps card names to equipped item names
   equipped: { type: mongoose.Schema.Types.Mixed, default: {} },
 
+  // Training system - cards currently in training
+  training: [{
+    cardName: { type: String, required: true },
+    rank: { type: String, required: true },
+    level: { type: Number, default: 1 },
+    experience: { type: Number, default: 0 },
+    timesUpgraded: { type: Number, default: 0 },
+    locked: { type: Boolean, default: false },
+    startTime: { type: Number, required: true }, // Unix timestamp
+    accumulatedXP: { type: Number, default: 0 }
+  }],
+
   // Quest System - Fixed structure
   activeQuests: [{
     questId: { type: String, required: true },
@@ -132,6 +144,7 @@ userSchema.pre('save', function(next) {
   // Initialize quest arrays if they don't exist
   if (!this.activeQuests) this.activeQuests = [];
   if (!this.completedQuests) this.completedQuests = [];
+  if (!this.training) this.training = [];
   
   // Ensure quest data structure exists
   if (!this.questData) {

@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
+const { isCardInTraining } = require('../utils/trainingSystem.js');
 const fs = require('fs');
 const path = require('path');
 const { saveUserWithRetry } = require('../utils/saveWithRetry.js');
@@ -229,6 +230,16 @@ async function execute(message, args) {
         .setColor(0x2b2d31)
         .setDescription(`You don't own **${cardName}**.`)
         .setFooter({ text: 'Use op collection to see your cards' });
+      
+      return message.reply({ embeds: [embed] });
+    }
+
+    // Check if card is in training
+    if (isCardInTraining(user, userCard.name)) {
+      const embed = new EmbedBuilder()
+        .setColor(0x2b2d31)
+        .setDescription(`**${userCard.name}** is currently in training and can't be added to your team.`)
+        .setFooter({ text: 'Use op untrain to stop training first' });
       
       return message.reply({ embeds: [embed] });
     }

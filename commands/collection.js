@@ -2,6 +2,7 @@ const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, Embed
 const fs = require('fs');
 const path = require('path');
 const User = require('../db/models/User.js');
+const { isCardInTraining } = require('../utils/trainingSystem.js');
 
 const MAX_STORAGE = 250;
 
@@ -136,7 +137,7 @@ async function execute(message, args) {
     return message.reply("You have no cards!");
   }
 
-  let cardInstances = user.cards.filter(ci => ci && typeof ci === 'object');
+  let cardInstances = user.cards.filter(ci => ci && typeof ci === 'object' && !isCardInTraining(user, ci.name));
   if (cardInstances.length === 0) {
     return message.reply("You have no cards!");
   }

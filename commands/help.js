@@ -130,6 +130,8 @@ async function execute(message, args) {
             { name: 'op team remove <name>', value: 'Remove card from team', inline: true },
             { name: 'op equip <item> <card>', value: 'Equip items to cards', inline: true },
             { name: 'op unequip <card>', value: 'Remove equipped items', inline: true },
+            { name: 'op train <card>', value: 'Train cards to gain XP (1/min)', inline: true },
+            { name: 'op untrain <card>', value: 'Stop training and get card back', inline: true },
             { name: 'op use <item>', value: 'Use consumable items', inline: true }
           )
           .setColor(0x2b2d31)
