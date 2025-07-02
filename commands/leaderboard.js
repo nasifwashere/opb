@@ -2,11 +2,11 @@ const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 const User = require('../db/models/User.js');
 
 const leaderboardTypes = {
-    beli: { name: 'Richest Pirates', field: 'beli', emoji: '💰' },
-    wins: { name: 'Battle Champions', field: 'wins', emoji: '⚔️' },
-    xp: { name: 'Most Experienced', field: 'xp', emoji: '✨' },
-    cards: { name: 'Biggest Collections', field: 'cardCount', emoji: '🃏' },
-    level: { name: 'Highest Level Cards', field: 'maxLevel', emoji: '⭐' }
+    beli: { name: 'Richest Pirates', field: 'beli' },
+    wins: { name: 'Battle Champions', field: 'wins' },
+    xp: { name: 'Most Experienced', field: 'xp' },
+    cards: { name: 'Biggest Collections', field: 'cardCount' },
+    level: { name: 'Highest Level Cards', field: 'maxLevel' }
 };
 
 async function getLeaderboardData(type, page = 0, limit = 10) {
@@ -55,11 +55,11 @@ async function getLeaderboardData(type, page = 0, limit = 10) {
 function formatLeaderboardValue(type, user) {
     switch (type) {
         case 'beli':
-            return `${user.beli || 0} Beli`;
+            return `${(user.beli || 0).toLocaleString()} Beli`;
         case 'wins':
             return `${user.wins || 0} wins`;
         case 'xp':
-            return `${user.xp || 0} XP`;
+            return `${(user.xp || 0).toLocaleString()} XP`;
         case 'cards':
             return `${user.cardCount || 0} cards`;
         case 'level':
@@ -72,9 +72,9 @@ function formatLeaderboardValue(type, user) {
 async function createLeaderboardEmbed(type, users, page, client) {
     const typeData = leaderboardTypes[type];
     const embed = new EmbedBuilder()
-        .setTitle(`${typeData.emoji} ${typeData.name}`)
+        .setTitle(typeData.name)
         .setDescription(`Top players ranked by ${typeData.name.toLowerCase()}`)
-        .setColor(0xf39c12)
+        .setColor(0x2b2d31)
         .setFooter({ text: `Page ${page + 1} • Use buttons to navigate` });
 
     if (users.length === 0) {
@@ -87,7 +87,7 @@ async function createLeaderboardEmbed(type, users, page, client) {
     // Process users in parallel to improve performance
     const userPromises = users.map(async (user, index) => {
         const rank = (page * 10) + index + 1;
-        const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}.`;
+        const medal = rank === 1 ? '1st' : rank === 2 ? '2nd' : rank === 3 ? '3rd' : `${rank}th`;
         
         // Try to fetch user from cache first, then from API
         let discordUser;
@@ -105,7 +105,7 @@ async function createLeaderboardEmbed(type, users, page, client) {
         const username = discordUser ? discordUser.username : user.username || `Player ${user.userId.slice(-4)}`;
         const value = formatLeaderboardValue(type, user);
         
-        return `${medal} **${username}** - ${value}`;
+        return `**${medal}** ${username} - ${value}`;
     });
     
     const userStrings = await Promise.all(userPromises);
@@ -119,19 +119,19 @@ function createLeaderboardButtons(currentType, page, hasNext) {
     const typeButtons = Object.keys(leaderboardTypes).map(type =>
         new ButtonBuilder()
             .setCustomId(`lb_${type}`)
-            .setLabel(leaderboardTypes[type].emoji)
+            .setLabel(leaderboardTypes[type].name.split(' ')[0])
             .setStyle(type === currentType ? ButtonStyle.Primary : ButtonStyle.Secondary)
     );
 
     const navButtons = [
         new ButtonBuilder()
             .setCustomId('lb_prev')
-            .setLabel('◀ Previous')
+            .setLabel('Previous')
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(page === 0),
         new ButtonBuilder()
             .setCustomId('lb_next')
-            .setLabel('Next ▶')
+            .setLabel('Next')
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(!hasNext)
     ];
