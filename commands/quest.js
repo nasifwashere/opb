@@ -57,40 +57,28 @@ async function showQuestMenu(interaction, user, userId = null) {
     }
     
     const embed = new EmbedBuilder()
-        .setColor(0x3498db)
-        .setTitle('📋 Quest Management')
-        .setDescription('Choose a quest category to view your available quests.')
-        .addFields(
-            { name: '📅 Daily Quests', value: `${dailyQuests.length} available`, inline: true },
-            { name: '📆 Weekly Quests', value: `${weeklyQuests.length} available`, inline: true },
-            { name: '📖 Story Quests', value: `${storyQuests.length} available`, inline: true },
-            { name: '✅ Ready to Claim', value: `${claimableCount} quest(s)`, inline: false }
-        )
-        .setFooter({ text: 'Select a category to view quests' })
-        .setTimestamp();
+        .setColor(0x2b2d31)
+        .setTitle('Quests')
+        .setDescription(`**Daily:** ${dailyQuests.length} • **Weekly:** ${weeklyQuests.length} • **Story:** ${storyQuests.length}${claimableCount > 0 ? ` • **Ready to claim:** ${claimableCount}` : ''}`);
     
     const row = new ActionRowBuilder()
         .addComponents(
             new ButtonBuilder()
                 .setCustomId('quest_daily')
-                .setLabel(`Daily (${dailyQuests.length})`)
-                .setStyle(ButtonStyle.Primary)
-                .setEmoji('📅'),
+                .setLabel('Daily')
+                .setStyle(ButtonStyle.Secondary),
             new ButtonBuilder()
                 .setCustomId('quest_weekly')
-                .setLabel(`Weekly (${weeklyQuests.length})`)
-                .setStyle(ButtonStyle.Primary)
-                .setEmoji('📆'),
+                .setLabel('Weekly')
+                .setStyle(ButtonStyle.Secondary),
             new ButtonBuilder()
                 .setCustomId('quest_story')
-                .setLabel(`Story (${storyQuests.length})`)
-                .setStyle(ButtonStyle.Primary)
-                .setEmoji('📖'),
+                .setLabel('Story')
+                .setStyle(ButtonStyle.Secondary),
             new ButtonBuilder()
                 .setCustomId('quest_claim_all')
-                .setLabel(`Claim All (${claimableCount})`)
-                .setStyle(claimableCount > 0 ? ButtonStyle.Success : ButtonStyle.Secondary)
-                .setEmoji('🎁')
+                .setLabel('Claim All')
+                .setStyle(ButtonStyle.Primary)
                 .setDisabled(claimableCount === 0)
         );
     
@@ -130,20 +118,15 @@ async function showQuestMenu(interaction, user, userId = null) {
     });
     } catch (error) {
         console.error('Error in showQuestMenu:', error);
+        const errorEmbed = new EmbedBuilder()
+            .setColor(0x2b2d31)
+            .setTitle('Error')
+            .setDescription('An error occurred while loading quests. Please try again.');
+        
         if (interaction.replied || interaction.deferred) {
-            return interaction.editReply({ 
-                embeds: [new EmbedBuilder()
-                    .setColor(0xff0000)
-                    .setTitle('❌ Error')
-                    .setDescription('An error occurred while loading the quest menu. Please try again.')
-                ], 
-                components: [] 
-            });
+            return interaction.editReply({ embeds: [errorEmbed], components: [] });
         } else {
-            return interaction.reply({ 
-                content: 'An error occurred while loading the quest menu. Please try again.',
-                ephemeral: true
-            });
+            return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
         }
     }
 }
@@ -155,18 +138,23 @@ async function showQuestsByType(interaction, user, questType) {
     if (filteredQuests.length === 0) {
         return interaction.update({
             embeds: [new EmbedBuilder()
-                .setColor(0x95a5a6)
-                .setTitle(`📋 ${questType.charAt(0).toUpperCase() + questType.slice(1)} Quests`)
-                .setDescription(`No ${questType} quests available at the moment.`)
-            ]
+                .setColor(0x2b2d31)
+                .setTitle(`${questType.charAt(0).toUpperCase() + questType.slice(1)} Quests`)
+                .setDescription(`No ${questType} quests available.`)
+            ],
+            components: [new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId('quest_back')
+                    .setLabel('Back')
+                    .setStyle(ButtonStyle.Secondary)
+            )]
         });
     }
     
     const embed = new EmbedBuilder()
-        .setColor(getColorForQuestType(questType))
-        .setTitle(`📋 ${questType.charAt(0).toUpperCase() + questType.slice(1)} Quests`)
-        .setDescription(`Here are your available ${questType} quests:`)
-        .setFooter({ text: `${filteredQuests.length} ${questType} quest(s) available` });
+        .setColor(0x2b2d31)
+        .setTitle(`${questType.charAt(0).toUpperCase() + questType.slice(1)} Quests`)
+        .setDescription(filteredQuests.length > 6 ? `Showing 6 of ${filteredQuests.length} quests` : `${filteredQuests.length} quest${filteredQuests.length !== 1 ? 's' : ''}`);
     
     // Add quest fields (limit to 6 to prevent embed overflow)
     for (const quest of filteredQuests.slice(0, 6)) {
@@ -175,57 +163,59 @@ async function showQuestsByType(interaction, user, questType) {
         let statusEmoji = '🔄'; // In progress
         let questCompleted = true;
         
-        // Build progress text
+        // Build progress text - simplified format
+        let progressParts = [];
         for (const requirement of quest.requirements) {
             const currentProgress = progress.progress[requirement.type] || 0;
-            progressText += `${formatRequirementType(requirement.type)}: ${currentProgress}/${requirement.target}\n`;
+            progressParts.push(`${currentProgress}/${requirement.target} ${formatRequirementType(requirement.type).toLowerCase()}`);
             
             if (currentProgress < requirement.target) {
                 questCompleted = false;
             }
         }
+        progressText = progressParts.join(' • ');
         
         if (questCompleted && progress.started) {
-            statusEmoji = '✅'; // Completed
+            statusEmoji = '✅';
         } else if (!progress.started) {
-            statusEmoji = '🆕'; // New
+            statusEmoji = '○';
+        } else {
+            statusEmoji = '◐';
         }
         
-        // Build rewards text
-        let rewardsText = '';
+        // Build rewards text - simplified
+        let rewardParts = [];
         for (const reward of quest.rewards) {
             switch (reward.type) {
                 case 'beli':
-                    rewardsText += `💰 ${reward.amount} Beli `;
+                    rewardParts.push(`${reward.amount} beli`);
                     break;
                 case 'xp':
-                    rewardsText += `⭐ ${reward.amount} XP `;
+                    rewardParts.push(`${reward.amount} XP`);
                     break;
                 case 'item':
-                    rewardsText += `🎒 ${reward.itemName} `;
+                    rewardParts.push(reward.itemName);
                     break;
                 case 'card':
-                    rewardsText += `🃏 ${reward.itemName} (${reward.rank}) `;
+                    rewardParts.push(`${reward.itemName} (${reward.rank})`);
                     break;
             }
         }
+        let rewardsText = rewardParts.join(' • ');
         
-        // Ensure field value doesn't exceed Discord's 1024 character limit
-        let fieldValue = `${quest.description}\n\n**Progress:**\n${progressText}\n**Rewards:** ${rewardsText.trim()}`;
+        // Create clean field value
+        let fieldValue = `${progressText}\n${rewardsText}`;
+        
+        // Truncate if too long
         if (fieldValue.length > 1024) {
-            // Truncate description if too long
-            const maxDescLength = 1024 - progressText.length - rewardsText.length - 50; // 50 chars for formatting
-            const truncatedDesc = quest.description.length > maxDescLength 
-                ? quest.description.substring(0, maxDescLength) + "..."
-                : quest.description;
-            fieldValue = `${truncatedDesc}\n\n**Progress:**\n${progressText}\n**Rewards:** ${rewardsText.trim()}`;
+            const maxLength = 1000;
+            fieldValue = fieldValue.substring(0, maxLength) + "...";
         }
         
-        // Ensure field name doesn't exceed Discord's 256 character limit
+        // Create clean field name
         let fieldName = `${statusEmoji} ${quest.name}`;
         if (fieldName.length > 256) {
-            const maxNameLength = 256 - statusEmoji.length - 4; // 4 chars for spacing and "..."
-            fieldName = `${statusEmoji} ${quest.name.substring(0, maxNameLength)}...`;
+            fieldName = `${statusEmoji} ${quest.name.substring(0, 250)}...`;
         }
         
         embed.addFields({
@@ -235,18 +225,13 @@ async function showQuestsByType(interaction, user, questType) {
         });
     }
     
-    if (filteredQuests.length > 6) {
-        embed.setDescription(`Here are your available ${questType} quests (showing 6 of ${filteredQuests.length}):`);
-    }
-    
     // Add back button
     const row = new ActionRowBuilder()
         .addComponents(
             new ButtonBuilder()
                 .setCustomId('quest_back')
-                .setLabel('Back to Menu')
+                .setLabel('Back')
                 .setStyle(ButtonStyle.Secondary)
-                .setEmoji('⬅️')
         );
     
     await interaction.update({ embeds: [embed], components: [row] });
@@ -308,45 +293,40 @@ async function claimAllQuests(interaction, user) {
     if (claimedQuests.length === 0) {
         return interaction.update({
             embeds: [new EmbedBuilder()
-                .setColor(0x95a5a6)
-                .setTitle('🎁 Claim All Quests')
+                .setColor(0x2b2d31)
+                .setTitle('Claim Rewards')
                 .setDescription('No completed quests available to claim.')
-            ]
+            ],
+            components: [new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId('quest_back')
+                    .setLabel('Back')
+                    .setStyle(ButtonStyle.Secondary)
+            )]
         });
     }
     
     // Build rewards summary
-    let rewardsSummary = '';
-    if (totalRewards.beli > 0) rewardsSummary += `💰 **${totalRewards.beli}** Beli\n`;
-    if (totalRewards.xp > 0) rewardsSummary += `⭐ **${totalRewards.xp}** XP\n`;
-    if (totalRewards.items.length > 0) rewardsSummary += `🎒 **Items:** ${totalRewards.items.join(', ')}\n`;
-    if (totalRewards.cards.length > 0) rewardsSummary += `🃏 **Cards:** ${totalRewards.cards.join(', ')}\n`;
+    let rewardParts = [];
+    if (totalRewards.beli > 0) rewardParts.push(`${totalRewards.beli} beli`);
+    if (totalRewards.xp > 0) rewardParts.push(`${totalRewards.xp} XP`);
+    if (totalRewards.items.length > 0) rewardParts.push(`${totalRewards.items.length} item${totalRewards.items.length !== 1 ? 's' : ''}`);
+    if (totalRewards.cards.length > 0) rewardParts.push(`${totalRewards.cards.length} card${totalRewards.cards.length !== 1 ? 's' : ''}`);
     
-    // Ensure completed quests list doesn't exceed Discord field limits
-    let completedQuestsText = claimedQuests.join('\n');
-    if (completedQuestsText.length > 1024) {
-        // If too long, show count instead of full list
-        completedQuestsText = `${claimedQuests.length} quests completed (list too long to display)`;
-    }
+    const rewardsSummary = rewardParts.length > 0 ? rewardParts.join(' • ') : 'No rewards';
     
     const embed = new EmbedBuilder()
-        .setColor(0x27ae60)
-        .setTitle('🎉 Quest Rewards Claimed!')
-        .setDescription(`Successfully claimed rewards from **${claimedQuests.length}** quest(s)!`)
-        .addFields(
-            { name: '📋 Completed Quests', value: completedQuestsText, inline: false },
-            { name: '🎁 Total Rewards', value: rewardsSummary || 'No rewards', inline: false }
-        )
-        .setTimestamp();
+        .setColor(0x2b2d31)
+        .setTitle('Rewards Claimed')
+        .setDescription(`Claimed ${claimedQuests.length} quest${claimedQuests.length !== 1 ? 's' : ''} • ${rewardsSummary}`);
     
     // Add back button
     const row = new ActionRowBuilder()
         .addComponents(
             new ButtonBuilder()
                 .setCustomId('quest_back')
-                .setLabel('Back to Menu')
+                .setLabel('Back')
                 .setStyle(ButtonStyle.Secondary)
-                .setEmoji('⬅️')
         );
     
     await interaction.update({ embeds: [embed], components: [row] });
@@ -363,14 +343,7 @@ async function claimAllQuests(interaction, user) {
     });
 }
 
-function getColorForQuestType(type) {
-    switch (type) {
-        case 'daily': return 0xe74c3c; // Red
-        case 'weekly': return 0x9b59b6; // Purple
-        case 'story': return 0xf39c12; // Orange
-        default: return 0x3498db; // Blue
-    }
-}
+
 
 function formatRequirementType(type) {
     const typeMap = {
