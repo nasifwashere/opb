@@ -430,6 +430,123 @@ async function execute(message, args, client) {
     if (user.stage === undefined) user.stage = 0;
     if (!user.exploreStates) user.exploreStates = {};
 
+    // === STUCK STATE DETECTION AND CLEANUP ===
+    let wasStuck = false;
+    let fixedIssues = [];
+
+    // Fix 1: Check for corrupted battle state
+    if (user.exploreStates.inBossFight) {
+        const battleState = user.exploreStates.battleState;
+        const stageData = user.exploreStates.currentStage;
+        
+        // If battle state is corrupted or missing critical data
+        if (!battleState || !stageData || !battleState.userTeam || !battleState.enemies) {
+            user.exploreStates.inBossFight = false;
+            user.exploreStates.battleState = null;
+            user.exploreStates.currentStage = null;
+            user.exploreStates.currentLocation = null;
+            wasStuck = true;
+            fixedIssues.push('Corrupted battle state');
+        }
+        // If all enemies are defeated but still in battle
+        else if (battleState.enemies && battleState.enemies.every(e => e.currentHp <= 0)) {
+            user.exploreStates.inBossFight = false;
+            user.exploreStates.battleState = null;
+            user.exploreStates.currentStage = null;
+            user.exploreStates.currentLocation = null;
+            user.stage++; // Advance stage
+            wasStuck = true;
+            fixedIssues.push('Stuck in completed battle');
+        }
+        // If all team members are defeated but still in battle
+        else if (battleState.userTeam && battleState.userTeam.every(card => card.currentHp <= 0)) {
+            user.exploreStates.inBossFight = false;
+            user.exploreStates.battleState = null;
+            user.exploreStates.currentStage = null;
+            user.exploreStates.currentLocation = null;
+            user.exploreStates.defeatCooldown = Date.now() + (30 * 60 * 1000); // 30 min cooldown
+            wasStuck = true;
+            fixedIssues.push('Stuck in lost battle');
+        }
+    }
+
+    // Fix 2: Check for invalid stage numbers
+    if (user.stage < 0) {
+        user.stage = 0;
+        wasStuck = true;
+        fixedIssues.push('Invalid negative stage');
+    }
+
+    const maxStage = Object.values(LOCATIONS).reduce((total, location) => total + location.length, 0);
+    if (user.stage > maxStage) {
+        user.stage = maxStage - 1;
+        wasStuck = true;
+        fixedIssues.push('Stage beyond available content');
+    }
+
+    // Fix 3: Clear excessively long defeat cooldowns (over 24 hours)
+    if (user.exploreStates.defeatCooldown && user.exploreStates.defeatCooldown > Date.now() + (24 * 60 * 60 * 1000)) {
+        user.exploreStates.defeatCooldown = null;
+        wasStuck = true;
+        fixedIssues.push('Excessive defeat cooldown');
+    }
+
+    // Fix 4: Check for stuck location transitions
+    const currentLoc = getCurrentLocation(user.stage);
+    const localStg = getLocalStage(user.stage);
+    const locData = LOCATIONS[currentLoc];
+    
+    if (currentLoc !== 'COMPLETED' && locData && localStg >= locData.length) {
+        // Auto-advance to next location
+        const currentLocationIndex = Object.keys(LOCATIONS).indexOf(currentLoc);
+        if (currentLocationIndex >= 0 && currentLocationIndex < Object.keys(LOCATIONS).length - 1) {
+            let nextLocationStartStage = 0;
+            const locationNames = Object.keys(LOCATIONS);
+            for (let i = 0; i <= currentLocationIndex; i++) {
+                nextLocationStartStage += LOCATIONS[locationNames[i]].length;
+            }
+            user.stage = nextLocationStartStage;
+            wasStuck = true;
+            fixedIssues.push('Stuck between locations');
+        }
+    }
+
+    // Fix 5: Validate team state for battles
+    if (user.team && user.team.length > 0) {
+        // Check if team has valid cards
+        const validTeam = user.team.filter(cardName => {
+            const userCard = user.cards?.find(card => card.name === cardName);
+            return userCard && userCard.level >= 1;
+        });
+        
+        if (validTeam.length === 0 && user.team.length > 0) {
+            user.team = []; // Clear invalid team
+            wasStuck = true;
+            fixedIssues.push('Invalid team composition');
+        }
+    }
+
+    // Save fixes if any were applied
+    if (wasStuck) {
+        await user.save();
+        
+        const fixEmbed = new EmbedBuilder()
+            .setTitle('🔧 Exploration Issues Fixed')
+            .setDescription([
+                'Detected and automatically fixed the following issues:',
+                '',
+                ...fixedIssues.map(issue => `✅ ${issue}`),
+                '',
+                'You can now continue exploring normally!'
+            ].join('\n'))
+            .setColor(0x2ecc71)
+            .setFooter({ text: 'Use op explore again to continue' });
+
+        return message.reply({ embeds: [fixEmbed] });
+    }
+
+    // === NORMAL EXPLORATION CONTINUES ===
+
     // Check if user is in boss fight state
     if (user.exploreStates.inBossFight) {
         return await handleBossFight(message, user, client);
@@ -893,36 +1010,81 @@ async function displayBattleState(message, user, client) {
 
             await interaction.deferUpdate();
 
+            // Re-fetch user data to ensure it's current
+            const freshUser = await User.findOne({ userId: user.userId });
+            if (!freshUser || !freshUser.exploreStates.inBossFight) {
+                // Battle state was cleared, stop collector
+                collector.stop();
+                await battleMessage.edit({ 
+                    content: '⚠️ Battle state was reset. Please use `op explore` to continue.',
+                    embeds: [],
+                    components: [] 
+                });
+                return;
+            }
+
             if (interaction.customId === 'battle_attack') {
-                await handleBattleAttack(interaction, user, battleMessage);
-                        } else if (interaction.customId === 'battle_items') {
-                await handleBattleItems(interaction, user, battleMessage);
+                await handleBattleAttack(interaction, freshUser, battleMessage);
+            } else if (interaction.customId === 'battle_items') {
+                await handleBattleItems(interaction, freshUser, battleMessage);
             } else if (interaction.customId === 'battle_flee') {
-                await handleBattleFlee(interaction, user, battleMessage);
+                await handleBattleFlee(interaction, freshUser, battleMessage);
             }
         } catch (error) {
             console.error('Battle interaction error:', error);
             // Attempt to clean up battle state on error
             try {
-                user.exploreStates.inBossFight = false;
-                user.exploreStates.battleState = null;
-                user.exploreStates.currentStage = null;
-                await user.save();
+                const errorUser = await User.findOne({ userId: user.userId });
+                if (errorUser) {
+                    errorUser.exploreStates.inBossFight = false;
+                    errorUser.exploreStates.battleState = null;
+                    errorUser.exploreStates.currentStage = null;
+                    errorUser.exploreStates.currentLocation = null;
+                    await errorUser.save();
+                }
             } catch (saveError) {
                 console.error('Error cleaning up battle state:', saveError);
             }
 
             collector.stop();
             try {
-                await battleMessage.edit({ components: [] });
+                await battleMessage.edit({ 
+                    content: '❌ An error occurred in battle. Your battle state has been reset. Use `op explore` to continue.',
+                    embeds: [],
+                    components: [] 
+                });
             } catch (editError) {
-                console.error('Error removing battle components:', editError);
+                console.error('Error editing battle message:', editError);
             }
         }
     });
 
-    collector.on('end', () => {
-        battleMessage.edit({ components: [] }).catch(() => {});
+    collector.on('end', async (collected, reason) => {
+        try {
+            if (reason === 'time') {
+                // Battle timed out - clean up state
+                const timeoutUser = await User.findOne({ userId: user.userId });
+                if (timeoutUser && timeoutUser.exploreStates.inBossFight) {
+                    timeoutUser.exploreStates.inBossFight = false;
+                    timeoutUser.exploreStates.battleState = null;
+                    timeoutUser.exploreStates.currentStage = null;
+                    timeoutUser.exploreStates.currentLocation = null;
+                    // Set short cooldown for timeout
+                    timeoutUser.exploreStates.defeatCooldown = Date.now() + (15 * 60 * 1000); // 15 minutes
+                    await timeoutUser.save();
+                }
+                
+                await battleMessage.edit({ 
+                    content: '⏰ Battle timed out! Your exploration state has been reset. Use `op explore` to continue.',
+                    embeds: [],
+                    components: [] 
+                });
+            } else {
+                await battleMessage.edit({ components: [] });
+            }
+        } catch (error) {
+            console.error('Error handling battle collector end:', error);
+        }
     });
 }
 
