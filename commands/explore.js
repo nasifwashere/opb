@@ -1,10 +1,6 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const User = require('../db/models/User.js');
-const { calculateBattleStats, calculateDamage, resetTeamHP } = require('../utils/battleSystem.js');
-const { distributeXPToTeam, XP_PER_LEVEL } = require('../utils/levelSystem.js');
-const path = require('path');
-const fs = require('fs');
-const { updateQuestProgress } = require('../utils/questSystem.js');
 
 // Location data based on your specifications
 const LOCATIONS = {
@@ -31,7 +27,7 @@ const LOCATIONS = {
             type: "boss",
             title: "Fight with Higuma",
             desc: "The mountain bandit Higuma blocks your path!",
-            enemy: { name: "Higuma", hp: 60, atk: [8, 12], spd: 45, rank: "C" },
+            enemy: { name: "Higuma", hp: 75, atk: [10, 12], spd: 50, rank: "C" },
             reward: { type: "multiple", rewards: [
                 { type: "beli", amount: 100 },
                 { type: "xp", amount: 50 }
@@ -121,7 +117,7 @@ const LOCATIONS = {
         },
         {
             type: "narrative",
-            title: "Departure to Orange Town",
+            title: "Reached Orange Town",
             desc: "With Morgan defeated, you sail toward Orange Town where new adventures await.",
             reward: { type: "beli", amount: 100 }
         }
@@ -239,7 +235,7 @@ const LOCATIONS = {
             type: "boss",
             title: "Don Krieg",
             desc: "The armored pirate Don Krieg attacks! His armor reflects damage back to attackers!",
-            enemy: { name: "Don Krieg", hp: 82, atk: [11, 17], spd: 65, rank: "A", ability: "damage_reflection" },
+            enemy: { name: "Don Krieg", hp: 150, atk: [18, 25], spd: 80, rank: "A", ability: "damage_reflection" },
             reward: { type: "beli", amount: 500, xp: 200 },
             loseCooldown: 120 * 60 * 1000
         },
@@ -305,8 +301,7 @@ const LOCATIONS = {
             type: "narrative",
             title: "Alabasta Unlocked!",
             desc: "With Arlong defeated, you've completed the East Blue saga! The Grand Line awaits - Alabasta arc is now unlocked!",
-            reward: { type: "saga_unlock", saga: "Alabasta" },
-            questTrigger: "saga_complete"
+            reward: { type: "saga_unlock", saga: "Alabasta" }
         }
     ]
 };
@@ -321,7 +316,7 @@ const LOCATION_COOLDOWNS = {
 };
 
 const DEFEAT_COOLDOWN = 5 * 60 * 1000; // 5 minutes on defeat
-const IMMUNE_USER_ID = 1257718161298690119; // Set to your user ID for immunity
+const IMMUNE_USER_ID = "1257718161298690119";
 
 function normalizeItemName(item) {
     return item.replace(/\s+/g, '').toLowerCase();
@@ -335,36 +330,12 @@ function addToInventory(user, item) {
     }
 }
 
-async function addXP(user, amount) {
+function addXP(user, amount) {
     const xpBoost = user.activeBoosts?.find(boost => 
         boost.type === 'double_xp' && boost.expiresAt > Date.now()
     );
     const finalAmount = xpBoost ? amount * 2 : amount;
-
-    // Add to user's total XP
     user.xp = (user.xp || 0) + finalAmount;
-
-    // Distribute XP to team members and handle level ups
-    if (user.team && user.team.length > 0) {
-        const levelUpChanges = distributeXPToTeam(user, finalAmount);
-
-        // Store level up information for display
-        if (levelUpChanges && levelUpChanges.length > 0) {
-            if (!user.recentLevelUps) user.recentLevelUps = [];
-            user.recentLevelUps.push(...levelUpChanges);
-        }
-
-        // Mark the user document as modified to ensure cards array is saved
-        user.markModified('cards');
-
-        // Save the user document to persist XP changes
-        try {
-            await user.save();
-            console.log('User XP data saved successfully');
-        } catch (error) {
-            console.error('Error saving user XP data:', error);
-        }
-    }
 }
 
 function prettyTime(ms) {
@@ -373,12 +344,12 @@ function prettyTime(ms) {
     let hours = Math.floor(minutes / 60);
     minutes = minutes % 60;
     seconds = seconds % 60;
-
+    
     let out = [];
     if (hours > 0) out.push(`${hours} hour${hours !== 1 ? "s" : ""}`);
     if (minutes > 0) out.push(`${minutes} minute${minutes !== 1 ? "s" : ""}`);
     if (out.length === 0) out.push(`${seconds} seconds`);
-
+    
     return out.join(", ");
 }
 
@@ -392,31 +363,113 @@ function createHpBar(current, max) {
 
 function getCurrentLocation(stage) {
     if (stage < 7) return 'WINDMILL VILLAGE';
-    if (stage < 16) return 'SHELLS TOWN';  // Shells Town has 9 stages (7-15)
-    if (stage < 23) return 'ORANGE TOWN';  // Orange Town has 7 stages (16-22)
-    if (stage < 28) return 'SYRUP VILLAGE'; // Syrup Village has 5 stages (23-27)
-    if (stage < 33) return 'BARATIE';      // Baratie has 5 stages (28-32)
-    if (stage < 42) return 'ARLONG PARK';  // Arlong Park has 9 stages (33-41)
+    if (stage < 16) return 'SHELLS TOWN';
+    if (stage < 24) return 'ORANGE TOWN';
+    if (stage < 29) return 'SYRUP VILLAGE';
+    if (stage < 34) return 'BARATIE';
+    if (stage < 43) return 'ARLONG PARK';
     return 'COMPLETED';
 }
 
 function getLocalStage(globalStage) {
     if (globalStage < 7) return globalStage;
     if (globalStage < 16) return globalStage - 7;
-    if (globalStage < 23) return globalStage - 16;
-    if (globalStage < 28) return globalStage - 23;
-    if (globalStage < 33) return globalStage - 28;
-    if (globalStage < 42) return globalStage - 33;
+    if (globalStage < 24) return globalStage - 16;
+    if (globalStage < 29) return globalStage - 24;
+    if (globalStage < 34) return globalStage - 29;
+    if (globalStage < 43) return globalStage - 34;
     return 0;
 }
 
-function getTotalStagesInLocation(location) {
-    return LOCATIONS[location] ? LOCATIONS[location].length : 0;
+// Calculate equipped item bonuses
+function calculateEquippedBonuses(user) {
+    const bonuses = { hp: 0, atk: 0, spd: 0, def: 0 };
+    
+    if (!user.equipped) return bonuses;
+    
+    // Item stat bonuses - normalized item names
+    const itemBonuses = {
+        'strawhat': { hp: 10, atk: 5, spd: 5 },
+        'marinesword': { atk: 15, spd: 5 },
+        'townmap': { spd: 10 },
+        'battlebanner': { hp: 20, atk: 10 },
+        'speedboostfood': { spd: 25 }
+    };
+    
+    // Handle both Map and Object types for equipped items
+    const equippedEntries = user.equipped instanceof Map ? 
+        Array.from(user.equipped.entries()) : 
+        Object.entries(user.equipped);
+    
+    for (const [cardName, itemName] of equippedEntries) {
+        // Ensure itemName is a string before normalizing
+        if (itemName && typeof itemName === 'string') {
+            const normalizedItem = normalizeItemName(itemName);
+            if (itemBonuses[normalizedItem]) {
+                const bonus = itemBonuses[normalizedItem];
+                bonuses.hp += bonus.hp || 0;
+                bonuses.atk += bonus.atk || 0;
+                bonuses.spd += bonus.spd || 0;
+                bonuses.def += bonus.def || 0;
+            }
+        }
+    }
+    
+    return bonuses;
 }
 
-const data = new SlashCommandBuilder()
-  .setName('explore')
-  .setDescription('Begin or continue your adventure in the One Piece world!');
+// Get user's battle stats including equipped item bonuses
+function getUserBattleStats(user) {
+    const baseStats = {
+        hp: 100 + (user.level || 1) * 10,
+        atk: 15 + (user.level || 1) * 2,
+        spd: 50 + (user.level || 1) * 3
+    };
+    
+    const equipped = calculateEquippedBonuses(user);
+    
+    return {
+        hp: baseStats.hp + equipped.hp,
+        atk: baseStats.atk + equipped.atk,
+        spd: baseStats.spd + equipped.spd,
+        def: equipped.def
+    };
+}
+
+// Check if user can use inventory items in battle
+function canUseInventoryItem(user, itemName) {
+    if (!user.inventory) return false;
+    const normalizedItem = normalizeItemName(itemName);
+    return user.inventory.some(item => normalizeItemName(item) === normalizedItem);
+}
+
+// Use inventory item in battle
+function useInventoryItem(user, itemName) {
+    if (!canUseInventoryItem(user, itemName)) return null;
+    
+    const normalizedItem = normalizeItemName(itemName);
+    const itemIndex = user.inventory.findIndex(item => normalizeItemName(item) === normalizedItem);
+    
+    if (itemIndex === -1) return null;
+    
+    // Remove item from inventory
+    user.inventory.splice(itemIndex, 1);
+    
+    // Return item effects
+    const itemEffects = {
+        'healthpotion': { type: 'heal', amount: 50 },
+        'strengthpotion': { type: 'attack_boost', amount: 20, duration: 3 },
+        'speedboostfood': { type: 'speed_boost', amount: 15, duration: 3 },
+        'defensepotion': { type: 'defense_boost', amount: 15, duration: 3 }
+    };
+    
+    return itemEffects[normalizedItem] || null;
+}
+
+const data = {
+    name: "explore",
+    description: "Begin or continue your adventure in the One Piece world!"
+};
 
 async function execute(message, args, client) {
     const userId = message.author.id;
@@ -430,131 +483,6 @@ async function execute(message, args, client) {
     if (user.stage === undefined) user.stage = 0;
     if (!user.exploreStates) user.exploreStates = {};
 
-    // === STUCK STATE DETECTION AND CLEANUP ===
-    let wasStuck = false;
-    let fixedIssues = [];
-
-    // Fix 1: Check for corrupted battle state
-    if (user.exploreStates.inBossFight) {
-        const battleState = user.exploreStates.battleState;
-        const stageData = user.exploreStates.currentStage;
-        
-        // If battle state is corrupted or missing critical data
-        if (!battleState || !stageData || !battleState.userTeam || !battleState.enemies) {
-            user.exploreStates.inBossFight = false;
-            user.exploreStates.battleState = null;
-            user.exploreStates.currentStage = null;
-            user.exploreStates.currentLocation = null;
-            wasStuck = true;
-            fixedIssues.push('Corrupted battle state');
-        }
-        // If all enemies are defeated but still in battle
-        else if (battleState.enemies && battleState.enemies.every(e => e.currentHp <= 0)) {
-            user.exploreStates.inBossFight = false;
-            user.exploreStates.battleState = null;
-            user.exploreStates.currentStage = null;
-            user.exploreStates.currentLocation = null;
-            user.stage++; // Advance stage
-            wasStuck = true;
-            fixedIssues.push('Stuck in completed battle');
-        }
-        // If all team members are defeated but still in battle
-        else if (battleState.userTeam && battleState.userTeam.every(card => card.currentHp <= 0)) {
-            user.exploreStates.inBossFight = false;
-            user.exploreStates.battleState = null;
-            user.exploreStates.currentStage = null;
-            user.exploreStates.currentLocation = null;
-            user.exploreStates.defeatCooldown = Date.now() + (30 * 60 * 1000); // 30 min cooldown
-            wasStuck = true;
-            fixedIssues.push('Stuck in lost battle');
-        }
-    }
-
-    // Fix 2: Check for invalid stage numbers
-    if (user.stage < 0) {
-        user.stage = 0;
-        wasStuck = true;
-        fixedIssues.push('Invalid negative stage');
-    }
-
-    const maxStage = Object.values(LOCATIONS).reduce((total, location) => total + location.length, 0);
-    if (user.stage > maxStage) {
-        user.stage = maxStage - 1;
-        wasStuck = true;
-        fixedIssues.push('Stage beyond available content');
-    }
-
-    // Fix 3: Clear excessively long defeat cooldowns (over 24 hours)
-    if (user.exploreStates.defeatCooldown && user.exploreStates.defeatCooldown > Date.now() + (24 * 60 * 60 * 1000)) {
-        user.exploreStates.defeatCooldown = null;
-        wasStuck = true;
-        fixedIssues.push('Excessive defeat cooldown');
-    }
-
-    // Fix 4: Specific fix for Orange Town bug (stage 23)
-    if (user.stage === 23) {
-        // Users stuck at stage 23 due to Orange Town array length mismatch
-        user.stage = 23; // Set to corrected Syrup Village start
-        wasStuck = true;
-        fixedIssues.push('Orange Town transition bug');
-    }
-
-    // Fix 5: Check for stuck location transitions
-    const currentLoc = getCurrentLocation(user.stage);
-    const localStg = getLocalStage(user.stage);
-    const locData = LOCATIONS[currentLoc];
-    
-    if (currentLoc !== 'COMPLETED' && locData && localStg >= locData.length) {
-        // Auto-advance to next location
-        const currentLocationIndex = Object.keys(LOCATIONS).indexOf(currentLoc);
-        if (currentLocationIndex >= 0 && currentLocationIndex < Object.keys(LOCATIONS).length - 1) {
-            let nextLocationStartStage = 0;
-            const locationNames = Object.keys(LOCATIONS);
-            for (let i = 0; i <= currentLocationIndex; i++) {
-                nextLocationStartStage += LOCATIONS[locationNames[i]].length;
-            }
-            user.stage = nextLocationStartStage;
-            wasStuck = true;
-            fixedIssues.push('Stuck between locations');
-        }
-    }
-
-    // Fix 6: Validate team state for battles
-    if (user.team && user.team.length > 0) {
-        // Check if team has valid cards
-        const validTeam = user.team.filter(cardName => {
-            const userCard = user.cards?.find(card => card.name === cardName);
-            return userCard && userCard.level >= 1;
-        });
-        
-        if (validTeam.length === 0 && user.team.length > 0) {
-            user.team = []; // Clear invalid team
-            wasStuck = true;
-            fixedIssues.push('Invalid team composition');
-        }
-    }
-
-    // Save fixes if any were applied
-    if (wasStuck) {
-        await user.save();
-        
-        const fixEmbed = new EmbedBuilder()
-            .setTitle('🔧 Exploration Issues Fixed')
-            .setDescription([
-                'Detected and automatically fixed the following issues:',
-                '',
-                ...fixedIssues.map(issue => `✅ ${issue}`),
-                '',
-                'You can now continue exploring normally!'
-            ].join('\n'))
-            .setColor(0x2ecc71)
-            .setFooter({ text: 'Use op explore again to continue' });
-
-        return message.reply({ embeds: [fixEmbed] });
-    }
-
-    // === NORMAL EXPLORATION CONTINUES ===
-
     // Check if user is in boss fight state
     if (user.exploreStates.inBossFight) {
         return await handleBossFight(message, user, client);
@@ -562,12 +490,20 @@ async function execute(message, args, client) {
 
     // Check cooldowns
     const currentLocation = getCurrentLocation(user.stage);
-
+    
     if (currentLocation === 'COMPLETED') {
         return message.reply('🎉 Congratulations! You have completed the East Blue Saga! More adventures await in future updates!');
     }
 
-    // Cooldown removed - users can explore without waiting
+    // Check explore cooldown using config
+    const config = require('../config.json');
+    const cooldownTime = config.exploreCooldown || 120000; // 2 minutes default
+    const lastExplore = user.lastExplore ? new Date(user.lastExplore).getTime() : 0;
+    const timeLeft = (lastExplore + cooldownTime) - Date.now();
+
+    if (timeLeft > 0 && userId !== IMMUNE_USER_ID) {
+        return message.reply(`⏰ You need to wait ${prettyTime(timeLeft)} before exploring again!`);
+    }
 
     // Check defeat cooldown
     if (user.exploreStates.defeatCooldown && user.exploreStates.defeatCooldown > Date.now()) {
@@ -577,63 +513,13 @@ async function execute(message, args, client) {
 
     const localStage = getLocalStage(user.stage);
     const locationData = LOCATIONS[currentLocation];
-
+    
     if (!locationData || localStage >= locationData.length) {
-        // Move to next location
-        const currentLocationIndex = Object.keys(LOCATIONS).indexOf(currentLocation);
-        if (currentLocationIndex >= 0 && currentLocationIndex < Object.keys(LOCATIONS).length - 1) {
-            const nextLocation = Object.keys(LOCATIONS)[currentLocationIndex + 1];
-
-            // Calculate the starting stage of next location
-            let nextLocationStartStage = 0;
-            const locationNames = Object.keys(LOCATIONS);
-            for (let i = 0; i <= currentLocationIndex; i++) {
-                nextLocationStartStage += LOCATIONS[locationNames[i]].length;
-            }
-
-            // Advance to next location's first stage
-            user.stage = nextLocationStartStage;
-            user.lastExplore = new Date();
-            // Update quest progress for exploration
-            try {
-                await updateQuestProgress(user, 'explore', 1);
-            } catch (error) {
-                console.error('Error updating quest progress:', error);
-            }
-            await user.save();
-
-            const nextEmbed = new EmbedBuilder()
-                .setColor(0x2C2F33)
-                .setDescription([
-                    `**Location Complete**`,
-                    '',
-                    `You've completed **${currentLocation}**`,
-                    '',
-                    `**${nextLocation}** is now available`,
-                    '',
-                    'Use `op explore` to continue your adventure'
-                ].join('\n'))
-                .setFooter({ text: 'Adventure Progress' });
-
-            return message.reply({ embeds: [nextEmbed] });
-        } else {
-            const completeEmbed = new EmbedBuilder()
-                .setColor(0x2C2F33)
-                .setDescription([
-                    '**East Blue Saga Complete**',
-                    '',
-                    'You have completed all available locations',
-                    '',
-                    'More content coming soon'
-                ].join('\n'))
-                .setFooter({ text: 'Adventure Complete' });
-
-            return message.reply({ embeds: [completeEmbed] });
-        }
+        return message.reply('❌ No more stages available in this location!');
     }
 
     const stageData = locationData[localStage];
-
+    
     // Handle different stage types
     if (stageData.type === 'narrative') {
         await handleNarrative(message, user, stageData, currentLocation);
@@ -645,106 +531,41 @@ async function execute(message, args, client) {
 }
 
 async function handleNarrative(message, user, stageData, currentLocation) {
-    const localStage = getLocalStage(user.stage);
-    const totalStages = getTotalStagesInLocation(currentLocation);
-
-    // Add engaging features
-    const features = await generateExploreFeatures(user, stageData);
-
-    let description = stageData.desc;
-    if (features.cardCommentary) {
-        description += `\n\n💭 *${features.cardCommentary}*`;
-    }
-    if (features.fortune) {
-        description += `\n\n🔮 **Fortune**: *${features.fortune}*`;
-    }
-
     const embed = new EmbedBuilder()
         .setTitle(`🗺️ ${currentLocation} - ${stageData.title}`)
-        .setDescription(description)
-        .setColor(0x2c2f33)
-        .setFooter({ text: `Progress: ${localStage + 1}/${totalStages}` });
+        .setDescription(stageData.desc)
+        .setColor(0x3498db);
 
-    // Apply original rewards
-    await applyReward(user, stageData.reward, stageData.questTrigger);
-
-    // Apply hidden event rewards
-    if (features.hiddenEvent) {
-        await applyReward(user, features.hiddenEvent.reward);
-        embed.addFields({ name: '✨ Hidden Event', value: features.hiddenEvent.text, inline: false });
-    }
-
-    // Show mini choice if available
-    if (features.miniChoice) {
-        embed.addFields({ name: '🤔 Quick Decision', value: features.miniChoice.question, inline: false });
-
-        const row = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId('choice_a')
-                    .setLabel(features.miniChoice.optionA.label)
-                    .setStyle(ButtonStyle.Primary),
-                new ButtonBuilder()
-                    .setCustomId('choice_b')
-                    .setLabel(features.miniChoice.optionB.label)
-                    .setStyle(ButtonStyle.Secondary)
-            );
-
-        const choiceMessage = await message.reply({ embeds: [embed], components: [row] });
-        await handleMiniChoice(choiceMessage, user, features.miniChoice, stageData);
-        return;
-    }
-
+    // Apply rewards
+    await applyReward(user, stageData.reward);
+    
     // Add reward info to embed
-    let rewardText = '';
     if (stageData.reward) {
-        rewardText += getRewardText(stageData.reward);
-    }
-    if (features.hiddenEvent && rewardText) {
-        rewardText += '\n' + getRewardText(features.hiddenEvent.reward);
-    } else if (features.hiddenEvent) {
-        rewardText = getRewardText(features.hiddenEvent.reward);
-    }
-
-    if (rewardText) {
-        embed.addFields({ name: '🎁 Rewards', value: rewardText, inline: false });
-    }
-
-    // Check for level ups and display them
-    if (user.recentLevelUps && user.recentLevelUps.length > 0) {
-        let levelUpText = '';
-        user.recentLevelUps.forEach(change => {
-            levelUpText += `🎉 **${change.name}** leveled up! Lv.${change.oldLevel} → Lv.${change.newLevel}\n`;
-        });
-        embed.addFields({ name: '⭐ Level Ups!', value: levelUpText, inline: false });
-        user.recentLevelUps = []; // Clear after displaying
+        embed.addFields({ name: 'Reward', value: getRewardText(stageData.reward), inline: false });
     }
 
     // Set cooldown and advance stage
     user.lastExplore = new Date();
     user.stage++;
-
+    
     // Update quest progress for exploration
     try {
+        const { updateQuestProgress } = require('../utils/questSystem.js');
         await updateQuestProgress(user, 'explore', 1);
     } catch (error) {
         console.log('Quest system not available');
     }
-
+    
     await user.save();
-
+    
     await message.reply({ embeds: [embed] });
 }
 
 async function handleChoice(message, user, stageData, currentLocation, client) {
-    const localStage = getLocalStage(user.stage);
-    const totalStages = getTotalStagesInLocation(currentLocation);
-
     const embed = new EmbedBuilder()
         .setTitle(`🗺️ ${currentLocation} - ${stageData.title}`)
         .setDescription(stageData.desc)
-        .setColor(0xe67e22)
-        .setFooter({ text: `Progress: ${localStage + 1}/${totalStages}` });
+        .setColor(0xe67e22);
 
     const row = new ActionRowBuilder()
         .addComponents(
@@ -763,146 +584,66 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
     const filter = i => i.user.id === message.author.id;
     const collector = choiceMessage.createMessageComponentCollector({ filter, time: 60000 });
 
-    // Set a shorter timeout to prevent Discord API errors
-    setTimeout(() => {
-        if (!collector.ended) {
-            collector.stop('timeout');
-        }
-    }, 50000);
-
     collector.on('collect', async interaction => {
         try {
-            // Check if interaction is still valid and not expired
-            if (!interaction.isRepliable() || Date.now() - interaction.createdTimestamp > 13 * 60 * 1000) {
-                console.log('Interaction expired or no longer repliable');
-                collector.stop();
-                return;
-            }
-
-            // Try to defer update with error handling
-            try {
-                await interaction.deferUpdate();
-            } catch (deferError) {
-                if (deferError.code === 10062) {
-                    console.log('Interaction already expired, stopping collector');
-                    collector.stop();
-                    return;
-                }
-                throw deferError;
-            }
-
+            await interaction.deferUpdate();
+            
             const choice = interaction.customId === 'choice_yes' ? 'yes' : 'no';
             const reward = stageData.choice[choice];
-
+            
             await applyReward(user, reward);
-
+            
             const resultEmbed = new EmbedBuilder()
                 .setTitle(`✅ Choice Made: ${choice.toUpperCase()}`)
                 .setDescription(`You chose **${choice}**!`)
-                .setColor(choice === 'yes' ? 0x2ecc71 : 0x95a5a6)
-                .setFooter({ text: `Progress: ${localStage + 2}/${totalStages}` });
-
+                .setColor(choice === 'yes' ? 0x2ecc71 : 0x95a5a6);
+            
             if (reward) {
                 resultEmbed.addFields({ name: 'Reward', value: getRewardText(reward), inline: false });
             }
-
-            // Check for level ups and display them
-            if (user.recentLevelUps && user.recentLevelUps.length > 0) {
-                let levelUpText = '';
-                user.recentLevelUps.forEach(change => {
-                    levelUpText += `🎉 **${change.name}** leveled up! Lv.${change.oldLevel} → Lv.${change.newLevel}\n`;
-                });
-                resultEmbed.addFields({ name: '⭐ Level Ups!', value: levelUpText, inline: false });
-                user.recentLevelUps = []; // Clear after displaying
-            }
-
+            
             // Set cooldown and advance stage
             user.lastExplore = new Date();
             user.stage++;
-
+            
             // Update quest progress for exploration
             try {
+                const { updateQuestProgress } = require('../utils/questSystem.js');
                 await updateQuestProgress(user, 'explore', 1);
             } catch (error) {
                 console.log('Quest system not available');
             }
-
+            
             await user.save();
-
-            // Disable collector to prevent further interactions
-            collector.stop();
-
+            
             await choiceMessage.edit({ embeds: [resultEmbed], components: [] });
         } catch (error) {
             console.error('Choice interaction error:', error);
-
-            // If it's an expired interaction, don't try to update
-            if (error.code === 10062) {
-                console.log('Interaction expired, cleaning up');
-                collector.stop();
-                return;
-            }
-
-            collector.stop();
-            try {
-                // Only try to edit if the interaction hasn't expired
-                if (Date.now() - interaction.createdTimestamp < 13 * 60 * 1000) {
-                    await choiceMessage.edit({ components: [] });
-                }
-            } catch (editError) {
-                console.error('Error removing components:', editError);
+            if (!interaction.replied && !interaction.deferred) {
+                await interaction.reply({ content: 'An error occurred while processing your choice.', ephemeral: true });
             }
         }
     });
 
-    collector.on('end', (collected, reason) => {
-        // Only try to edit if not expired
-        if (reason !== 'time' && reason !== 'timeout') {
+    collector.on('end', collected => {
+        if (collected.size === 0) {
             choiceMessage.edit({ components: [] }).catch(() => {});
-        }
-        // Clean up any pending timeouts
-        if (collector.timer) {
-            clearTimeout(collector.timer);
         }
     });
 }
 
 async function handleBattle(message, user, stageData, currentLocation, client) {
-    // Validate user has a team set up
-    if (!user.team || user.team.length === 0) {
-        return message.reply('❌ You need to set up your team first! Use `op team add <card>` to add cards to your team.');
-    }
-
-    // Validate user has cards
-    if (!user.cards || user.cards.length === 0) {
-        return message.reply('❌ You don\'t have any cards! Pull some cards first with `op pull`.');
-    }
-
-    // Get user's team using the battle system
-    const battleTeam = calculateBattleStats(user);
-
-    if (!battleTeam || battleTeam.length === 0) {
-        return message.reply('❌ Your team is invalid or cards are missing. Please check your team with `op team` and fix any issues.');
-    }
-
-    // Fix HP property - ensure we're using maxHp correctly
-    battleTeam.forEach(card => {
-        card.maxHp = card.hp; // Set maxHp to the calculated hp value
-        card.currentHp = card.hp; // Set current HP to full at start of battle
-    });
-
     // Initialize battle state
+    const userStats = getUserBattleStats(user);
     let enemies = [];
-
+    
     if (stageData.type === 'multi_enemy') {
-        // Use original enemy stats from stage data, don't load from cards.json
         enemies = stageData.enemies.map(enemy => ({
             ...enemy,
             currentHp: enemy.hp,
             maxHp: enemy.hp
         }));
     } else {
-        // Use original enemy stats from stage data
         enemies = [{
             ...stageData.enemy,
             currentHp: stageData.enemy.hp,
@@ -911,9 +652,11 @@ async function handleBattle(message, user, stageData, currentLocation, client) {
     }
 
     const battleState = {
-        userTeam: battleTeam,
+        userHp: userStats.hp,
+        userMaxHp: userStats.hp,
         enemies: enemies,
         turn: 1,
+        userBoosts: {},
         isBossFight: stageData.type === 'boss'
     };
 
@@ -921,13 +664,13 @@ async function handleBattle(message, user, stageData, currentLocation, client) {
     if (!user.exploreStates) {
         user.exploreStates = {};
     }
-
+    
     // Store battle state
     user.exploreStates.battleState = battleState;
     user.exploreStates.inBossFight = true;
     user.exploreStates.currentStage = stageData;
     user.exploreStates.currentLocation = currentLocation;
-
+    
     await user.save();
 
     return await displayBattleState(message, user, client);
@@ -940,8 +683,7 @@ async function handleBossFight(message, user, client) {
 async function displayBattleState(message, user, client) {
     const battleState = user.exploreStates.battleState;
     const stageData = user.exploreStates.currentStage;
-    const currentLocation = user.exploreStates.currentLocation;
-
+    
     if (!battleState || !stageData) {
         // Clean up corrupted state
         user.exploreStates.inBossFight = false;
@@ -951,48 +693,29 @@ async function displayBattleState(message, user, client) {
         return message.reply('❌ Battle state corrupted. Please try exploring again.');
     }
 
-    const localStage = getLocalStage(user.stage);
-    const totalStages = getTotalStagesInLocation(currentLocation);
-
     const embed = new EmbedBuilder()
         .setTitle(`⚔️ ${stageData.title}`)
         .setDescription(stageData.desc)
-        .setColor(battleState.isBossFight ? 0xe74c3c : 0xf39c12)
-        .setFooter({ text: `Progress: ${localStage + 1}/${totalStages}` });
+        .setColor(battleState.isBossFight ? 0xe74c3c : 0xf39c12);
 
-    // Display your team
-    let teamDisplay = '';
-    battleState.userTeam.forEach((card, index) => {
-        if (card.currentHp > 0) {
-            const hpBar = createHpBar(card.currentHp, card.maxHp);
-            const lockStatus = card.locked ? ' 🔒' : '';
-            teamDisplay += `**Lv.${card.level} ${card.name}${lockStatus}**\n❤️ ${card.currentHp}/${card.maxHp} ${hpBar}\n`;
-        } else {
-            teamDisplay += `**${card.name}** - 💀 *Defeated*\n`;
-        }
-    });
-
+    // User HP bar
+    const userHpBar = createHpBar(battleState.userHp, battleState.userMaxHp);
     embed.addFields({
-        name: `🏴‍☠️ Your Crew`,
-        value: teamDisplay || 'No active crew members',
+        name: `${message.author.username} (You)`,
+        value: `❤️ ${battleState.userHp}/${battleState.userMaxHp} ${userHpBar}`,
         inline: false
     });
 
     // Enemy HP bars
-    let enemyDisplay = '';
     battleState.enemies.forEach((enemy, index) => {
         if (enemy.currentHp > 0) {
             const enemyHpBar = createHpBar(enemy.currentHp, enemy.maxHp);
-            enemyDisplay += `**${enemy.name}**\n💀 ${enemy.currentHp}/${enemy.maxHp} ${enemyHpBar}\n`;
-        } else {
-            enemyDisplay += `**${enemy.name}** - ☠️ *Defeated*\n`;
+            embed.addFields({
+                name: `${enemy.name}`,
+                value: `💀 ${enemy.currentHp}/${enemy.maxHp} ${enemyHpBar}`,
+                inline: true
+            });
         }
-    });
-
-    embed.addFields({
-        name: `👹 Enemies`,
-        value: enemyDisplay || 'No enemies remaining',
-        inline: false
     });
 
     // Create battle buttons
@@ -1003,11 +726,11 @@ async function displayBattleState(message, user, client) {
             .setStyle(ButtonStyle.Danger),
         new ButtonBuilder()
             .setCustomId('battle_items')
-            .setLabel('Items')
-            .setStyle(ButtonStyle.Secondary),
+            .setLabel('Use Item')
+            .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
             .setCustomId('battle_flee')
-            .setLabel('Retreat')
+            .setLabel('Flee')
             .setStyle(ButtonStyle.Secondary)
     ];
 
@@ -1020,290 +743,120 @@ async function displayBattleState(message, user, client) {
 
     collector.on('collect', async interaction => {
         try {
-            // Check if interaction is still valid (not expired)
-            const interactionAge = Date.now() - interaction.createdTimestamp;
-            if (interactionAge > 14 * 60 * 1000) { // 14 minutes
-                console.log('Battle interaction expired, cleaning up');
-                collector.stop();
-                return;
-            }
-
-            // Check if interaction is repliable
-            if (!interaction.isRepliable() || interaction.replied || interaction.deferred) {
-                console.log('Battle interaction not repliable, stopping');
-                collector.stop();
-                return;
-            }
-
             await interaction.deferUpdate();
-
-            // Re-fetch user data to ensure it's current
-            const freshUser = await User.findOne({ userId: user.userId });
-            if (!freshUser || !freshUser.exploreStates.inBossFight) {
-                // Battle state was cleared, stop collector
-                collector.stop();
-                try {
-                    await battleMessage.edit({ 
-                        content: '⚠️ Battle state was reset. Please use `op explore` to continue.',
-                        embeds: [],
-                        components: [] 
-                    });
-                } catch (editError) {
-                    console.log('Could not edit expired battle message');
-                }
-                return;
-            }
-
-            // Validate battle state before processing
-            const battleState = freshUser.exploreStates.battleState;
-            if (!battleState || !battleState.userTeam || !battleState.enemies) {
-                console.log('Battle state corrupted, cleaning up');
-                freshUser.exploreStates.inBossFight = false;
-                freshUser.exploreStates.battleState = null;
-                freshUser.exploreStates.currentStage = null;
-                freshUser.exploreStates.currentLocation = null;
-                await freshUser.save();
-                collector.stop();
-                
-                try {
-                    await battleMessage.edit({ 
-                        content: '⚠️ Battle state corrupted. Please use `op explore` to restart.',
-                        embeds: [],
-                        components: [] 
-                    });
-                } catch (editError) {
-                    console.log('Could not edit battle message after corruption');
-                }
-                return;
-            }
-
-            // Process the battle action
+            
             if (interaction.customId === 'battle_attack') {
-                await handleBattleAttack(interaction, freshUser, battleMessage);
+                await handleBattleAttack(interaction, user, battleMessage);
             } else if (interaction.customId === 'battle_items') {
-                await handleBattleItems(interaction, freshUser, battleMessage);
+                await handleBattleItems(interaction, user, battleMessage);
             } else if (interaction.customId === 'battle_flee') {
-                await handleBattleFlee(interaction, freshUser, battleMessage);
+                await handleBattleFlee(interaction, user, battleMessage);
             }
         } catch (error) {
-            console.error('Battle interaction error:', error.code || error.message);
-            
-            // Don't try to respond to expired interactions
-            if (error.code === 10062 || error.code === 10063) {
-                console.log('Interaction expired, stopping collector');
-                collector.stop();
-                return;
-            }
-
-            // For other errors, attempt cleanup
+            console.error('Battle interaction error:', error);
+            // Attempt to clean up battle state on error
             try {
-                const errorUser = await User.findOne({ userId: user.userId });
-                if (errorUser) {
-                    errorUser.exploreStates.inBossFight = false;
-                    errorUser.exploreStates.battleState = null;
-                    errorUser.exploreStates.currentStage = null;
-                    errorUser.exploreStates.currentLocation = null;
-                    await errorUser.save();
-                }
+                user.exploreStates.inBossFight = false;
+                user.exploreStates.battleState = null;
+                user.exploreStates.currentStage = null;
+                await user.save();
             } catch (saveError) {
                 console.error('Error cleaning up battle state:', saveError);
             }
-
-            collector.stop();
             
-            // Only try to edit if interaction hasn't expired
-            const interactionAge = Date.now() - interaction.createdTimestamp;
-            if (interactionAge < 14 * 60 * 1000) {
-                try {
-                    await battleMessage.edit({ 
-                        content: '❌ Battle error occurred. Battle state reset. Use `op explore` to continue.',
-                        embeds: [],
-                        components: [] 
-                    });
-                } catch (editError) {
-                    console.log('Could not edit battle message after error');
-                }
+            if (!interaction.replied && !interaction.deferred) {
+                await interaction.followUp({ content: 'An error occurred during battle. Battle state has been reset.', ephemeral: true });
             }
         }
     });
 
-    collector.on('end', async (collected, reason) => {
-        try {
-            if (reason === 'time') {
-                // Battle timed out - clean up state
-                const timeoutUser = await User.findOne({ userId: user.userId });
-                if (timeoutUser && timeoutUser.exploreStates.inBossFight) {
-                    timeoutUser.exploreStates.inBossFight = false;
-                    timeoutUser.exploreStates.battleState = null;
-                    timeoutUser.exploreStates.currentStage = null;
-                    timeoutUser.exploreStates.currentLocation = null;
-                    // Set short cooldown for timeout
-                    timeoutUser.exploreStates.defeatCooldown = Date.now() + (15 * 60 * 1000); // 15 minutes
-                    await timeoutUser.save();
-                }
-                
-                try {
-                    await battleMessage.edit({ 
-                        content: '⏰ Battle timed out! Your exploration state has been reset. Use `op explore` to continue.',
-                        embeds: [],
-                        components: [] 
-                    });
-                } catch (editError) {
-                    console.log('Could not edit battle message on timeout');
-                }
-            } else if (reason !== 'error') {
-                // Only edit if not an error (to avoid double editing)
-                try {
-                    await battleMessage.edit({ components: [] });
-                } catch (editError) {
-                    console.log('Could not remove battle components');
-                }
-            }
-        } catch (error) {
-            console.error('Error handling battle collector end:', error);
-        }
+    collector.on('end', () => {
+        battleMessage.edit({ components: [] }).catch(() => {});
     });
 }
 
 async function handleBattleAttack(interaction, user, battleMessage) {
-    try {
-        const battleState = user.exploreStates.battleState;
+    const battleState = user.exploreStates.battleState;
+    const userStats = getUserBattleStats(user);
+    
+    // User attacks first enemy alive
+    const targetEnemy = battleState.enemies.find(e => e.currentHp > 0);
+    if (!targetEnemy) return;
 
-        // Check if battle state exists and is valid
-        if (!battleState || !battleState.userTeam || !battleState.enemies) {
-            console.log('Battle state corrupted in handleBattleAttack');
-            if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
-                return await interaction.followUp({ content: 'Battle state corrupted. Please use `op explore` to restart.', ephemeral: true });
-            }
-            return;
-        }
-
-        // Get first alive card from team
-        const activeCard = battleState.userTeam.find(card => card.currentHp > 0);
-        if (!activeCard) {
-            return await handleBattleDefeat(interaction, user, battleMessage, 'All your crew members are defeated!');
-        }
-
-        // User attacks first enemy alive
-        const targetEnemy = battleState.enemies.find(e => e.currentHp > 0);
-        if (!targetEnemy) {
-            console.log('No target enemy found');
-            return;
-        }
-
-        let attackDamage = calculateDamage(activeCard, targetEnemy, 'normal');
-
-        targetEnemy.currentHp = Math.max(0, targetEnemy.currentHp - attackDamage);
-
-        let battleLog = `⚔️ ${activeCard.name} attacks ${targetEnemy.name} for ${attackDamage} damage!`;
-
-        if (targetEnemy.currentHp <= 0) {
-            battleLog += `\n💀 ${targetEnemy.name} is defeated!`;
-        }
-
-        // Check if all enemies defeated
-        if (battleState.enemies.every(e => e.currentHp <= 0)) {
-            return await handleBattleVictory(interaction, user, battleMessage, battleLog);
-        }
-
-        // Enemy attacks back
-        const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
-        for (const enemy of aliveEnemies) {
-            const targetCard = battleState.userTeam.find(card => card.currentHp > 0);
-            if (!targetCard) break;
-
-            const enemyDamage = calculateDamage(enemy, targetCard, 'normal');
-
-            targetCard.currentHp = Math.max(0, targetCard.currentHp - enemyDamage);
-            battleLog += `\n💥 ${enemy.name} attacks ${targetCard.name} for ${enemyDamage} damage!`;
-
-            if (targetCard.currentHp <= 0) {
-                battleLog += `\n💀 ${targetCard.name} is defeated!`;
-            }
-        }
-
-        // Check if all team defeated
-        if (battleState.userTeam.every(card => card.currentHp <= 0)) {
-            return await handleBattleDefeat(interaction, user, battleMessage, battleLog);
-        }
-
-        battleState.turn++;
-        user.exploreStates.battleState = battleState;
-        await user.save();
-
-        // Update battle display
-        await updateBattleDisplay(interaction, user, battleMessage, battleLog);
-    } catch (error) {
-        console.error('Error in handleBattleAttack:', error.code || error.message);
-        
-        // Don't try to respond to expired interactions
-        if (error.code === 10062 || error.code === 10063) {
-            console.log('Cannot respond to expired interaction in handleBattleAttack');
-            return;
-        }
-        
-        try {
-            if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
-                await interaction.followUp({ content: 'An error occurred during battle. Please try again.', ephemeral: true });
-            }
-        } catch (followUpError) {
-            console.log('Could not send error message in handleBattleAttack');
+    let attackDamage = Math.floor(Math.random() * (userStats.atk - 10) + 10);
+    
+    // Apply user boosts
+    if (battleState.userBoosts.attack_boost) {
+        attackDamage += battleState.userBoosts.attack_boost.amount;
+        battleState.userBoosts.attack_boost.duration--;
+        if (battleState.userBoosts.attack_boost.duration <= 0) {
+            delete battleState.userBoosts.attack_boost;
         }
     }
-}
+    
+    targetEnemy.currentHp = Math.max(0, targetEnemy.currentHp - attackDamage);
+    
+    let battleLog = `⚔️ You attack ${targetEnemy.name} for ${attackDamage} damage!`;
+    
+    if (targetEnemy.currentHp <= 0) {
+        battleLog += `\n💀 ${targetEnemy.name} is defeated!`;
+    }
 
-async function updateBattleDisplay(interaction, user, battleMessage, battleLog) {
-    try {
-        const battleState = user.exploreStates.battleState;
-        const stageData = user.exploreStates.currentStage;
-        const currentLocation = user.exploreStates.currentLocation;
+    // Check if all enemies defeated
+    if (battleState.enemies.every(e => e.currentHp <= 0)) {
+        return await handleBattleVictory(interaction, user, battleMessage, battleLog);
+    }
 
-        if (!battleState || !stageData || !currentLocation) {
-            console.error('Battle state corrupted during update');
-            return;
+    // Enemy attacks back
+    const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
+    for (const enemy of aliveEnemies) {
+        const enemyAttack = Array.isArray(enemy.atk) ? 
+            Math.floor(Math.random() * (enemy.atk[1] - enemy.atk[0] + 1)) + enemy.atk[0] :
+            enemy.atk;
+        
+        let damage = enemyAttack;
+        
+        // Apply defense from equipment
+        if (userStats.def > 0) {
+            damage = Math.max(1, damage - userStats.def);
         }
-    const localStage = getLocalStage(user.stage);
-    const totalStages = getTotalStagesInLocation(currentLocation);
+        
+        battleState.userHp = Math.max(0, battleState.userHp - damage);
+        battleLog += `\n💥 ${enemy.name} attacks you for ${damage} damage!`;
+        
+        if (battleState.userHp <= 0) {
+            return await handleBattleDefeat(interaction, user, battleMessage, battleLog);
+        }
+    }
 
+    battleState.turn++;
+    user.exploreStates.battleState = battleState;
+    await user.save();
+
+    // Update battle display
     const embed = new EmbedBuilder()
         .setTitle(`⚔️ Turn ${battleState.turn}`)
         .setDescription(battleLog)
-        .setColor(0xf39c12)
-        .setFooter({ text: `Progress: ${localStage + 1}/${totalStages}` });
+        .setColor(0xf39c12);
 
-    // Display your team
-    let teamDisplay = '';
-    battleState.userTeam.forEach((card, index) => {
-        if (card.currentHp > 0) {
-            const hpBar = createHpBar(card.currentHp, card.maxHp);
-            const lockStatus = card.locked ? ' 🔒' : '';
-            teamDisplay += `**Lv.${card.level} ${card.name}${lockStatus}**\n❤️ ${card.currentHp}/${card.maxHp} ${hpBar}\n`;
-        } else {
-            teamDisplay += `**${card.name}** - 💀 *Defeated*\n`;
-        }
-    });
-
+    // User HP
+    const userHpBar = createHpBar(battleState.userHp, battleState.userMaxHp);
     embed.addFields({
-        name: `🏴‍☠️ Your Crew`,
-        value: teamDisplay || 'No active crew members',
+        name: `${interaction.user.username} (You)`,
+        value: `❤️ ${battleState.userHp}/${battleState.userMaxHp} ${userHpBar}`,
         inline: false
     });
 
-    // Enemy HP bars
-    let enemyDisplay = '';
-    battleState.enemies.forEach((enemy, index) => {
+    // Enemy HP
+    battleState.enemies.forEach(enemy => {
         if (enemy.currentHp > 0) {
             const enemyHpBar = createHpBar(enemy.currentHp, enemy.maxHp);
-            enemyDisplay += `**${enemy.name}**\n💀 ${enemy.currentHp}/${enemy.maxHp} ${enemyHpBar}\n`;
-        } else {
-            enemyDisplay += `**${enemy.name}** - ☠️ *Defeated*\n`;
+            embed.addFields({
+                name: enemy.name,
+                value: `💀 ${enemy.currentHp}/${enemy.maxHp} ${enemyHpBar}`,
+                inline: true
+            });
         }
-    });
-
-    embed.addFields({
-        name: `👹 Enemies`,
-        value: enemyDisplay || 'No enemies remaining',
-        inline: false
     });
 
     const battleButtons = [
@@ -1313,39 +866,36 @@ async function updateBattleDisplay(interaction, user, battleMessage, battleLog) 
             .setStyle(ButtonStyle.Danger),
         new ButtonBuilder()
             .setCustomId('battle_items')
-            .setLabel('Items')
-            .setStyle(ButtonStyle.Secondary),
+            .setLabel('Use Item')
+            .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
             .setCustomId('battle_flee')
-            .setLabel('Retreat')
+            .setLabel('Flee')
             .setStyle(ButtonStyle.Secondary)
     ];
 
     const row = new ActionRowBuilder().addComponents(battleButtons);
+
     await battleMessage.edit({ embeds: [embed], components: [row] });
-    } catch (error) {
-        console.error('Error updating battle display:', error.code || error.message);
-        // If we can't update the display, the battle state will handle cleanup
-    }
 }
 
 async function handleBattleItems(interaction, user, battleMessage) {
     const usableItems = ['healthpotion', 'strengthpotion', 'speedboostfood', 'defensepotion'];
     const availableItems = usableItems.filter(item => canUseInventoryItem(user, item));
-
+    
     if (availableItems.length === 0) {
         return await interaction.followUp({ content: 'You have no usable items!', ephemeral: true });
     }
-
+    
     const itemButtons = availableItems.map(item => 
         new ButtonBuilder()
             .setCustomId(`use_${item}`)
             .setLabel(item.charAt(0).toUpperCase() + item.slice(1).replace(/([A-Z])/g, ' $1'))
             .setStyle(ButtonStyle.Primary)
     );
-
+    
     const itemRow = new ActionRowBuilder().addComponents(itemButtons.slice(0, 5));
-
+    
     const itemMessage = await interaction.followUp({ 
         content: 'Choose an item to use:', 
         components: [itemRow], 
@@ -1358,10 +908,10 @@ async function handleBattleItems(interaction, user, battleMessage) {
 
     itemCollector.on('collect', async itemInteraction => {
         await itemInteraction.deferUpdate();
-
+        
         const itemName = itemInteraction.customId.replace('use_', '');
         const effect = useInventoryItem(user, itemName);
-
+        
         if (!effect) {
             return await itemInteraction.followUp({ content: 'Item could not be used!', ephemeral: true });
         }
@@ -1369,14 +919,23 @@ async function handleBattleItems(interaction, user, battleMessage) {
         const battleState = user.exploreStates.battleState;
         let effectText = '';
 
-        // Apply item effects to first alive card
-        const activeCard = battleState.userTeam.find(card => card.currentHp > 0);
-        if (activeCard && effect.type === 'heal') {
-            const healAmount = Math.min(effect.amount, activeCard.maxHp - activeCard.currentHp);
-            activeCard.currentHp += healAmount;
-            effectText = `${activeCard.name} healed ${healAmount} HP!`;
-        } else {
-            effectText = `Used ${itemName}!`;
+        // Apply item effects
+        if (effect.type === 'heal') {
+            const healAmount = Math.min(effect.amount, battleState.userMaxHp - battleState.userHp);
+            battleState.userHp += healAmount;
+            effectText = `Healed ${healAmount} HP!`;
+        } else if (effect.type === 'attack_boost') {
+            if (!battleState.userBoosts) battleState.userBoosts = {};
+            battleState.userBoosts.attack_boost = { amount: effect.amount, duration: effect.duration };
+            effectText = `Attack increased by ${effect.amount}!`;
+        } else if (effect.type === 'speed_boost') {
+            if (!battleState.userBoosts) battleState.userBoosts = {};
+            battleState.userBoosts.speed_boost = { amount: effect.amount, duration: effect.duration };
+            effectText = `Speed increased by ${effect.amount}!`;
+        } else if (effect.type === 'defense_boost') {
+            if (!battleState.userBoosts) battleState.userBoosts = {};
+            battleState.userBoosts.defense_boost = { amount: effect.amount, duration: effect.duration };
+            effectText = `Defense increased by ${effect.amount}!`;
         }
 
         await user.save();
@@ -1397,66 +956,85 @@ async function handleBattleItems(interaction, user, battleMessage) {
 
 async function handleEnemyTurn(interaction, user, battleMessage) {
     const battleState = user.exploreStates.battleState;
-
-    if (!battleState || !battleState.userTeam || !battleState.enemies) {
-        console.error('Battle state corrupted during enemy turn');
-        return;
-    }
-
+    const userStats = getUserBattleStats(user);
     let battleLog = '';
 
     // Each alive enemy attacks
     for (const enemy of battleState.enemies) {
         if (enemy.currentHp <= 0) continue;
 
-        const targetCard = battleState.userTeam.find(card => card.currentHp > 0);
-        if (!targetCard) break;
+        const enemyDamage = Array.isArray(enemy.atk) 
+            ? Math.floor(Math.random() * (enemy.atk[1] - enemy.atk[0] + 1)) + enemy.atk[0]
+            : enemy.atk;
 
-        const damage = calculateDamage(enemy, targetCard, 'normal');
+        const userDefense = battleState.userBoosts?.defense_boost?.amount || 0;
+        const finalDamage = Math.max(1, enemyDamage - userDefense);
+        
+        battleState.userHp = Math.max(0, battleState.userHp - finalDamage);
+        battleLog += `${enemy.name} attacks for ${finalDamage} damage!\n`;
 
-        targetCard.currentHp = Math.max(0, targetCard.currentHp - damage);
-        battleLog += `${enemy.name} attacks ${targetCard.name} for ${damage} damage!\n`;
-
-        if (targetCard.currentHp <= 0) {
-            battleLog += `${targetCard.name} is defeated!\n`;
+        if (battleState.userHp <= 0) {
+            return await handleBattleDefeat(interaction, user, battleMessage, battleLog);
         }
     }
 
-    // Check if all team defeated
-    if (battleState.userTeam.every(card => card.currentHp <= 0)) {
-        return await handleBattleDefeat(interaction, user, battleMessage, battleLog);
+    // Reduce boost durations
+    if (battleState.userBoosts) {
+        Object.keys(battleState.userBoosts).forEach(key => {
+            if (battleState.userBoosts[key].duration) {
+                battleState.userBoosts[key].duration--;
+                if (battleState.userBoosts[key].duration <= 0) {
+                    delete battleState.userBoosts[key];
+                }
+            }
+        });
     }
 
     await user.save();
-    await updateBattleDisplay(interaction, user, battleMessage, battleLog);
-}
 
-function canUseInventoryItem(user, itemName) {
-    if (!user.inventory) return false;
-    const normalizedItem = normalizeItemName(itemName);
-    return user.inventory.some(item => normalizeItemName(item) === normalizedItem);
-}
+    // Update battle display
+    const embed = new EmbedBuilder()
+        .setTitle(`Turn ${battleState.turn}`)
+        .setDescription(battleLog)
+        .setColor(0xf39c12);
 
-function useInventoryItem(user, itemName) {
-    if (!canUseInventoryItem(user, itemName)) return null;
+    // User HP
+    const userHpBar = createHpBar(battleState.userHp, battleState.userMaxHp);
+    embed.addFields({
+        name: `${interaction.user.username} (You)`,
+        value: `❤️ ${battleState.userHp}/${battleState.userMaxHp} ${userHpBar}`,
+        inline: false
+    });
 
-    const normalizedItem = normalizeItemName(itemName);
-    const itemIndex = user.inventory.findIndex(item => normalizeItemName(item) === normalizedItem);
+    // Enemy HP
+    battleState.enemies.forEach(enemy => {
+        if (enemy.currentHp > 0) {
+            const enemyHpBar = createHpBar(enemy.currentHp, enemy.maxHp);
+            embed.addFields({
+                name: enemy.name,
+                value: `💀 ${enemy.currentHp}/${enemy.maxHp} ${enemyHpBar}`,
+                inline: true
+            });
+        }
+    });
 
-    if (itemIndex === -1) return null;
+    const battleButtons = [
+        new ButtonBuilder()
+            .setCustomId('battle_attack')
+            .setLabel('Attack')
+            .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
+            .setCustomId('battle_items')
+            .setLabel('Use Item')
+            .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+            .setCustomId('battle_flee')
+            .setLabel('Flee')
+            .setStyle(ButtonStyle.Secondary)
+    ];
 
-    // Remove item from inventory
-    user.inventory.splice(itemIndex, 1);
-
-    // Return item effects
-    const itemEffects = {
-        'healthpotion': { type: 'heal', amount: 50 },
-        'strengthpotion': { type: 'attack_boost', amount: 20, duration: 3 },
-        'speedboostfood': { type: 'speed_boost', amount: 15, duration: 3 },
-        'defensepotion': { type: 'defense_boost', amount: 15, duration: 3 }
-    };
-
-    return itemEffects[normalizedItem] || null;
+    const row = new ActionRowBuilder().addComponents(battleButtons);
+    await battleMessage.edit({ embeds: [embed], components: [row] });
 }
 
 async function handleBattleFlee(interaction, user, battleMessage) {
@@ -1465,17 +1043,17 @@ async function handleBattleFlee(interaction, user, battleMessage) {
         user.exploreStates.inBossFight = false;
         user.exploreStates.battleState = null;
         user.exploreStates.currentStage = null;
-
+        
         // Set flee cooldown
         user.exploreStates.defeatCooldown = Date.now() + (30 * 60 * 1000); // 30 minute cooldown for fleeing
-
+        
         await user.save();
-
+        
         const fleeEmbed = new EmbedBuilder()
             .setTitle('🏃‍♂️ Fled from Battle!')
             .setDescription('You successfully escaped from the battle, but you\'ll need to wait before trying again.')
             .setColor(0x95a5a6);
-
+        
         await battleMessage.edit({ embeds: [fleeEmbed], components: [] });
     } catch (error) {
         console.error('Error handling battle flee:', error);
@@ -1486,27 +1064,22 @@ async function handleBattleFlee(interaction, user, battleMessage) {
 async function handleBattleVictory(interaction, user, battleMessage, battleLog) {
     const stageData = user.exploreStates.currentStage;
     const currentLocation = user.exploreStates.currentLocation;
-
+    
     // Clean up battle state
     user.exploreStates.inBossFight = false;
     user.exploreStates.battleState = null;
     user.exploreStates.currentStage = null;
-
+    
     // Apply rewards
     await applyReward(user, stageData.reward);
-
+    
     // Set cooldown and advance stage
     user.lastExplore = new Date();
     user.stage++;
-
-    // Reset team HP for next battle
-    if (user.team) {
-        const battleTeam = calculateBattleStats(user);
-        resetTeamHP(battleTeam);
-    }
-
+    
     // Update quest progress
     try {
+        const { updateQuestProgress } = require('../utils/questSystem.js');
         await updateQuestProgress(user, 'explore', 1);
         if (stageData.type === 'boss') {
             await updateQuestProgress(user, 'battle_win', 1);
@@ -1514,72 +1087,47 @@ async function handleBattleVictory(interaction, user, battleMessage, battleLog) 
     } catch (error) {
         console.log('Quest system not available');
     }
-
+    
     await user.save();
-
-    const localStage = getLocalStage(user.stage - 1); // -1 because we already advanced
-    const totalStages = getTotalStagesInLocation(currentLocation);
-
+    
     const victoryEmbed = new EmbedBuilder()
         .setTitle('🎉 Victory!')
-        .setDescription(battleLog + '\n\n✅ **You won the battle!**\n*Your team has recovered!*')
-        .setColor(0x2ecc71)
-        .setFooter({ text: `Progress: ${localStage + 1}/${totalStages}` });
-
+        .setDescription(battleLog + '\n\n✅ **You won the battle!**')
+        .setColor(0x2ecc71);
+    
     if (stageData.reward) {
         victoryEmbed.addFields({ name: 'Rewards', value: getRewardText(stageData.reward), inline: false });
     }
-
-    // Check for level ups and display them
-    if (user.recentLevelUps && user.recentLevelUps.length > 0) {
-        let levelUpText = '';
-        user.recentLevelUps.forEach(change => {
-            levelUpText += `🎉 **${change.name}** leveled up! Lv.${change.oldLevel} → Lv.${change.newLevel}\n`;
-        });
-        victoryEmbed.addFields({ name: '⭐ Level Ups!', value: levelUpText, inline: false });
-        user.recentLevelUps = []; // Clear after displaying
-    }
-
+    
     await battleMessage.edit({ embeds: [victoryEmbed], components: [] });
 }
 
 async function handleBattleDefeat(interaction, user, battleMessage, battleLog) {
     const stageData = user.exploreStates.currentStage;
-    const currentLocation = user.exploreStates.currentLocation;
-
+    
     // Clean up battle state
     user.exploreStates.inBossFight = false;
     user.exploreStates.battleState = null;
     user.exploreStates.currentStage = null;
-
+    
     // Set defeat cooldown
     user.exploreStates.defeatCooldown = Date.now() + (stageData.loseCooldown || DEFEAT_COOLDOWN);
-
+    
     await user.save();
-
-    const localStage = getLocalStage(user.stage);
-    const totalStages = getTotalStagesInLocation(currentLocation);
-
+    
     const defeatEmbed = new EmbedBuilder()
         .setTitle('💀 Defeat!')
         .setDescription(battleLog + '\n\n❌ **You were defeated!**')
-        .setColor(0xe74c3c)
-        .setFooter({ text: `Progress: ${localStage + 1}/${totalStages}` });
-
+        .setColor(0xe74c3c);
+    
     await battleMessage.edit({ embeds: [defeatEmbed], components: [] });
 }
 
-async function applyReward(user, reward, questTrigger = null) {
-    if (!reward || !user) return;
+async function applyReward(user, reward) {
+    if (!reward) return;
     
-    // Validate user object has required properties
-    if (!user.userId) {
-        console.error('Invalid user object in applyReward');
-        return;
-    }
-
     if (reward.type === 'xp') {
-        await addXP(user, reward.amount);
+        addXP(user, reward.amount);
     } else if (reward.type === 'beli') {
         user.beli = (user.beli || 0) + reward.amount;
     } else if (reward.type === 'item') {
@@ -1606,19 +1154,12 @@ async function applyReward(user, reward, questTrigger = null) {
         if (!user.unlockedSagas.includes(reward.saga)) {
             user.unlockedSagas.push(reward.saga);
         }
-
-        // Trigger saga completion quest
-        try {
-            await updateQuestProgress(user, 'saga_complete', 1);
-        } catch (error) {
-            console.log('Quest system not available');
-        }
     }
 }
 
 function getRewardText(reward) {
     if (!reward) return 'None';
-
+    
     if (reward.type === 'xp') {
         return `+${reward.amount} XP`;
     } else if (reward.type === 'beli') {
@@ -1633,272 +1174,8 @@ function getRewardText(reward) {
     } else if (reward.type === 'saga_unlock') {
         return `${reward.saga} Saga Unlocked!`;
     }
-
+    
     return 'Unknown reward';
-}
-
-// Feature generation for engaging exploration
-async function generateExploreFeatures(user, stageData) {
-    const features = {};
-
-    // 30% chance for card commentary
-    if (Math.random() < 0.3 && user.team && user.team.length > 0) {
-        features.cardCommentary = generateCardCommentary(user.team[0], stageData);
-    }
-
-    // 25% chance for fortune message
-    if (Math.random() < 0.25) {
-        features.fortune = generateFortune();
-    }
-
-    // 40% chance for hidden event
-    if (Math.random() < 0.4) {
-        features.hiddenEvent = generateHiddenEvent();
-    }
-
-    // 20% chance for mini choice (only if no other special events)
-    if (Math.random() < 0.2 && !features.hiddenEvent) {
-        features.miniChoice = generateMiniChoice();
-    }
-
-    return features;
-}
-
-function generateCardCommentary(cardName, stageData) {
-    const commentaries = {
-        'Monkey D. Luffy': [
-            "Luffy grins: 'This looks fun!'",
-            "Luffy sniffs the air: 'I smell adventure!'",
-            "Luffy stretches: 'Let's see what's ahead!'",
-        ],
-        'Roronoa Zoro': [
-            "Zoro mutters: 'Tch... smells like trouble.'",
-            "Zoro yawns: 'Wake me when there's a fight.'",
-            "Zoro looks around: 'Which way is north again?'",
-        ],
-        'Nami': [
-            "Nami checks her map: 'We're making good progress.'",
-            "Nami counts coins: 'Hope this is profitable.'",
-            "Nami frowns: 'Something feels off about this place.'",
-        ],
-        'Usopp': [
-            "Usopp nervously looks around: 'I-Is it safe here?'",
-            "Usopp boasts: 'I've been to places twice as dangerous!'",
-            "Usopp checks his slingshot: 'Better be prepared.'",
-        ],
-        'Sanji': [
-            "Sanji lights a cigarette: 'What a lovely day for adventure.'",
-            "Sanji adjusts his tie: 'Let's handle this with style.'",
-            "Sanji sniffs: 'I could cook something amazing with local ingredients.'",
-        ],
-    };
-
-    const cardComments = commentaries[cardName] || [
-        "Your crew member stays alert.",
-        "They seem ready for whatever comes next.",
-        "You sense their determination.",
-    ];
-
-    return cardComments[Math.floor(Math.random() * cardComments.length)];
-}
-
-function generateFortune() {
-    const fortunes = [
-        "The winds whisper of treasure nearby...",
-        "A seagull's cry warns of danger ahead.",
-        "The sea speaks of great adventures to come.",
-        "Your destiny shines brighter with each step.",
-        "The stars align in your favor today.",
-        "Ancient spirits watch your journey with interest.",
-        "Your next battle will test more than strength.",
-        "Friendship will prove more valuable than gold.",
-        "The path ahead holds unexpected allies.",
-        "Your courage will be rewarded soon.",
-    ];
-
-    return fortunes[Math.floor(Math.random() * fortunes.length)];
-}
-
-function generateHiddenEvent() {
-    const events = [
-        {
-            text: "You spot a glint in the sand and find some buried Beli!",
-            reward: { type: "beli", amount: Math.floor(Math.random() * 50) + 25 },
-        },
-        {
-            text: "A friendly seagull drops a small trinket at your feet.",
-            reward: { type: "xp", amount: Math.floor(Math.random() * 30) + 15 },
-        },
-        {
-            text: "You help a lost merchant and receive a small token of gratitude.",
-            reward: { type: "beli", amount: Math.floor(Math.random() * 40) + 20 },
-        },
-        {
-            text: "Your experience here teaches you something valuable.",
-            reward: { type: "xp", amount: Math.floor(Math.random() * 25) + 20 },
-        },
-        {
-            text: "You find an old bottle with a few coins inside!",
-            reward: { type: "beli", amount: Math.floor(Math.random() * 35) + 15 },
-        },
-    ];
-
-    return events[Math.floor(Math.random() * events.length)];
-}
-
-function generateMiniChoice() {
-    const choices = [
-        {
-            question: "You spot a suspicious barrel floating nearby. What do you do?",
-            optionA: { label: "Investigate", reward: { type: "beli", amount: 40 }, risk: 0.3 },
-            optionB: { label: "Ignore it", reward: { type: "xp", amount: 20 }, risk: 0 },
-        },
-        {
-            question: "A wounded pirate asks for help. How do you respond?",
-            optionA: { label: "Help them", reward: { type: "xp", amount: 35 }, risk: 0 },
-            optionB: { label: "Be cautious", reward: { type: "beli", amount: 25 }, risk: 0.2 },
-        },
-        {
-            question: "You find a locked chest half-buried in the sand.",
-            optionA: { label: "Try to open it", reward: { type: "beli", amount: 60 }, risk: 0.4 },
-            optionB: { label: "Leave it alone", reward: { type: "xp", amount: 30 }, risk: 0 },
-        },
-        {
-            question: "A stranger offers to sell you 'valuable information'.",
-            optionA: { label: "Buy it (30 Beli)", cost: 30, reward: { type: "xp", amount: 45 }, risk: 0.3 },
-            optionB: { label: "Decline politely", reward: { type: "xp", amount: 15 }, risk: 0 },
-        },
-    ];
-
-    return choices[Math.floor(Math.random() * choices.length)];
-}
-
-async function handleMiniChoice(choiceMessage, user, miniChoice, stageData) {
-    const filter = i => i.user.id === user.userId;
-    const collector = choiceMessage.createMessageComponentCollector({ filter, time: 45000 });
-
-    collector.on('collect', async interaction => {
-        try {
-            await interaction.deferUpdate();
-
-            const choice = interaction.customId === 'choice_a' ? 'optionA' : 'optionB';
-            const selectedOption = miniChoice[choice];
-
-            let resultText = `You chose: **${selectedOption.label}**\n\n`;
-
-            // Handle cost
-            if (selectedOption.cost && user.beli >= selectedOption.cost) {
-                user.beli -= selectedOption.cost;
-                resultText += `*Paid ${selectedOption.cost} Beli*\n`;
-            } else if (selectedOption.cost && user.beli < selectedOption.cost) {
-                resultText += "You don't have enough Beli!\n";
-                collector.stop();
-                await choiceMessage.edit({ components: [] });
-                return;
-            }
-
-            // Check for risk
-            const failed = Math.random() < selectedOption.risk;
-            if (failed) {
-                resultText += "❌ Things didn't go as planned...";
-                const penalty = Math.floor(Math.random() * 20) + 10;
-                user.beli = Math.max(0, (user.beli || 0) - penalty);
-                resultText += ` You lost ${penalty} Beli.`;
-            } else {
-                await applyReward(user, selectedOption.reward);
-                resultText += `✅ ${getRewardText(selectedOption.reward)}`;
-            }
-
-            // Apply original stage rewards
-            await applyReward(user, stageData.reward);
-
-            // Advance stage
-            user.lastExplore = new Date();
-            user.stage++;
-
-            // Update quest progress
-            try {
-                await updateQuestProgress(user, 'explore', 1);
-            } catch (error) {
-                console.log('Quest system not available');
-            }
-
-            await user.save();
-
-            const resultEmbed = new EmbedBuilder()
-                .setTitle('⚡ Choice Result')
-                .setDescription(resultText)
-                .setColor(failed ? 0xe74c3c : 0x2ecc71);
-
-            if (stageData.reward) {
-                resultEmbed.addFields({ name: '🎁 Stage Reward', value: getRewardText(stageData.reward), inline: false });
-            }
-
-            // Check for level ups and display them
-            if (user.recentLevelUps && user.recentLevelUps.length > 0) {
-                let levelUpText = '';
-                user.recentLevelUps.forEach(change => {
-                    levelUpText += `🎉 **${change.name}** leveled up! Lv.${change.oldLevel} → Lv.${change.newLevel}\n`;
-                });
-                resultEmbed.addFields({ name: '⭐ Level Ups!', value: levelUpText, inline: false });
-                user.recentLevelUps = []; // Clear after displaying
-            }
-
-            collector.stop();
-            await choiceMessage.edit({ embeds: [resultEmbed], components: [] });
-
-        } catch (error) {
-            console.error('Mini choice error:', error);
-            collector.stop();
-            await choiceMessage.edit({ components: [] });
-        }
-    });
-
-    collector.on('end', (collected, reason) => {
-        if (reason === 'time' && collected.size === 0) {
-            // Auto-advance if no choice made
-            handleAutoAdvance(choiceMessage, user, stageData);
-        }
-    });
-}
-
-async function handleAutoAdvance(choiceMessage, user, stageData) {
-    try {
-        await applyReward(user, stageData.reward);
-        user.lastExplore = new Date();
-        user.stage++;
-
-        try {
-            await updateQuestProgress(user, 'explore', 1);
-        } catch (error) {
-            console.log('Quest system not available');
-        }
-
-        await user.save();
-
-        const timeoutEmbed = new EmbedBuilder()
-            .setTitle('⏰ Time\'sUp!')
-            .setDescription('You took too long to decide and continued on your journey.')
-            .setColor(0x95a5a6);
-
-        if (stageData.reward) {
-            timeoutEmbed.addFields({ name: '🎁 Reward', value: getRewardText(stageData.reward), inline: false });
-        }
-
-        // Check for level ups and display them
-        if (user.recentLevelUps && user.recentLevelUps.length > 0) {
-            let levelUpText = '';
-            user.recentLevelUps.forEach(change => {
-                levelUpText += `🎉 **${change.name}** leveled up! Lv.${change.oldLevel} → Lv.${change.newLevel}\n`;
-            });
-            timeoutEmbed.addFields({ name: '⭐ Level Ups!', value: levelUpText, inline: false });
-            user.recentLevelUps = []; // Clear after displaying
-        }
-
-        await choiceMessage.edit({ embeds: [timeoutEmbed], components: [] });
-    } catch (error) {
-        console.error('Auto advance error:', error);
-    }
 }
 
 module.exports = { data, execute };
