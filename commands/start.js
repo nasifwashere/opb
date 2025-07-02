@@ -84,11 +84,6 @@ async function execute(message, args, client) {
                     inline: true 
                 },
                 { 
-                    name: 'Your Stats', 
-                    value: `**HP** ${user.hp}/${user.maxHp}\n**ATK** ${user.atk} • **DEF** ${user.def}\n**SPD** ${user.spd}`, 
-                    inline: true 
-                },
-                { 
                     name: 'Level', 
                     value: `**${user.level}** (${user.xp} XP)`, 
                     inline: true 

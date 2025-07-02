@@ -140,8 +140,8 @@ async function execute(message, args) {
     }
   }
 
-  // Calculate cost
-  const costPerLevel = 1000;
+  // Calculate cost - reduced to 50 beli per level
+  const costPerLevel = 50;
   const totalCost = costPerLevel * amount;
 
   if ((user.beli || 0) < totalCost) {

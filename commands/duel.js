@@ -6,7 +6,7 @@ const path = require('path');
 const DUEL_COOLDOWN = 10 * 60 * 1000; // 10 minutes
 
 async function cleanupStaleBattleState(user) {
-  if (!user.battleState?.inBattle) return;
+  if (!user.battleState || !user.battleState.inBattle) return;
 
   // Check if battle state is older than 30 minutes (stale)
   const battleAge = Date.now() - (user.battleState.lastActivity || 0);
@@ -189,11 +189,11 @@ async function execute(message, args) {
   await cleanupStaleBattleState(opponent);
 
   // Check if either player is already in a duel
-  if (user.battleState?.inBattle) {
+  if (user.battleState && user.battleState.inBattle) {
     return message.reply('❌ You are already in a battle!');
   }
 
-  if (opponent.battleState?.inBattle) {
+  if (opponent.battleState && opponent.battleState.inBattle) {
     return message.reply('❌ That player is already in a battle!');
   }
 
@@ -246,7 +246,7 @@ async function execute(message, args) {
         opponent = await User.findOne({ userId: mentionedUser.id });
 
         // Double-check that both players can still duel
-        if (user.battleState.inBattle || opponent.battleState.inBattle) {
+        if ((user.battleState && user.battleState.inBattle) || (opponent.battleState && opponent.battleState.inBattle)) {
           return interaction.followUp({ 
             content: 'One of the players is already in battle!', 
             ephemeral: true 
