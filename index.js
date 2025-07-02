@@ -28,20 +28,34 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// Interaction deduplication to prevent message duplication
-const processedInteractions = new Set();
-const processedMessages = new Set();
+// Enhanced deduplication system to prevent message duplication
+const processedInteractions = new Map(); // Store with timestamps
+const processedMessages = new Map(); // Store with timestamps
+const DEDUPLICATION_TIMEOUT = 10 * 60 * 1000; // 10 minutes
 
-// Clean up old interaction IDs every 5 minutes to prevent memory leaks
+// Clean up old interaction IDs every 2 minutes to prevent memory leaks
 setInterval(() => {
-    processedInteractions.clear();
-    processedMessages.clear();
+    const now = Date.now();
+    
+    // Remove interactions older than timeout
+    for (const [key, timestamp] of processedInteractions.entries()) {
+        if (now - timestamp > DEDUPLICATION_TIMEOUT) {
+            processedInteractions.delete(key);
+        }
+    }
+    
+    // Remove messages older than timeout
+    for (const [key, timestamp] of processedMessages.entries()) {
+        if (now - timestamp > DEDUPLICATION_TIMEOUT) {
+            processedMessages.delete(key);
+        }
+    }
     
     // Force garbage collection if available (helps on Render free tier)
     if (global.gc) {
         global.gc();
     }
-}, 5 * 60 * 1000);
+}, 2 * 60 * 1000);
 
 // Improved command loading with memory optimization
 function loadCommands(dir) {
@@ -116,11 +130,13 @@ const connectDB = async () => {
             maxPoolSize: 5, // Limit connection pool size
             serverSelectionTimeoutMS: 10000, // 10 second timeout
             socketTimeoutMS: 30000, // 30 second socket timeout
-            bufferMaxEntries: 0, // Disable mongoose buffering
-            bufferCommands: false, // Disable mongoose buffering
             maxIdleTimeMS: 30000, // Close connections after 30 seconds of inactivity
         };
 
+        // Configure mongoose settings before connecting
+        mongoose.set('bufferCommands', false);
+        mongoose.set('bufferMaxEntries', 0);
+        
         await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/onepiece_bot', options);
         console.log('✅ Connected to MongoDB');
 
@@ -206,30 +222,38 @@ client.on('messageCreate', async message => {
     // Prevent bot responses and duplicate processing
     if (message.author.bot) return;
     
-    // Create unique message ID for deduplication
-    const messageId = `${message.id}-${message.channelId}`;
-    if (processedMessages.has(messageId)) {
-        console.log('🔄 Duplicate message detected, skipping...');
-        return;
-    }
-    processedMessages.add(messageId);
-    
     const prefix = 'op ';
     if (!message.content.startsWith(prefix)) return;
     
     const args = message.content.slice(prefix.length).trim().split(/ +/);
     const commandName = args.shift().toLowerCase();
     
+    // Create unique message ID for deduplication
+    const messageId = `${message.id}-${message.channelId}-${commandName}`;
+    if (processedMessages.has(messageId)) {
+        console.log('🔄 Duplicate message detected, skipping...');
+        return;
+    }
+    processedMessages.set(messageId, Date.now());
+    
     const command = client.commands.get(commandName);
     if (!command) return;
     
     try {
+        // Check database connection before executing commands that need it
+        if (mongoose.connection.readyState !== 1 && ['explore', 'pull', 'team', 'inventory', 'duel', 'start'].includes(commandName)) {
+            return message.reply({
+                content: '⚠️ Database connection is unavailable. Please try again in a few moments.',
+                allowedMentions: { repliedUser: false }
+            });
+        }
+        
         console.log(`📝 Executing command: ${commandName} by ${message.author.tag}`);
         await command.execute(message, args, client);
     } catch (error) {
         console.error(`❌ Error executing command ${commandName}:`, error);
         
-        // Enhanced error response
+        // Enhanced error response - only send if not already replied
         try {
             await message.reply({
                 content: '⚠️ There was an error executing that command! Please try again.',
@@ -246,12 +270,12 @@ client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand() && !interaction.isButton() && !interaction.isSelectMenu()) return;
     
     // Create unique interaction ID for deduplication
-    const interactionId = `${interaction.id}-${interaction.user.id}`;
+    const interactionId = `${interaction.id}-${interaction.user.id}-${interaction.customId || interaction.commandName}`;
     if (processedInteractions.has(interactionId)) {
         console.log('🔄 Duplicate interaction detected, skipping...');
         return;
     }
-    processedInteractions.add(interactionId);
+    processedInteractions.set(interactionId, Date.now());
     
     // Handle different interaction types
     if (interaction.isChatInputCommand()) {
@@ -259,6 +283,14 @@ client.on('interactionCreate', async interaction => {
         if (!command) return;
         
         try {
+            // Check database connection before executing commands that need it
+            if (mongoose.connection.readyState !== 1 && ['explore', 'pull', 'team', 'inventory', 'duel', 'start'].includes(interaction.commandName)) {
+                return interaction.reply({
+                    content: '⚠️ Database connection is unavailable. Please try again in a few moments.',
+                    ephemeral: true
+                });
+            }
+            
             console.log(`⚡ Executing slash command: ${interaction.commandName} by ${interaction.user.tag}`);
             await command.execute(interaction);
         } catch (error) {

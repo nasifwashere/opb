@@ -46,13 +46,22 @@ app.get('/', (req, res) => {
 });
 
 // Comprehensive health check endpoint
-app.get('/health', (req, res) => {
+app.get('/health', async (req, res) => {
   botStatus.requestCount++;
   
   const memoryMB = Math.round(process.memoryUsage().rss / 1024 / 1024);
   const uptimeSeconds = Math.floor((Date.now() - botStatus.startTime) / 1000);
   
-  // Determine health status based on memory usage and uptime
+  // Check database health
+  let dbHealth = { status: 'unknown', error: 'Health check not available' };
+  try {
+    const { checkDatabaseHealth } = require('./utils/dbHealthCheck');
+    dbHealth = checkDatabaseHealth();
+  } catch (error) {
+    dbHealth = { status: 'error', error: 'Health check module not found' };
+  }
+  
+  // Determine health status based on memory usage, uptime, and database
   let healthStatus = 'healthy';
   let statusCode = 200;
   
@@ -61,9 +70,9 @@ app.get('/health', (req, res) => {
     statusCode = 200; // Still healthy, just warning
   }
   
-  if (memoryMB > 500) {
+  if (memoryMB > 500 || !dbHealth.isConnected) {
     healthStatus = 'critical';
-    statusCode = 503; // Service unavailable if memory is critical
+    statusCode = 503; // Service unavailable if memory is critical or DB disconnected
   }
   
   const healthData = {
@@ -78,6 +87,7 @@ app.get('/health', (req, res) => {
       heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB',
       heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + 'MB'
     },
+    database: dbHealth,
     requests: botStatus.requestCount,
     lastPing: new Date(botStatus.lastPing).toISOString(),
     environment: process.env.NODE_ENV || 'development',
@@ -150,6 +160,22 @@ app.post('/gc', (req, res) => {
   }
 });
 
+// Database test endpoint (for debugging)
+app.get('/db-test', async (req, res) => {
+  try {
+    const { testDatabaseConnection } = require('./utils/dbHealthCheck');
+    const result = await testDatabaseConnection();
+    
+    res.status(result.success ? 200 : 503).json(result);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Database test module not available',
+      message: error.message
+    });
+  }
+});
+
 // Metrics endpoint for monitoring
 app.get('/metrics', (req, res) => {
   const uptimeSeconds = Math.floor((Date.now() - botStatus.startTime) / 1000);
@@ -196,6 +222,7 @@ app.use((req, res) => {
       'GET /ping',
       'GET /status',
       'GET /metrics',
+      'GET /db-test',
       'POST /gc'
     ]
   });
