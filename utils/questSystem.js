@@ -78,7 +78,7 @@ async function getAvailableQuests(user) {
         }
         
         // Ensure user has proper quest data structure
-        await ensureQuestDataStructure(user);
+        await ensureQuestDataStructure(user, false);
     
     for (const quest of allQuests) {
         // Check unlock requirements
@@ -140,7 +140,7 @@ async function getAvailableQuests(user) {
 async function updateQuestProgress(user, actionType, amount = 1) {
     try {
         // Ensure proper quest data structure
-        await ensureQuestDataStructure(user);
+        await ensureQuestDataStructure(user, false);
         
         const availableQuests = await getAvailableQuests(user);
         const completedQuests = [];
@@ -263,7 +263,7 @@ async function claimQuestReward(user, questId) {
         }
         
         // Ensure proper quest data structure
-        await ensureQuestDataStructure(user);
+        await ensureQuestDataStructure(user, true);
         
         // Check if quest is active
         const activeQuest = user.activeQuests?.find(aq => aq.questId === questId);
@@ -409,8 +409,10 @@ function getQuestResetPeriod(questType) {
 /**
  * Ensure user has proper quest data structure
  * @param {Object} user - User document
+ * @param {boolean} autoSave - Whether to automatically save changes (default: false)
+ * @returns {boolean} Whether changes were made that need saving
  */
-async function ensureQuestDataStructure(user) {
+async function ensureQuestDataStructure(user, autoSave = false) {
     let needsSave = false;
     
     if (!user.activeQuests) {
@@ -435,9 +437,11 @@ async function ensureQuestDataStructure(user) {
         needsSave = true;
     }
     
-    if (needsSave) {
+    if (needsSave && autoSave) {
         await user.save();
     }
+    
+    return needsSave;
 }
 
 module.exports = {

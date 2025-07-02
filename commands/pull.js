@@ -139,7 +139,7 @@ async function getUserPullState(userId, username) {
             lastActive: new Date()
         });
         
-        await user.save();
+        await saveUserWithRetry(user);
     }
     
     // Initialize pullData if missing for existing users (one-time only)
@@ -148,7 +148,7 @@ async function getUserPullState(userId, username) {
             dailyPulls: 0,
             lastReset: Date.now()
         };
-        await user.save();
+        await saveUserWithRetry(user);
     }
     
     // Ensure username is set if missing
@@ -181,6 +181,33 @@ async function silentUpdateQuestProgress(user, actionType, amount) {
     }
 }
 
+// Safe save with retry mechanism for version conflicts
+async function saveUserWithRetry(user, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            await user.save();
+            return true;
+        } catch (error) {
+            if (error.name === 'VersionError' && attempt < maxRetries) {
+                // Refresh the user document and try again
+                const freshUser = await User.findById(user._id);
+                if (freshUser) {
+                    // Copy our changes to the fresh document
+                    freshUser.pullData = user.pullData;
+                    freshUser.lastPull = user.lastPull;
+                    freshUser.pulls = user.pulls;
+                    freshUser.cards = user.cards;
+                    freshUser.saga = user.saga;
+                    user = freshUser;
+                    continue;
+                }
+            }
+            throw error;
+        }
+    }
+    return false;
+}
+
 // --- Command Export ---
 const data = new SlashCommandBuilder()
     .setName('pull')
@@ -189,12 +216,14 @@ const data = new SlashCommandBuilder()
 async function execute(message) {
     const userId = message.author.id;
     const username = message.author.username;
-    const user = await getUserPullState(userId, username);
+    let user = await getUserPullState(userId, username);
+    
+    let needsSave = false;
     
     // Set default saga if missing
     if (!user.saga) {
         user.saga = "East Blue";
-        await user.save();
+        needsSave = true;
     }
     
     // Check if user needs individual reset (fallback in case global reset missed them)
@@ -202,20 +231,27 @@ async function execute(message) {
     if (resetSystem.shouldResetUserPulls(user)) {
         user.pullData.dailyPulls = 0;
         user.pullData.lastReset = Date.now();
-        await user.save();
+        needsSave = true;
+    }
+    
+    // Save any pending changes before checking limits
+    if (needsSave) {
+        try {
+            await saveUserWithRetry(user);
+        } catch (error) {
+            console.error('Error saving user data:', error);
+            return message.reply('There was an error processing your request. Please try again.');
+        }
     }
     
     // Check daily pull limit
     if (user.pullData.dailyPulls >= DAILY_PULL_LIMIT) {
-        const timeUntilReset = Math.max(0, 24 * 60 * 60 * 1000 - timeSinceLastReset);
-        const resetTimeString = prettyTime(timeUntilReset);
-        
         return message.reply({
             embeds: [new EmbedBuilder()
                 .setColor(0xff6b6b)
                 .setTitle('Daily Pull Limit Reached!')
-                .setDescription(`You've used all **${DAILY_PULL_LIMIT}** of your daily pulls!\n\n⏰ **Next reset:** ${resetTimeString}`)
-                .setFooter({ text: 'Pulls reset every 24 hours' })
+                .setDescription(`You've used all **${DAILY_PULL_LIMIT}** of your daily pulls!\n\n⏰ **Next reset:** Check \`op timers\` for reset time`)
+                .setFooter({ text: 'Pulls reset every 5 hours globally' })
             ]
         });
     }
@@ -251,10 +287,15 @@ async function execute(message) {
         timesUpgraded: 0
     });
     
-    // Save user data BEFORE quest update
-    await user.save();
+    // Save user data with retry mechanism
+    try {
+        await saveUserWithRetry(user);
+    } catch (error) {
+        console.error('Error saving pull data:', error);
+        return message.reply('There was an error saving your pull. Please try again.');
+    }
     
-    // Update quest progress silently
+    // Update quest progress silently (this handles its own saves)
     await silentUpdateQuestProgress(user, 'pull', 1);
     
     // Prepare evolution text
