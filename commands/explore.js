@@ -1062,9 +1062,9 @@ async function handleBattleAttack(interaction, user, battleMessage) {
         }
 
         // Enhanced enemy display
-        const aliveEnemies = battleState.enemies.filter(enemy => enemy.currentHp > 0);
-        if (aliveEnemies.length > 0) {
-            const enemyDisplay = createEnemyDisplay(aliveEnemies);
+        const currentEnemies = battleState.enemies.filter(enemy => enemy.currentHp > 0);
+        if (currentEnemies.length > 0) {
+            const enemyDisplay = createEnemyDisplay(currentEnemies);
             embed.addFields({
                 name: `💀 Enemies`,
                 value: enemyDisplay,
@@ -1302,9 +1302,9 @@ async function handleEnemyTurn(interaction, user, battleMessage) {
         }
 
         // Enhanced enemy display
-        const aliveEnemies = battleState.enemies.filter(enemy => enemy.currentHp > 0);
-        if (aliveEnemies.length > 0) {
-            const enemyDisplay = createEnemyDisplay(aliveEnemies);
+        const remainingEnemies = battleState.enemies.filter(enemy => enemy.currentHp > 0);
+        if (remainingEnemies.length > 0) {
+            const enemyDisplay = createEnemyDisplay(remainingEnemies);
             embed.addFields({
                 name: `💀 Enemies`,
                 value: enemyDisplay,
