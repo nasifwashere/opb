@@ -298,8 +298,16 @@ async function execute(message) {
         return message.reply('There was an error saving your pull. Please try again.');
     }
     
-    // Update quest progress silently (this handles its own saves)
+    // Update quest progress and save user
     await silentUpdateQuestProgress(user, 'pull', 1);
+    
+    // Quest system doesn't save automatically, so we need to save here
+    try {
+        await saveUserWithRetry(user);
+    } catch (error) {
+        console.error('Error saving quest progress:', error);
+        // Don't fail the pull if quest saving fails
+    }
     
     // Prepare evolution text
     let evolutionText = "";

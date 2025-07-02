@@ -208,7 +208,16 @@ async function handleGiveCommand(message, args) {
       xp: 0,
       level: 1,
       cards: [],
-      inventory: []
+      inventory: [],
+      team: [],
+      case: [],
+      activeQuests: [],
+      completedQuests: [],
+      equipped: {},
+      pullData: {
+        dailyPulls: 0,
+        lastReset: Date.now()
+      }
     });
   }
 
@@ -243,8 +252,18 @@ async function handleGiveCommand(message, args) {
       timesUpgraded: 0,
       locked: false
     });
-    await user.save();
-    return message.reply(`✅ Gave ${cardName} (${rank}) to ${targetUser.username}`);
+    
+    // Mark arrays as modified for proper saving
+    user.markModified('cards');
+    
+    try {
+      await user.save();
+      console.log(`[OWNER] Successfully gave ${cardName} (${rank}) to ${targetUser.username} (${targetUser.id})`);
+      return message.reply(`✅ Gave ${cardName} (${rank}) to ${targetUser.username}`);
+    } catch (error) {
+      console.error(`[OWNER] Error saving card for user ${targetUser.id}:`, error);
+      return message.reply(`❌ Error giving card to ${targetUser.username}. Please try again.`);
+    }
   }
 
   return message.reply('❌ Invalid command format. Use: `op owner give @user <amount> <beli/xp>` or `op owner give @user <card_name> <rank>`');

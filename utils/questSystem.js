@@ -7,13 +7,13 @@ const path = require('path');
 
 const questsPath = path.resolve('data', 'quests.json');
 
-// Configuration for quest logging - set to false to reduce spam
-const ENABLE_QUEST_LOGGING = process.env.QUEST_DEBUG === 'true' || false;
+// Configuration for quest logging - set to true to enable debugging
+const ENABLE_QUEST_LOGGING = true; // Temporarily enabled for debugging
 
 // Silent logging function that only logs when debugging is enabled
 function questLog(message) {
     if (ENABLE_QUEST_LOGGING) {
-        console.log(message);
+        console.log(`[QUEST DEBUG] ${message}`);
     }
 }
 
@@ -23,43 +23,21 @@ function questLog(message) {
  */
 async function loadQuestDatabase() {
     try {
-        // Try to load from database first
-        let dbQuests = await Quest.find({ active: true });
-        
-        // If no quests in database, load from file and seed database
-        if (dbQuests.length === 0) {
-            try {
-                if (fs.existsSync(questsPath)) {
-                    const fileQuests = JSON.parse(fs.readFileSync(questsPath, 'utf8'));
-                    
-                    // Seed database with quests from file
-                    for (const questData of fileQuests) {
-                        const quest = new Quest(questData);
-                        await quest.save();
-                    }
-                    
-                    dbQuests = await Quest.find({ active: true });
-                }
-            } catch (error) {
-                console.error('Error seeding quest database from file:', error);
-                // If database seeding fails, return the file quests directly
-                if (fs.existsSync(questsPath)) {
-                    return JSON.parse(fs.readFileSync(questsPath, 'utf8'));
-                }
-            }
+        // Prefer file-based quests for reliability
+        if (fs.existsSync(questsPath)) {
+            questLog(`Loading quests from file: ${questsPath}`);
+            const fileQuests = JSON.parse(fs.readFileSync(questsPath, 'utf8'));
+            questLog(`Loaded ${fileQuests.length} quests from file`);
+            return fileQuests;
         }
+        
+        // Fallback to database if file doesn't exist
+        let dbQuests = await Quest.find({ active: true });
+        questLog(`Loaded ${dbQuests.length} quests from database`);
         
         return dbQuests;
     } catch (error) {
         console.error('Error loading quest database:', error);
-        // Fallback to file-based quests if database is completely unavailable
-        try {
-            if (fs.existsSync(questsPath)) {
-                return JSON.parse(fs.readFileSync(questsPath, 'utf8'));
-            }
-        } catch (fileError) {
-            console.error('Error loading quests from file as fallback:', fileError);
-        }
         return [];
     }
 }
@@ -141,10 +119,14 @@ async function getAvailableQuests(user) {
  */
 async function updateQuestProgress(user, actionType, amount = 1) {
     try {
+        questLog(`Updating quest progress for user ${user.userId}: ${actionType} +${amount}`);
+        
         // Ensure proper quest data structure
         await ensureQuestDataStructure(user, false);
         
         const availableQuests = await getAvailableQuests(user);
+        questLog(`Found ${availableQuests.length} available quests for user`);
+        
         const completedQuests = [];
         
         for (const quest of availableQuests) {

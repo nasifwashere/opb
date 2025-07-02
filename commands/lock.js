@@ -98,8 +98,17 @@ async function execute(message, args) {
 
   // Move card to case and remove from cards
   const cardIndex = user.cards.findIndex(c => normalize(c.name) === normalize(userCard.name));
-  const cardToMove = { ...user.cards[cardIndex] };
-  cardToMove.locked = true;
+  const originalCard = user.cards[cardIndex];
+  
+  // Create new card object with all required fields
+  const cardToMove = {
+    name: originalCard.name,
+    rank: originalCard.rank,
+    level: originalCard.level || 1,
+    experience: originalCard.experience || 0,
+    timesUpgraded: originalCard.timesUpgraded || 0,
+    locked: true
+  };
   
   user.case.push(cardToMove);
   user.cards.splice(cardIndex, 1);
