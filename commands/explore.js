@@ -602,12 +602,26 @@ async function execute(message, args, client) {
             return message.reply('🎉 Congratulations! You have completed all available locations in the East Blue saga!');
         }
         
+        // IMPORTANT: Actually advance the stage and save progress
+        user.stage++; // Increment stage to move to first stage of next location
+        user.lastExplore = new Date(); // Set cooldown
+        
+        // Update quest progress for exploration
+        try {
+            const { updateQuestProgress } = require('../utils/questSystem.js');
+            await updateQuestProgress(user, 'explore', 1);
+        } catch (error) {
+            // Quest system is optional
+        }
+        
+        await user.save(); // Save the user's progress
+        
         // Automatically transition to next location
         const embed = new EmbedBuilder()
             .setTitle(`🗺️ Moving to ${nextLocation}`)
-            .setDescription(`You have completed **${currentLocation}**!\n\nYour adventure continues in **${nextLocation}**...`)
+            .setDescription(`You have completed **${currentLocation}**!\n\nYour adventure continues in **${nextLocation}**...\n\n✅ **Progress saved!** Use \`op explore\` again to continue.`)
             .setColor(0x2ecc71)
-            .setFooter({ text: 'Use `op explore` again to continue your journey!' });
+            .setFooter({ text: 'Your stage has been advanced to the next location!' });
         
         return message.reply({ embeds: [embed] });
     }
