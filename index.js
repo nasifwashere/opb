@@ -135,7 +135,6 @@ const connectDB = async () => {
 
         // Configure mongoose settings before connecting
         mongoose.set('bufferCommands', false);
-        mongoose.set('bufferMaxEntries', 0);
         
         await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/onepiece_bot', options);
         console.log('✅ Connected to MongoDB');
