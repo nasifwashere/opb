@@ -197,17 +197,12 @@ async function execute(message) {
         await user.save();
     }
     
-    // Check if 24+ hours have passed since last reset
-    const now = Date.now();
-    const timeSinceLastReset = now - user.pullData.lastReset;
-    const hoursSinceReset = timeSinceLastReset / (1000 * 60 * 60);
-    
-    // Reset daily pulls if 24+ hours have passed since last reset
-    if (hoursSinceReset >= 24) {
+    // Check if user needs individual reset (fallback in case global reset missed them)
+    const resetSystem = require('../utils/resetSystem.js');
+    if (resetSystem.shouldResetUserPulls(user)) {
         user.pullData.dailyPulls = 0;
-        user.pullData.lastReset = now;
+        user.pullData.lastReset = Date.now();
         await user.save();
-        // No console logging - silent reset
     }
     
     // Check daily pull limit

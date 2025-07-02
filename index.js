@@ -86,12 +86,21 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/onepiece_bo
     console.error('MongoDB connection error:', err);
 });
 
-client.once('ready', () => {
+client.once('ready', async () => {
     console.log(`Ready! Logged in as ${client.user.tag}`);
     
     // Initialize battles Map for duel system
     if (!client.battles) {
         client.battles = new Map();
+    }
+    
+    // Initialize reset system for pull and quest resets
+    try {
+        const resetSystem = require('./utils/resetSystem.js');
+        await resetSystem.initialize(client);
+        console.log('Reset system initialized successfully');
+    } catch (error) {
+        console.error('Error initializing reset system:', error);
     }
 });
 

@@ -104,11 +104,13 @@ class ResetSystem {
         try {
             console.log('Performing global pull reset...');
             
-            // Reset all users' pulls
+            // Reset all users' pulls (both old and new systems)
             await User.updateMany({}, { 
                 $set: { 
                     pulls: [],
-                    lastPull: 0 
+                    lastPull: 0,
+                    'pullData.dailyPulls': 0,
+                    'pullData.lastReset': Date.now()
                 } 
             });
 
@@ -242,7 +244,10 @@ class ResetSystem {
 
     // Check if user's pulls should be reset based on global reset time
     shouldResetUserPulls(user) {
-        return user.lastPull < this.config.lastPullReset;
+        // Check both old and new systems
+        const oldSystemNeedsReset = user.lastPull < this.config.lastPullReset;
+        const newSystemNeedsReset = user.pullData && user.pullData.lastReset < this.config.lastPullReset;
+        return oldSystemNeedsReset || newSystemNeedsReset;
     }
 
     // Reset user's pulls if needed
@@ -250,6 +255,10 @@ class ResetSystem {
         if (this.shouldResetUserPulls(user)) {
             user.pulls = [];
             user.lastPull = 0;
+            if (user.pullData) {
+                user.pullData.dailyPulls = 0;
+                user.pullData.lastReset = Date.now();
+            }
             return true;
         }
         return false;
