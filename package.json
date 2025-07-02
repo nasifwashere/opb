@@ -4,7 +4,11 @@
   "description": "🏴‍☠️ One Piece Gacha Discord Bot – Card RPG, PvE/PvP, Collection, Economy, Evolution, and More!",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node --expose-gc index.js",
+    "dev": "node --expose-gc index.js",
+    "start:prod": "NODE_ENV=production node --expose-gc --max-old-space-size=400 index.js",
+    "start:render": "NODE_ENV=production node --expose-gc --max-old-space-size=400 index.js",
+    "postinstall": "npm prune --production"
   },
   "keywords": [
     "discord",

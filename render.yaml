@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: one-piece-bot
+    env: node
+    plan: free
+    buildCommand: npm install --production
+    startCommand: node --expose-gc index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        generateValue: true
+    scaling:
+      minInstances: 1
+      maxInstances: 1
+    healthCheckPath: /health
+    disk:
+      name: bot-data
+      mountPath: /opt/render/project/data
+      sizeGB: 1

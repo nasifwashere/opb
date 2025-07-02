@@ -5,26 +5,52 @@ const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
 
+// Import keep-alive server for Render deployment
+const { keepAlive } = require('./keepAlive');
+
+// Start keep-alive server immediately for Render
+keepAlive();
+
+// Optimize for Render free tier
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers
-    ]
+    ],
+    // Optimize connection options for Render
+    shardCount: 1,
+    presence: {
+        status: 'online'
+    }
 });
 
 client.commands = new Collection();
 
-// Load commands recursively with proper error handling
+// Interaction deduplication to prevent message duplication
+const processedInteractions = new Set();
+const processedMessages = new Set();
+
+// Clean up old interaction IDs every 5 minutes to prevent memory leaks
+setInterval(() => {
+    processedInteractions.clear();
+    processedMessages.clear();
+    
+    // Force garbage collection if available (helps on Render free tier)
+    if (global.gc) {
+        global.gc();
+    }
+}, 5 * 60 * 1000);
+
+// Improved command loading with memory optimization
 function loadCommands(dir) {
-    // Check if directory exists before trying to read it
     if (!fs.existsSync(dir)) {
         console.log(`Commands directory '${dir}' does not exist. Creating it...`);
         try {
             fs.mkdirSync(dir, { recursive: true });
             console.log(`Created commands directory: ${dir}`);
-            return; // No commands to load yet
+            return;
         } catch (error) {
             console.error(`Error creating commands directory:`, error);
             return;
@@ -39,6 +65,7 @@ function loadCommands(dir) {
         return;
     }
     
+    let loadedCount = 0;
     for (const file of files) {
         const filePath = path.join(dir, file);
         let stat;
@@ -54,79 +81,138 @@ function loadCommands(dir) {
             loadCommands(filePath);
         } else if (file.endsWith('.js')) {
             try {
+                // Clear require cache to prevent memory leaks during development
+                delete require.cache[require.resolve(filePath)];
+                
                 const command = require(filePath);
-                // Use the slash command name if available, otherwise filename
                 const commandName = command.data?.name || file.replace('.js', '');
                 client.commands.set(commandName, command);
                 
-                // Also register text command name if different
                 if (command.textData?.name && command.textData.name !== commandName) {
                     client.commands.set(command.textData.name, command);
                 }
                 
-                console.log(`Loaded command: ${commandName}`);
+                loadedCount++;
             } catch (error) {
                 console.error(`Error loading command ${file}:`, error);
             }
         }
     }
+    console.log(`Loaded ${loadedCount} commands from ${dir}`);
 }
 
 const commandsPath = path.join(__dirname, 'commands');
 loadCommands(commandsPath);
 
-// Migration tracking to prevent infinite runs
+// Migration tracking with better error handling
 let migrationCompleted = false;
 let migrationInProgress = false;
 
-// Connect to MongoDB with proper error handling
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/onepiece_bot').then(() => {
-    console.log('Connected to MongoDB');
-}).catch(err => {
-    console.error('MongoDB connection error:', err);
-});
+// Optimized MongoDB connection with better error handling for Render
+const connectDB = async () => {
+    try {
+        const options = {
+            // Optimize for Render free tier
+            maxPoolSize: 5, // Limit connection pool size
+            serverSelectionTimeoutMS: 10000, // 10 second timeout
+            socketTimeoutMS: 30000, // 30 second socket timeout
+            bufferMaxEntries: 0, // Disable mongoose buffering
+            bufferCommands: false, // Disable mongoose buffering
+            maxIdleTimeMS: 30000, // Close connections after 30 seconds of inactivity
+        };
+
+        await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/onepiece_bot', options);
+        console.log('✅ Connected to MongoDB');
+
+        // Handle connection events
+        mongoose.connection.on('error', (err) => {
+            console.error('❌ MongoDB connection error:', err);
+        });
+
+        mongoose.connection.on('disconnected', () => {
+            console.log('⚠️ MongoDB disconnected');
+        });
+
+        mongoose.connection.on('reconnected', () => {
+            console.log('✅ MongoDB reconnected');
+        });
+
+    } catch (err) {
+        console.error('❌ MongoDB connection failed:', err);
+        // Don't exit process, let it retry
+        setTimeout(connectDB, 5000); // Retry after 5 seconds
+    }
+};
+
+// Initialize database connection
+connectDB();
 
 client.once('ready', async () => {
-    console.log(`Ready! Logged in as ${client.user.tag}`);
+    console.log(`🚀 Ready! Logged in as ${client.user.tag}`);
+    console.log(`📊 Serving ${client.guilds.cache.size} guilds`);
     
-    // Initialize battles Map for duel system
+    // Initialize battles Map for duel system with size limit
     if (!client.battles) {
         client.battles = new Map();
     }
     
-    // Initialize reset system for pull and quest resets
+    // Clean up old battles every 10 minutes to prevent memory leaks
+    setInterval(() => {
+        const now = Date.now();
+        let cleaned = 0;
+        
+        for (const [messageId, battleData] of client.battles.entries()) {
+            // Remove battles older than 30 minutes
+            if (now - battleData.startTime > 30 * 60 * 1000) {
+                client.battles.delete(messageId);
+                cleaned++;
+            }
+        }
+        
+        if (cleaned > 0) {
+            console.log(`🧹 Cleaned up ${cleaned} old battles`);
+        }
+    }, 10 * 60 * 1000);
+    
+    // Initialize reset system with error handling
     try {
         const resetSystem = require('./utils/resetSystem.js');
         await resetSystem.initialize(client);
-        console.log('Reset system initialized successfully');
+        console.log('✅ Reset system initialized');
     } catch (error) {
-        console.error('Error initializing reset system:', error);
+        console.error('❌ Error initializing reset system:', error);
     }
     
-    // Auto-start drop timer if drops channel is configured
+    // Auto-start drop timer with error handling
     try {
-        const fs = require('fs').promises;
-        const path = require('path');
-        const CONFIG_PATH = path.join(__dirname, 'config.json');
-        
-        const configData = await fs.readFile(CONFIG_PATH, 'utf8');
-        const config = JSON.parse(configData);
-        
-        if (config.dropChannelId) {
-            const { startDropTimer } = require('./commands/mod/setDrops.js');
-            startDropTimer(client);
-            console.log('Auto-started card drop timer from config');
-        } else {
-            console.log('No drop channel configured in config.json');
+        const configPath = path.join(__dirname, 'config.json');
+        if (fs.existsSync(configPath)) {
+            const configData = await fs.promises.readFile(configPath, 'utf8');
+            const config = JSON.parse(configData);
+            
+            if (config.dropChannelId) {
+                const { startDropTimer } = require('./commands/mod/setDrops.js');
+                startDropTimer(client);
+                console.log('✅ Auto-started card drop timer');
+            }
         }
     } catch (error) {
-        console.log('No config found or drops not configured:', error.message);
+        console.log('⚠️ No config found or drops not configured:', error.message);
     }
 });
 
-// Handle prefix commands (op command)
+// Optimized message handler with deduplication
 client.on('messageCreate', async message => {
+    // Prevent bot responses and duplicate processing
     if (message.author.bot) return;
+    
+    // Create unique message ID for deduplication
+    const messageId = `${message.id}-${message.channelId}`;
+    if (processedMessages.has(messageId)) {
+        console.log('🔄 Duplicate message detected, skipping...');
+        return;
+    }
+    processedMessages.add(messageId);
     
     const prefix = 'op ';
     if (!message.content.startsWith(prefix)) return;
@@ -138,171 +224,226 @@ client.on('messageCreate', async message => {
     if (!command) return;
     
     try {
+        console.log(`📝 Executing command: ${commandName} by ${message.author.tag}`);
         await command.execute(message, args, client);
     } catch (error) {
-        console.error(`Error executing command ${commandName}:`, error);
-        message.reply('There was an error executing that command!');
-    }
-});
-
-// Handle slash commands
-client.on('interactionCreate', async interaction => {
-    if (!interaction.isChatInputCommand()) return;
-    
-    const command = client.commands.get(interaction.commandName);
-    if (!command) return;
-    
-    try {
-        await command.execute(interaction);
-    } catch (error) {
-        console.error(`Error executing slash command ${interaction.commandName}:`, error);
-        const errorMessage = 'There was an error while executing this command!';
+        console.error(`❌ Error executing command ${commandName}:`, error);
         
-        if (interaction.replied || interaction.deferred) {
-            await interaction.followUp({ content: errorMessage, ephemeral: true });
-        } else {
-            await interaction.reply({ content: errorMessage, ephemeral: true });
+        // Enhanced error response
+        try {
+            await message.reply({
+                content: '⚠️ There was an error executing that command! Please try again.',
+                allowedMentions: { repliedUser: false }
+            });
+        } catch (replyError) {
+            console.error('❌ Failed to send error message:', replyError);
         }
     }
 });
 
-// Fixed auto-migration with proper tracking and persistence to prevent infinite loops
+// Optimized interaction handler with comprehensive deduplication
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isChatInputCommand() && !interaction.isButton() && !interaction.isSelectMenu()) return;
+    
+    // Create unique interaction ID for deduplication
+    const interactionId = `${interaction.id}-${interaction.user.id}`;
+    if (processedInteractions.has(interactionId)) {
+        console.log('🔄 Duplicate interaction detected, skipping...');
+        return;
+    }
+    processedInteractions.add(interactionId);
+    
+    // Handle different interaction types
+    if (interaction.isChatInputCommand()) {
+        const command = client.commands.get(interaction.commandName);
+        if (!command) return;
+        
+        try {
+            console.log(`⚡ Executing slash command: ${interaction.commandName} by ${interaction.user.tag}`);
+            await command.execute(interaction);
+        } catch (error) {
+            console.error(`❌ Error executing slash command ${interaction.commandName}:`, error);
+            
+            const errorMessage = '⚠️ There was an error while executing this command!';
+            
+            try {
+                if (interaction.replied || interaction.deferred) {
+                    await interaction.followUp({ content: errorMessage, ephemeral: true });
+                } else {
+                    await interaction.reply({ content: errorMessage, ephemeral: true });
+                }
+            } catch (replyError) {
+                console.error('❌ Failed to send error response:', replyError);
+            }
+        }
+    }
+    
+    // Handle button interactions (for battles, etc.)
+    if (interaction.isButton()) {
+        try {
+            // Handle duel buttons
+            if (['duel_attack', 'duel_defend', 'duel_inventory', 'duel_forfeit'].includes(interaction.customId)) {
+                const battleData = client.battles?.get(interaction.message.id);
+                if (battleData) {
+                    const { handleDuelAction } = require('./utils/duelHandler');
+                    if (handleDuelAction) {
+                        await handleDuelAction(interaction, client);
+                    }
+                }
+            }
+            
+            // Handle other button interactions as needed
+            console.log(`🔘 Button interaction: ${interaction.customId} by ${interaction.user.tag}`);
+            
+        } catch (error) {
+            console.error(`❌ Error handling button interaction ${interaction.customId}:`, error);
+        }
+    }
+});
+
+// Optimized migration with better error handling and timeout protection
 (async () => {
     try {
-        // Prevent multiple migration runs
         if (migrationInProgress || migrationCompleted) {
-            console.log('[STARTUP] Migration already completed or in progress, skipping...');
+            console.log('🔄 Migration already completed or in progress, skipping...');
             return;
         }
         
         migrationInProgress = true;
         
-        // Wait for MongoDB connection with proper timeout and cleanup
-        await new Promise((resolve, reject) => {
+        // Wait for MongoDB connection with timeout
+        const connectTimeout = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('MongoDB connection timeout')), 15000);
+        });
+        
+        const connectPromise = new Promise((resolve) => {
             if (mongoose.connection.readyState === 1) {
                 resolve();
                 return;
             }
-            
-            const timeout = setTimeout(() => {
-                reject(new Error('MongoDB connection timeout after 15 seconds'));
-            }, 15000); // 15 second timeout
-            
-            const cleanup = () => {
-                clearTimeout(timeout);
-                mongoose.connection.removeListener('open', onOpen);
-                mongoose.connection.removeListener('error', onError);
-            };
-            
-            const onOpen = () => {
-                cleanup();
-                resolve();
-            };
-            
-            const onError = (err) => {
-                cleanup();
-                reject(err);
-            };
-            
-            mongoose.connection.once('open', onOpen);
-            mongoose.connection.once('error', onError);
+            mongoose.connection.once('open', resolve);
         });
         
-        // Check if quest migration utility exists before trying to use it
-        let migrateQuestData;
+        await Promise.race([connectPromise, connectTimeout]);
+        
+        // Quick migration check
         try {
-            const questMigrationModule = require('./utils/questMigration.js');
-            migrateQuestData = questMigrationModule.migrateQuestData;
+            const User = require('./db/models/User.js');
+            const { migrateQuestData } = require('./utils/questMigration.js');
+            
+            // Check if migration is needed
+            const needsMigration = await User.findOne({
+                $or: [
+                    { questData: { $exists: false } },
+                    { 'questData.migrationVersion': { $exists: false } },
+                    { 'questData.migrationVersion': { $lt: 1 } }
+                ]
+            });
+            
+            if (!needsMigration) {
+                console.log('✅ No migration needed');
+                migrationCompleted = true;
+                return;
+            }
+            
+            console.log('🔄 Starting quest data migration...');
+            const result = await migrateQuestData();
+            
+            if (result.success) {
+                console.log(`✅ Migration completed: ${result.migratedCount} users migrated`);
+                migrationCompleted = true;
+            } else {
+                console.error('❌ Migration failed:', result.error);
+            }
+            
         } catch (error) {
-            console.log('[STARTUP] Quest migration utility not found, skipping migration...');
+            console.log('⚠️ Migration utilities not found, skipping migration');
             migrationCompleted = true;
-            migrationInProgress = false;
-            return;
-        }
-        
-        // Check if User model exists before trying to use it
-        let User;
-        try {
-            User = require('./db/models/User.js');
-        } catch (error) {
-            console.log('[STARTUP] User model not found, skipping migration...');
-            migrationCompleted = true;
-            migrationInProgress = false;
-            return;
-        }
-        
-        // Create a persistent migration flag collection to prevent re-running
-        const MigrationFlag = mongoose.model('MigrationFlag', new mongoose.Schema({
-            name: { type: String, unique: true },
-            completed: { type: Boolean, default: false },
-            completedAt: { type: Date, default: Date.now }
-        }));
-        
-        // Check if quest migration has been completed before
-        const questMigrationFlag = await MigrationFlag.findOne({ name: 'questData_v1' });
-        
-        if (questMigrationFlag && questMigrationFlag.completed) {
-            console.log('[STARTUP] Quest migration already completed previously, skipping...');
-            migrationCompleted = true;
-            migrationInProgress = false;
-            return;
-        }
-        
-        // Quick check to see if any migration is needed at all
-        const sampleUsers = await User.find({
-            $or: [
-                { questData: { $exists: false } },
-                { 'questData.migrationVersion': { $exists: false } },
-                { 'questData.migrationVersion': { $lt: 1 } }
-            ]
-        }).limit(1);
-        
-        if (sampleUsers.length === 0) {
-            console.log('[STARTUP] No migration needed - all users already migrated');
-            
-            // Mark migration as completed in database
-            await MigrationFlag.findOneAndUpdate(
-                { name: 'questData_v1' },
-                { completed: true, completedAt: new Date() },
-                { upsert: true }
-            );
-            
-            migrationCompleted = true;
-            migrationInProgress = false;
-            return;
-        }
-        
-        console.log('[STARTUP] Migration needed, starting quest data migration...');
-        
-        const migrationResult = await migrateQuestData();
-        
-        if (migrationResult.success) {
-            console.log(`[STARTUP] Quest migration completed successfully. Migrated ${migrationResult.migratedCount} users.`);
-            
-            // Mark migration as completed in database to prevent future runs
-            await MigrationFlag.findOneAndUpdate(
-                { name: 'questData_v1' },
-                { completed: true, completedAt: new Date() },
-                { upsert: true }
-            );
-            
-            migrationCompleted = true;
-        } else {
-            console.error('[STARTUP] Quest migration failed:', migrationResult.error);
         }
         
     } catch (error) {
-        console.error('[STARTUP] Error during quest migration:', error);
-        
-        // On timeout or other critical errors, mark as completed to prevent infinite loops
-        if (error.message.includes('timeout') || error.message.includes('ECONNREFUSED')) {
-            console.log('[STARTUP] Marking migration as completed due to connection issues to prevent loops');
-            migrationCompleted = true;
-        }
+        console.error('❌ Migration error:', error);
+        migrationCompleted = true; // Prevent infinite loops
     } finally {
         migrationInProgress = false;
     }
 })();
 
-// Login to Discord
-client.login(process.env.DISCORD_TOKEN);
+// Graceful shutdown handling for Render
+process.on('SIGTERM', async () => {
+    console.log('📋 SIGTERM received, shutting down gracefully...');
+    
+    try {
+        // Close Discord client
+        if (client) {
+            await client.destroy();
+            console.log('✅ Discord client closed');
+        }
+        
+        // Close MongoDB connection
+        if (mongoose.connection.readyState === 1) {
+            await mongoose.connection.close();
+            console.log('✅ MongoDB connection closed');
+        }
+        
+        console.log('✅ Graceful shutdown completed');
+        process.exit(0);
+    } catch (error) {
+        console.error('❌ Error during shutdown:', error);
+        process.exit(1);
+    }
+});
+
+process.on('SIGINT', async () => {
+    console.log('📋 SIGINT received, shutting down gracefully...');
+    process.exit(0);
+});
+
+// Handle uncaught exceptions and unhandled rejections for Render stability
+process.on('uncaughtException', (error) => {
+    console.error('❌ Uncaught Exception:', error);
+    // Don't exit immediately on Render, try to continue
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+    // Don't exit immediately on Render, try to continue
+});
+
+// Memory monitoring for Render free tier
+setInterval(() => {
+    const used = process.memoryUsage();
+    const memoryMB = Math.round(used.rss / 1024 / 1024);
+    
+    // Log memory usage if it's getting high (Render free tier has 512MB)
+    if (memoryMB > 400) {
+        console.log(`⚠️ High memory usage: ${memoryMB}MB`);
+        
+        // Force garbage collection if available
+        if (global.gc) {
+            global.gc();
+            console.log('🧹 Forced garbage collection');
+        }
+    }
+}, 60000); // Check every minute
+
+// Login to Discord with retry logic for Render
+const loginWithRetry = async (retries = 3) => {
+    for (let i = 0; i < retries; i++) {
+        try {
+            await client.login(process.env.DISCORD_TOKEN);
+            console.log('✅ Successfully logged in to Discord');
+            return;
+        } catch (error) {
+            console.error(`❌ Login attempt ${i + 1} failed:`, error);
+            if (i === retries - 1) {
+                console.error('❌ All login attempts failed');
+                process.exit(1);
+            }
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+    }
+};
+
+loginWithRetry();
