@@ -41,7 +41,13 @@ function fuzzyFindCard(cards, input) {
     return bestMatch;
 }
 
-// This function has been removed - equipment stats are now handled by shop.json data
+// Find equipment item in shop data
+function findShopItem(itemName) {
+  const normalizedTarget = normalize(itemName);
+  
+  const allItems = [...shopData.items, ...(shopData.devilFruits || [])];
+  return allItems.find(item => normalize(item.name) === normalizedTarget);
+}
 
 const data = new SlashCommandBuilder()
   .setName('equip')

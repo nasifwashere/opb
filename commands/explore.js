@@ -330,9 +330,7 @@ function normalizeItemName(item) {
 function addToInventory(user, item) {
     if (!user.inventory) user.inventory = [];
     const normItem = normalizeItemName(item);
-    if (!user.inventory.map(normalizeItemName).includes(normItem)) {
-        user.inventory.push(normItem);
-    }
+    user.inventory.push(normItem);
 }
 
 async function addXP(user, amount) {
