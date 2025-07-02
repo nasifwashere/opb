@@ -62,12 +62,13 @@ async function execute(message, args) {
   const now = Date.now();
   const lastClaimed = user.dailyReward.lastClaimed;
   
-  // Check if user can claim today
-  if (lastClaimed) {
+  // Check if user can claim today - prevent infinite claiming
+  if (lastClaimed && typeof lastClaimed === 'number') {
     const timeDiff = now - lastClaimed;
     const hoursDiff = timeDiff / (1000 * 60 * 60);
     
-    if (hoursDiff < 24) { // Must wait 24 hours between claims
+    // Strict 24 hour cooldown - must wait full 24 hours
+    if (hoursDiff < 24) { 
       const nextClaim = lastClaimed + (24 * 60 * 60 * 1000);
       const timeLeft = nextClaim - now;
       
@@ -86,9 +87,12 @@ async function execute(message, args) {
     }
   }
 
-  // Increment streak
+  // Increment streak and set claim time BEFORE applying rewards
   user.dailyReward.streak = Math.min(user.dailyReward.streak + 1, 7);
   user.dailyReward.lastClaimed = now;
+
+  // Save user data immediately to prevent multiple claims
+  await user.save();
 
   // Get reward for current streak day
   const rewardIndex = (user.dailyReward.streak - 1) % 7;
@@ -103,6 +107,7 @@ async function execute(message, args) {
     user.inventory.push(reward.item);
   }
 
+  // Save final rewards
   await user.save();
 
   const embed = new EmbedBuilder()
