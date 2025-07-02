@@ -815,6 +815,22 @@ async function handleBattle(message, user, stageData, currentLocation, client) {
         }];
     }
 
+    // Ensure battle team has proper health values
+    battleTeam.forEach(card => {
+        if (!card.currentHp || card.currentHp <= 0) {
+            card.currentHp = card.hp || card.maxHp || 100;
+        }
+        if (!card.maxHp) {
+            card.maxHp = card.hp || 100;
+        }
+    });
+
+    // Final validation - ensure we have at least one alive team member
+    const aliveCount = battleTeam.filter(card => card.currentHp > 0).length;
+    if (aliveCount === 0) {
+        return message.reply('❌ Your team has no health! Please check your cards or try again.');
+    }
+
     const battleState = {
         userTeam: battleTeam,
         enemies: enemies,
@@ -864,7 +880,33 @@ async function displayBattleState(message, user, client) {
 
     // Use enhanced team display
     const aliveTeamMembers = battleState.userTeam.filter(card => card.currentHp > 0);
-    if (aliveTeamMembers.length > 0) {
+    
+    // Emergency check - if no team members are alive, something went wrong
+    if (aliveTeamMembers.length === 0) {
+        // Reset team health as emergency fix
+        battleState.userTeam.forEach(card => {
+            if (!card.currentHp || card.currentHp <= 0) {
+                card.currentHp = card.hp || card.maxHp || 100;
+            }
+        });
+        const fixedTeam = battleState.userTeam.filter(card => card.currentHp > 0);
+        
+        if (fixedTeam.length > 0) {
+            const teamDisplay = createProfessionalTeamDisplay(fixedTeam, message.author.username);
+            embed.addFields({
+                name: `👑 ${message.author.username}'s Crew`,
+                value: teamDisplay,
+                inline: false
+            });
+        } else {
+            // If still no team, clean up and restart
+            user.exploreStates.inBossFight = false;
+            user.exploreStates.battleState = null;
+            user.exploreStates.currentStage = null;
+            await saveUserWithRetry(user);
+            return message.reply('❌ Battle initialization failed. Please try exploring again with `op explore`.');
+        }
+    } else {
         const teamDisplay = createProfessionalTeamDisplay(aliveTeamMembers, message.author.username);
         embed.addFields({
             name: `👑 ${message.author.username}'s Crew`,
@@ -874,9 +916,9 @@ async function displayBattleState(message, user, client) {
     }
 
     // Enhanced enemy display
-    const aliveEnemies = battleState.enemies.filter(enemy => enemy.currentHp > 0);
-    if (aliveEnemies.length > 0) {
-        const enemyDisplay = createEnemyDisplay(aliveEnemies);
+    const activeEnemies = battleState.enemies.filter(enemy => enemy.currentHp > 0);
+    if (activeEnemies.length > 0) {
+        const enemyDisplay = createEnemyDisplay(activeEnemies);
         embed.addFields({
             name: `💀 Enemies`,
             value: enemyDisplay,
@@ -884,13 +926,7 @@ async function displayBattleState(message, user, client) {
         });
     }
 
-    // Battle status display
-    const statusDisplay = createBattleStatusDisplay(battleState, battleState.turn, message.author.username);
-    embed.addFields({
-        name: `📊 Battle Status`,
-        value: statusDisplay,
-        inline: false
-    });
+
 
     // Create enhanced battle buttons
     const battleButtons = [
@@ -1076,14 +1112,6 @@ async function handleBattleAttack(interaction, user, battleMessage) {
         embed.addFields({
             name: `📝 Recent Actions`,
             value: battleLogDisplay,
-            inline: false
-        });
-
-        // Battle status
-        const statusDisplay = createBattleStatusDisplay(battleState, battleState.turn, interaction.user.username);
-        embed.addFields({
-            name: `📊 Battle Status`,
-            value: statusDisplay,
             inline: false
         });
 
@@ -1316,14 +1344,6 @@ async function handleEnemyTurn(interaction, user, battleMessage) {
         embed.addFields({
             name: `📝 Recent Actions`,
             value: battleLogDisplay,
-            inline: false
-        });
-
-        // Battle status
-        const statusDisplay = createBattleStatusDisplay(battleState, battleState.turn, interaction.user.username);
-        embed.addFields({
-            name: `📊 Battle Status`,
-            value: statusDisplay,
             inline: false
         });
 
