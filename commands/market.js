@@ -13,12 +13,17 @@ function normalize(str) {
     return String(str || '').replace(/\s+/g, '').toLowerCase();
 }
 
+// Generate a unique listing ID
+function generateListingId() {
+    return 'MKT' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
 function createMarketEmbed(listings, page, totalPages, type = 'all') {
     const embed = new EmbedBuilder()
         .setTitle('Marketplace')
         .setDescription(`Showing: ${type === 'all' ? 'All Items' : type.charAt(0).toUpperCase() + type.slice(1)}`)
         .setColor(0x2f3136)
-        .setFooter({ text: `Page ${page + 1}/${totalPages || 1} • Use 'op market buy <number>' to purchase` });
+        .setFooter({ text: `Page ${page + 1}/${totalPages || 1} • Use 'op market buy <listing ID>' to purchase` });
 
     if (listings.length === 0) {
         embed.addFields({ name: 'No Listings', value: 'No items are currently for sale in this category.', inline: false });
@@ -32,10 +37,8 @@ function createMarketEmbed(listings, page, totalPages, type = 'all') {
             : listing.itemName;
 
         const timeLeft = Math.max(0, Math.floor((listing.expiresAt - Date.now()) / (1000 * 60 * 60)));
-        const pageOffset = page * 6; // 6 items per page
-        const itemNumber = pageOffset + index + 1;
 
-        marketDisplay += `**${itemNumber}.** ${itemDisplay}\n`;
+        marketDisplay += `**ID: ${listing.listingId}** - ${itemDisplay}\n`;
         marketDisplay += `\`\`\`${listing.price} Beli • ${listing.sellerName} • ${timeLeft}h left\`\`\``;
         
         if (listing.description) {
@@ -186,13 +189,13 @@ async function execute(message, args) {
             currentPage = 0;
         } else if (interaction.customId === 'market_buy') {
             await interaction.followUp({
-                content: '**How to Buy Items:**\n\nUse: `op market buy <item number>`\n\nExample: `op market buy 1` buys the first item shown\n\n*Item numbers are shown next to each listing*',
+                content: '**How to Buy Items:**\n\nUse: `op market buy <listing ID>`\n\nExample: `op market buy MKT12345` buys the item with ID MKT12345\n\n*Listing IDs are shown next to each listing*',
                 ephemeral: true
             });
             return;
         } else if (interaction.customId === 'market_list') {
             await interaction.followUp({
-                content: 'To list an item for sale, use: `op market list <type> <item name> <price> [description]`\n\nExamples:\n• `op market list card Luffy 1000 Great starter card!`\n• `op market list item strawhat 500`\n\n**To remove a listing:**\n1. Use `op market` and click "My Listings" to see your listing numbers\n2. Use `op market unlist <listing number>` to remove it\n\nExample: `op market unlist 1` removes your first listing',
+                content: 'To list an item for sale, use: `op market list <type> <item name> <price> [description]`\n\nExamples:\n• `op market list card Luffy 1000 Great starter card!`\n• `op market list item strawhat 500`\n\n**To remove a listing:**\n1. Use `op market` and click "My Listings" to see your listing IDs\n2. Use `op market unlist <listing ID>` to remove it\n\nExample: `op market unlist MKT12345` removes your listing with ID MKT12345',
                 ephemeral: true
             });
             return;
@@ -206,7 +209,7 @@ async function execute(message, args) {
             let listingText = '**Your Active Listings:**\n\n';
             myListings.forEach((listing, index) => {
                 const timeLeft = Math.max(0, Math.floor((listing.expiresAt - Date.now()) / (1000 * 60 * 60)));
-                listingText += `${index + 1}. ${listing.itemName} - ${listing.price} Beli (${timeLeft}h left)\n`;
+                listingText += `**ID: ${listing.listingId}** - ${listing.itemName} - ${listing.price} Beli (${timeLeft}h left)\n`;
             });
 
             await interaction.followUp({ content: listingText, ephemeral: true });
@@ -232,16 +235,23 @@ async function handleMarketBuy(message, user, args) {
         user.username = message.author.username;
         await user.save();
     }
-    const itemNumber = parseInt(args[0]);
+    
+    const listingId = args[0];
 
-    // Get current listings to validate item number
-    const { listings } = await getMarketListings('all', 0, 50); // Get more listings for buy command
-
-    if (!itemNumber || itemNumber < 1 || itemNumber > listings.length) {
-        return message.reply('Invalid item number. Use the number shown in the market listing.');
+    if (!listingId) {
+        return message.reply('Please provide a listing ID. Use the ID shown in the market listing.');
     }
 
-    const listing = listings[itemNumber - 1];
+    // Find the listing by ID instead of array index
+    const listing = await MarketListing.findOne({ 
+        listingId: listingId, 
+        active: true, 
+        expiresAt: { $gt: new Date() } 
+    });
+
+    if (!listing) {
+        return message.reply('Invalid listing ID or listing has expired/been sold.');
+    }
 
     if (listing.sellerId === user.userId) {
         return message.reply('You cannot buy your own listing!');
@@ -283,7 +293,7 @@ async function handleMarketBuy(message, user, args) {
     await user.save();
     await seller.save();
 
-    return message.reply(`Successfully purchased **${listing.itemName}** for ${listing.price} Beli!`);
+    return message.reply(`Successfully purchased **${listing.itemName}** for ${listing.price} Beli! (Listing ID: ${listingId})`);
 }
 
 async function handleMarketList(message, user, args) {
@@ -345,8 +355,12 @@ async function handleMarketList(message, user, args) {
         return message.reply(`You don't own "${itemName}".`);
     }
 
+    // Generate unique listing ID
+    const listingId = generateListingId();
+
     // Create listing
     const listing = new MarketListing({
+        listingId: listingId,
         sellerId: user.userId,
         sellerName: message.author.username,
         type: type,
@@ -368,23 +382,15 @@ async function handleMarketList(message, user, args) {
         if (config.marketChannelId) {
             const marketChannel = message.client.channels.cache.get(config.marketChannelId);
             if (marketChannel) {
-                // Get the current market position for this item
-                const { listings } = await getMarketListings('all', 0, 50);
-                const itemPosition = listings.findIndex(listing => 
-                    listing.sellerId === user.userId && 
-                    listing.itemName === itemName && 
-                    listing.price === price
-                ) + 1;
-
                 const marketEmbed = new EmbedBuilder()
                     .setTitle('New Market Listing')
                     .setDescription(`${itemRank ? `**[${itemRank}]** ` : ''}**${itemName}**${itemLevel ? ` (Lv.${itemLevel})` : ''}\n\n\`\`\`${price} Beli\`\`\``)
                     .addFields(
                         { name: 'Seller', value: message.author.username, inline: true },
-                        { name: 'Item Number', value: `${itemPosition > 0 ? itemPosition : 'TBD'}`, inline: true }
+                        { name: 'Listing ID', value: listingId, inline: true }
                     )
                     .setColor(0x2f3136)
-                    .setFooter({ text: `Use 'op market buy ${itemPosition > 0 ? itemPosition : '<number>'}' to purchase` });
+                    .setFooter({ text: `Use 'op market buy ${listingId}' to purchase` });
 
                 if (description) {
                     marketEmbed.addFields({ name: 'Description', value: description, inline: false });
@@ -397,7 +403,7 @@ async function handleMarketList(message, user, args) {
         console.error('Error announcing market listing:', error);
     }
 
-    return message.reply(`Listed **${itemName}** for ${price} Beli! It will expire in 7 days.`);
+    return message.reply(`Listed **${itemName}** for ${price} Beli! Listing ID: **${listingId}** (expires in 7 days)`);
 }
 
 module.exports = { data, execute };
@@ -410,28 +416,23 @@ async function handleMarketUnlist(message, user, args) {
         await user.save();
     }
 
-    const listingNumber = parseInt(args[0]);
+    const listingId = args[0];
 
-    if (!listingNumber || listingNumber < 1) {
-        return message.reply('Usage: `op market unlist <listing number>`\n\nUse `op market` and check "My Listings" to see your listing numbers.');
+    if (!listingId) {
+        return message.reply('Usage: `op market unlist <listing ID>`\n\nUse `op market` and check "My Listings" to see your listing IDs.');
     }
 
-    // Get user's active listings
-    const userListings = await MarketListing.find({ 
+    // Find the specific listing by ID
+    const listing = await MarketListing.findOne({ 
+        listingId: listingId,
         sellerId: user.userId, 
         active: true,
         expiresAt: { $gt: new Date() }
-    }).sort({ createdAt: -1 });
+    });
 
-    if (userListings.length === 0) {
-        return message.reply('You have no active listings to remove.');
+    if (!listing) {
+        return message.reply('Invalid listing ID or you don\'t own this listing. Use `op market` and check "My Listings" to see your listing IDs.');
     }
-
-    if (listingNumber > userListings.length) {
-        return message.reply(`Invalid listing number. You only have ${userListings.length} active listings.`);
-    }
-
-    const listing = userListings[listingNumber - 1];
 
     // Return item to user
     if (listing.type === 'card') {

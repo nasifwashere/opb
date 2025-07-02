@@ -55,6 +55,12 @@ const userSchema = new mongoose.Schema({
   lastDaily: { type: Date },
   nextPullReset: { type: Date },
   
+  // Daily reward system
+  dailyReward: {
+    lastClaimed: { type: Number }, // Unix timestamp
+    streak: { type: Number, default: 0, min: 0, max: 7 }
+  },
+  
   // Pull system
   pullData: {
     dailyPulls: { type: Number, default: 0 },

@@ -47,7 +47,8 @@ function buildTeamEmbed(teamCards, username, totalPower) {
 
     if (card) {
       const lockStatus = card.locked ? ' 🔒' : '';
-      const rank = card.rank || 'C';
+      // Use the actual card rank from the user's card instance, not a fallback
+      const rank = card.rank;
       
       const cardValue = `**${card.displayName}** ${lockStatus}\n` +
         `Level ${card.level} • Rank ${rank}\n` +
@@ -280,6 +281,7 @@ async function execute(message, args) {
         const cardData = {
           ...userCard,
           displayName: userCard.name,
+          rank: userCard.rank, // Ensure the user's card rank is preserved
           power: power,
           health: health,
           speed: speed,

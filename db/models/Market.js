@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const marketListingSchema = new mongoose.Schema({
+    listingId: { type: String, required: true, unique: true },
     sellerId: { type: String, required: true },
     sellerName: { type: String, required: true },
     type: { type: String, enum: ['card', 'item'], required: true },
@@ -22,5 +23,6 @@ marketListingSchema.index({ active: 1, expiresAt: 1 });
 marketListingSchema.index({ sellerId: 1 });
 marketListingSchema.index({ type: 1 });
 marketListingSchema.index({ createdAt: -1 });
+marketListingSchema.index({ listingId: 1 });
 
 module.exports = mongoose.model('MarketListing', marketListingSchema);
