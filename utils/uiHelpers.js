@@ -8,24 +8,18 @@ function createRoundedHealthBar(current, max, length = 12) {
     const filledBars = Math.round(percentage * length);
     const emptyBars = length - filledBars;
     
-    // Create rounded health bar with proper ends
+    // Create clean health bar without ugly spikes
     let healthBar = '';
     
     if (filledBars > 0) {
-        // Rounded start
-        healthBar += '◀';
-        // Middle sections
-        if (filledBars > 2) {
-            healthBar += '█'.repeat(filledBars - 2);
-        }
-        // Rounded end (if more than 1 filled)
-        if (filledBars > 1) {
-            healthBar += '▶';
-        }
+        // Clean filled sections using solid blocks
+        healthBar += '█'.repeat(filledBars);
     }
     
-    // Empty sections
-    healthBar += '░'.repeat(emptyBars);
+    // Empty sections with subtle styling
+    if (emptyBars > 0) {
+        healthBar += '▬'.repeat(emptyBars);
+    }
     
     return healthBar;
 }

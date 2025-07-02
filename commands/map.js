@@ -33,6 +33,23 @@ function getTotalStagesInLocation(location) {
     return stageCounts[location] || 0;
 }
 
+// Modern progress bar without colors
+function createModernProgressBar(current, max, width = 12) {
+    const percentage = Math.min(current / max, 1);
+    const filled = Math.floor(percentage * width);
+    const empty = width - filled;
+    
+    let bar = '';
+    if (filled > 0) {
+        bar += '▰'.repeat(filled);
+    }
+    if (empty > 0) {
+        bar += '▱'.repeat(empty);
+    }
+    
+    return bar;
+}
+
 const data = new SlashCommandBuilder()
     .setName('map')
     .setDescription('View your adventure progress and current location');
@@ -58,17 +75,19 @@ async function execute(message, args) {
     // Calculate overall progress
     const totalPossibleStages = 43; // 7 + 9 + 8 + 5 + 5 + 9
     const overallProgress = Math.min(Math.floor((currentStage / totalPossibleStages) * 100), 100);
+    const overallBar = createModernProgressBar(currentStage, totalPossibleStages, 15);
 
     const embed = new EmbedBuilder()
         .setColor(0x2b2d31)
-        .setTitle('Adventure Map')
+        .setTitle('⚔️ Adventure Progress')
+        .setDescription(`**Current Location:** ${currentLocation}\n**Overall Progress:** ${overallBar} ${overallProgress}%`)
         .addFields(
-            { name: 'Current Location', value: currentLocation, inline: true },
-            { name: 'Stage Progress', value: currentLocation === 'East Blue Complete' ? 'Complete!' : `${localStage}/${totalStages}`, inline: true },
-            { name: 'Overall Progress', value: `${overallProgress}%`, inline: true }
+            { name: 'Location Status', value: currentLocation === 'East Blue Complete' ? '✅ Complete!' : `Stage ${localStage}/${totalStages}`, inline: true },
+            { name: 'Global Stage', value: `${currentStage}/43`, inline: true },
+            { name: 'Progress', value: `${overallProgress}%`, inline: true }
         );
 
-    // Location progress
+    // Location progress with modern styling
     const locations = [
         { name: 'Windmill Village', stages: 7, unlocked: currentStage >= 0, startStage: 0 },
         { name: 'Shells Town', stages: 9, unlocked: currentStage >= 7, startStage: 7 },
@@ -85,43 +104,42 @@ async function execute(message, args) {
         
         let status = '';
         let progress = 0;
+        let statusIcon = '';
 
         if (!location.unlocked) {
             status = 'Locked';
+            statusIcon = '🔒';
         } else if (currentStage >= locationEnd) {
             status = 'Complete';
+            statusIcon = '✅';
             progress = location.stages;
         } else if (currentStage >= location.startStage) {
             status = 'Current';
+            statusIcon = '⚔️';
             progress = currentStage - location.startStage;
         } else {
             status = 'Upcoming';
+            statusIcon = '⏳';
         }
 
-        const progressBar = createProgressBar(progress, location.stages);
-        progressText += `**${location.name}** ${progressBar} ${progress}/${location.stages} - ${status}\n`;
+        const progressBar = createModernProgressBar(progress, location.stages, 8);
+        const percentage = Math.round((progress / location.stages) * 100);
+        
+        progressText += `${statusIcon} **${location.name}**\n`;
+        progressText += `${progressBar} ${progress}/${location.stages} (${percentage}%)\n\n`;
     });
 
     embed.addFields({
-        name: 'East Blue Saga',
-        value: progressText,
+        name: '🗺️ East Blue Saga Locations',
+        value: progressText.trim(),
         inline: false
     });
 
     embed.setFooter({ 
-        text: 'Use op explore to continue your adventure' 
+        text: 'Use /explore to continue your adventure • Progress saves automatically' 
     });
 
     await message.reply({ embeds: [embed] });
-}
-
-function createProgressBar(current, max) {
-    const percentage = Math.min(current / max, 1);
-    const barLength = 10;
-    const filledBars = Math.floor(percentage * barLength);
-    const emptyBars = barLength - filledBars;
-
-    return `[${'█'.repeat(filledBars)}${'░'.repeat(emptyBars)}]`;
 }
 
 module.exports = { data, execute };
