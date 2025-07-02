@@ -43,7 +43,7 @@ const LOCATIONS = {
             type: "narrative",
             title: "Shanks' Sacrifice",
             desc: "The Sea King attacks! Shanks loses his arm saving you. His sacrifice strengthens your resolve.",
-            reward: { type: "item", name: "Straw Hat" }
+            reward: { type: "item", name: "Basic Potion" }
         },
         {
             type: "narrative",
@@ -110,7 +110,7 @@ const LOCATIONS = {
             type: "narrative",
             title: "Gathering Strength",
             desc: "You and your crew prepare for the upcoming battle against Captain Morgan.",
-            reward: { type: "item", name: "Marine Sword" }
+            reward: { type: "item", name: "Rusty Cutlass" }
         },
         {
             type: "boss",
@@ -144,7 +144,7 @@ const LOCATIONS = {
             type: "narrative",
             title: "Planning the Attack",
             desc: "You devise a strategy to take down Buggy's crew and free the town from their reign of terror.",
-            reward: { type: "item", name: "Town Map" }
+            reward: { type: "item", name: "Normal Potion" }
         },
         {
             type: "narrative",
@@ -222,7 +222,7 @@ const LOCATIONS = {
             type: "narrative",
             title: "Speed Boost Food",
             desc: "The chefs at Baratie prepare special dishes that enhance your crew's speed!",
-            reward: { type: "item", name: "Speed Boost Food", count: 3 }
+            reward: { type: "item", name: "Basic Potion", count: 2 }
         },
         {
             type: "narrative",
@@ -268,7 +268,7 @@ const LOCATIONS = {
             type: "narrative",
             title: "Preparing for War",
             desc: "You rally the villagers and prepare for the final battle against Arlong's crew.",
-            reward: { type: "item", name: "Battle Banner" }
+            reward: { type: "item", name: "Marine Saber" }
         },
         {
             type: "enemy",
@@ -480,39 +480,9 @@ function getNextLocation(currentLocation) {
 
 // Calculate equipped item bonuses
 function calculateEquippedBonuses(user) {
-    const bonuses = { hp: 0, atk: 0, spd: 0, def: 0 };
-    
-    if (!user.equipped) return bonuses;
-    
-    // Item stat bonuses - normalized item names
-    const itemBonuses = {
-        'strawhat': { hp: 10, atk: 5, spd: 5 },
-        'marinesword': { atk: 15, spd: 5 },
-        'townmap': { spd: 10 },
-        'battlebanner': { hp: 20, atk: 10 },
-        'speedboostfood': { spd: 25 }
-    };
-    
-    // Handle both Map and Object types for equipped items
-    const equippedEntries = user.equipped instanceof Map ? 
-        Array.from(user.equipped.entries()) : 
-        Object.entries(user.equipped);
-    
-    for (const [cardName, itemName] of equippedEntries) {
-        // Ensure itemName is a string before normalizing
-        if (itemName && typeof itemName === 'string') {
-            const normalizedItem = normalizeItemName(itemName);
-            if (itemBonuses[normalizedItem]) {
-                const bonus = itemBonuses[normalizedItem];
-                bonuses.hp += bonus.hp || 0;
-                bonuses.atk += bonus.atk || 0;
-                bonuses.spd += bonus.spd || 0;
-                bonuses.def += bonus.def || 0;
-            }
-        }
-    }
-    
-    return bonuses;
+    // This function is deprecated - equipment bonuses are now handled 
+    // by the new equipment system in battle calculations
+    return { hp: 0, atk: 0, spd: 0, def: 0 };
 }
 
 // Legacy function removed - now using team-based battle system
@@ -538,10 +508,9 @@ function useInventoryItem(user, itemName) {
     
     // Return item effects
     const itemEffects = {
-        'healthpotion': { type: 'heal', amount: 50 },
-        'strengthpotion': { type: 'attack_boost', amount: 20, duration: 3 },
-        'speedboostfood': { type: 'speed_boost', amount: 15, duration: 3 },
-        'defensepotion': { type: 'defense_boost', amount: 15, duration: 3 }
+        'basicpotion': { type: 'heal', percent: 10 },
+        'normalpotion': { type: 'heal', percent: 20 },
+        'maxpotion': { type: 'heal', percent: 30 }
     };
     
     return itemEffects[normalizedItem] || null;
@@ -1131,19 +1100,24 @@ async function handleBattleItems(interaction, user, battleMessage) {
             currentUser = freshUser;
         }
 
-        const usableItems = ['healthpotion', 'strengthpotion', 'speedboostfood', 'defensepotion'];
+        const usableItems = ['basicpotion', 'normalpotion', 'maxpotion'];
         const availableItems = usableItems.filter(item => canUseInventoryItem(currentUser, item));
         
         if (availableItems.length === 0) {
             return await interaction.followUp({ content: 'You have no usable items!', ephemeral: true });
         }
         
-        const itemButtons = availableItems.map(item => 
-            new ButtonBuilder()
+        const itemButtons = availableItems.map(item => {
+            const itemLabels = {
+                'basicpotion': 'Basic Potion',
+                'normalpotion': 'Normal Potion', 
+                'maxpotion': 'Max Potion'
+            };
+            return new ButtonBuilder()
                 .setCustomId(`use_${item}`)
-                .setLabel(item.charAt(0).toUpperCase() + item.slice(1).replace(/([A-Z])/g, ' $1'))
-                .setStyle(ButtonStyle.Primary)
-        );
+                .setLabel(itemLabels[item] || item)
+                .setStyle(ButtonStyle.Primary);
+        });
         
         const itemRow = new ActionRowBuilder().addComponents(itemButtons.slice(0, 5));
         
@@ -1178,9 +1152,10 @@ async function handleBattleItems(interaction, user, battleMessage) {
                     // Heal the first injured team member
                     const injuredCard = battleState.userTeam.find(card => card.currentHp < card.maxHp && card.currentHp > 0);
                     if (injuredCard) {
-                        const healAmount = Math.min(effect.amount, injuredCard.maxHp - injuredCard.currentHp);
-                        injuredCard.currentHp += healAmount;
-                        effectText = `Healed ${injuredCard.name} for ${healAmount} HP!`;
+                        const healAmount = Math.floor(injuredCard.maxHp * (effect.percent / 100));
+                        const actualHeal = Math.min(healAmount, injuredCard.maxHp - injuredCard.currentHp);
+                        injuredCard.currentHp += actualHeal;
+                        effectText = `Healed ${injuredCard.name} for ${actualHeal} HP (${effect.percent}% of max HP)!`;
                     } else {
                         effectText = `No injured team members to heal!`;
                     }
@@ -1455,7 +1430,7 @@ async function applyReward(user, reward) {
     if (reward.type === 'xp') {
         await addXP(user, reward.amount);
     } else if (reward.type === 'beli') {
-        user.coins = (user.coins || 0) + reward.amount;
+        user.beli = (user.beli || 0) + reward.amount;
     } else if (reward.type === 'item') {
         addToInventory(user, reward.name);
         if (reward.count && reward.count > 1) {
