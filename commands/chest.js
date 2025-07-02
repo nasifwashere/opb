@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
+const { distributeXPToTeam } = require('../utils/levelSystem.js');
 
 const CHEST_REWARDS = {
   'c': {
@@ -184,6 +185,7 @@ async function execute(message, args) {
 
   const { chest, rewards } = result;
   let rewardText = '';
+  let totalXpAwarded = 0;
   for (const reward of rewards) {
     switch (reward.type) {
       case 'card':
@@ -197,12 +199,24 @@ async function execute(message, args) {
         break;
       case 'xp':
         user.xp = (user.xp || 0) + reward.amount;
+        totalXpAwarded += reward.amount;
         rewardText += `<:snoopy_sparkles:1388585338821152978> ${reward.amount} XP\n`;
         break;
       case 'item':
         user.inventory.push(reward.name.toLowerCase().replace(/\s+/g, ''));
         rewardText += `📦 ${reward.name}\n`;
         break;
+    }
+  }
+
+  // Distribute XP to team cards if any XP was awarded
+  if (totalXpAwarded > 0) {
+    const levelUpChanges = distributeXPToTeam(user, totalXpAwarded);
+    if (levelUpChanges && levelUpChanges.length > 0) {
+      const levelUpText = levelUpChanges.map(change => 
+        `**${change.name}** leveled up! (${change.oldLevel} → ${change.newLevel})`
+      ).join('\n');
+      rewardText += `\n**Team Level Ups:**\n${levelUpText}\n`;
     }
   }
 

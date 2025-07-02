@@ -29,6 +29,9 @@ const userSchema = new mongoose.Schema({
 
   inventory: [{ type: String }],
 
+  // Equipment system - maps card names to equipped item names
+  equipped: { type: mongoose.Schema.Types.Mixed, default: {} },
+
   // Quest System - Fixed structure
   activeQuests: [{
     questId: { type: String, required: true },

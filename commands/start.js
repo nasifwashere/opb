@@ -1,6 +1,22 @@
 const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
 const config = require('../config.json');
+const fs = require('fs');
+const path = require('path');
+
+// Load devil fruits from shop
+const shopPath = path.resolve('data', 'shop.json');
+const shopData = JSON.parse(fs.readFileSync(shopPath, 'utf8'));
+
+function getRandomDevilFruit() {
+    const devilFruits = shopData.devilFruits || [];
+    if (devilFruits.length === 0) return null;
+    return devilFruits[Math.floor(Math.random() * devilFruits.length)];
+}
+
+function normalize(str) {
+    return String(str || '').replace(/\s+/g, '').toLowerCase();
+}
 
 const data = new SlashCommandBuilder()
   .setName('start')
@@ -21,6 +37,9 @@ async function execute(message, args, client) {
         return message.reply({ embeds: [embed] });
     }
 
+    // Get a random devil fruit for the new player
+    const devilFruit = getRandomDevilFruit();
+    
     // Create new user with all required fields
     user = new User({
         userId,
@@ -37,8 +56,8 @@ async function execute(message, args, client) {
         wins: 0,
         losses: 0,
         cards: [],
-        inventory: ["Basic Potion", "Basic Potion", "Basic Potion"],
-        equipped: new Map(),
+        inventory: [normalize("Basic Potion"), normalize("Basic Potion"), normalize("Normal Potion")],
+        equipped: {},
         team: [],
         battleState: {
             inBattle: false,
@@ -70,8 +89,17 @@ async function execute(message, args, client) {
         lastActive: new Date()
     });
 
+    // Add devil fruit to inventory if available
+    if (devilFruit) {
+        user.inventory.push(normalize(devilFruit.name));
+    }
+
     try {
         await user.save();
+        
+        const startingItems = devilFruit 
+            ? `**2** Basic Potions\n**1** Normal Potion\n**${devilFruit.name}** 🍎`
+            : `**2** Basic Potions\n**1** Normal Potion`;
         
         const embed = new EmbedBuilder()
             .setTitle('Welcome to the Grand Line')
@@ -80,7 +108,7 @@ async function execute(message, args, client) {
             .addFields(
                 { 
                     name: 'Starting Resources', 
-                    value: `**${config.defaultCurrency}** Beli\n**3** Basic Potions`, 
+                    value: `**${config.defaultCurrency}** Beli\n${startingItems}`, 
                     inline: true 
                 },
                 { 

@@ -1,145 +1,205 @@
 {
   "items": [
     {
-      "name": "Healing Potion",
+      "name": "Basic Potion",
+      "price": 50,
+      "description": "Restores 10% HP to a card during battle",
+      "type": "potion",
+      "available": true,
+      "category": "healing",
+      "healPercent": 10
+    },
+    {
+      "name": "Normal Potion",
       "price": 100,
-      "description": "Restores 50 HP to a card during battle",
-      "type": "item",
+      "description": "Restores 20% HP to a card during battle",
+      "type": "potion",
       "available": true,
-      "category": "consumable"
+      "category": "healing",
+      "healPercent": 20
     },
     {
-      "name": "Power Boost",
+      "name": "Max Potion",
       "price": 200,
-      "description": "Temporarily increases attack damage by 25% for one battle",
-      "type": "boost",
+      "description": "Restores 30% HP to a card during battle",
+      "type": "potion",
       "available": true,
-      "duration": 300000
+      "category": "healing",
+      "healPercent": 30
     },
     {
-      "name": "Lucky Charm",
-      "price": 150,
-      "description": "Slightly increases rare card pull chances",
-      "type": "item",
-      "available": true,
-      "unique": false
-    },
-    {
-      "name": "Training Manual",
+      "name": "Rusty Cutlass",
       "price": 300,
-      "description": "Reduces level-up cost by 50% for next upgrade",
-      "type": "item",
-      "available": true,
-      "category": "enhancement"
-    },
-    {
-      "name": "Treasure Map Fragment",
-      "price": 500,
-      "description": "Mysterious map piece - collect all 3 for a special reward",
-      "type": "item",
-      "available": true,
-      "unique": false
-    },
-    {
-      "name": "Straw Hat",
-      "price": 1000,
-      "description": "Luffy's iconic hat that boosts all Luffy cards by 30%",
-      "type": "item",
-      "available": true,
-      "unique": true,
-      "category": "legendary"
-    },
-    {
-      "name": "Speed Boost",
-      "price": 300,
-      "description": "Increases speed stat by 10% for equipped card",
+      "description": "A worn but functional sword that boosts fighting stats by 5%",
       "type": "equipment",
+      "subtype": "sword",
       "available": true,
-      "category": "enhancement"
+      "category": "weapon",
+      "statBoost": {
+        "power": 5,
+        "speed": 5
+      }
     },
     {
-      "name": "Grand Line Pass",
-      "price": 2000,
-      "description": "Proof of completing East Blue saga - required for certain evolutions",
-      "type": "item",
-      "available": false,
-      "unique": true,
-      "category": "legendary"
-    }
-  ],
-  "cards": [
-    {
-      "name": "Training Dummy",
-      "price": 250,
-      "description": "Basic practice card for beginners",
-      "type": "card",
-      "rank": "C",
+      "name": "Marine Saber",
+      "price": 500,
+      "description": "Standard Marine sword that boosts fighting stats by 10%",
+      "type": "equipment",
+      "subtype": "sword",
       "available": true,
-      "saga": "East Blue"
+      "category": "weapon",
+      "statBoost": {
+        "power": 10,
+        "speed": 8
+      }
     },
     {
-      "name": "Marine Recruit",
+      "name": "Flintlock Pistol",
       "price": 400,
-      "description": "Standard Navy soldier card",
-      "type": "card",
-      "rank": "C",
+      "description": "Basic firearm that boosts fighting stats by 8%",
+      "type": "equipment",
+      "subtype": "gun",
       "available": true,
-      "saga": "East Blue"
+      "category": "weapon",
+      "statBoost": {
+        "power": 8,
+        "speed": 12
+      }
     },
     {
-      "name": "Pirate Grunt",
-      "price": 400,
-      "description": "Common pirate crew member",
-      "type": "card",
-      "rank": "C",
-      "available": true,
-      "saga": "East Blue"
-    }
-  ],
-  "boosts": [
-    {
-      "name": "XP Booster",
-      "price": 300,
-      "description": "Doubles XP gain from all activities for 1 hour",
-      "type": "boost",
-      "available": true,
-      "duration": 3600000,
-      "effect": "double_xp"
-    },
-    {
-      "name": "Beli Multiplier",
-      "price": 400,
-      "description": "Increases Beli rewards by 50% for 1 hour",
-      "type": "boost",
-      "available": true,
-      "duration": 3600000,
-      "effect": "beli_boost"
-    },
-    {
-      "name": "Pull Refresh",
+      "name": "Marine Rifle",
       "price": 600,
-      "description": "Instantly refreshes your pull cooldown",
-      "type": "boost",
+      "description": "Military-grade rifle that boosts fighting stats by 12%",
+      "type": "equipment",
+      "subtype": "gun",
       "available": true,
-      "effect": "reset_pull_cooldown"
+      "category": "weapon",
+      "statBoost": {
+        "power": 12,
+        "speed": 10
+      }
     },
     {
-      "name": "Battle Energy",
+      "name": "Leather Vest",
       "price": 250,
-      "description": "Removes battle cooldown for 30 minutes",
-      "type": "boost",
+      "description": "Basic protection that boosts HP by 5%",
+      "type": "equipment",
+      "subtype": "armor",
       "available": true,
-      "duration": 1800000,
-      "effect": "no_battle_cooldown"
+      "category": "armor",
+      "statBoost": {
+        "health": 5
+      }
     },
     {
-      "name": "Explorer's Spirit",
-      "price": 200,
-      "description": "Reduces exploration cooldown by 75% for 2 hours",
-      "type": "boost",
+      "name": "Marine Coat",
+      "price": 500,
+      "description": "Marine officer's coat that boosts HP by 10%",
+      "type": "equipment",
+      "subtype": "armor",
       "available": true,
-      "duration": 7200000,
-      "effect": "fast_explore"
+      "category": "armor",
+      "statBoost": {
+        "health": 10
+      }
+    },
+    {
+      "name": "Wado Ichimonji",
+      "price": 5000,
+      "description": "Zoro's legendary katana that boosts fighting stats by 20%",
+      "type": "equipment",
+      "subtype": "sword",
+      "available": true,
+      "category": "legendary",
+      "statBoost": {
+        "power": 20,
+        "speed": 18
+      }
+    },
+    {
+      "name": "Clima-Tact",
+      "price": 4000,
+      "description": "Nami's weather weapon that boosts fighting stats by 18%",
+      "type": "equipment",
+      "subtype": "gun",
+      "available": true,
+      "category": "legendary",
+      "statBoost": {
+        "power": 18,
+        "speed": 20
+      }
+    },
+    {
+      "name": "Pirate King's Coat",
+      "price": 8000,
+      "description": "Legendary armor that boosts HP by 20%",
+      "type": "equipment",
+      "subtype": "armor",
+      "available": true,
+      "category": "legendary",
+      "statBoost": {
+        "health": 20
+      }
+    }
+  ],
+  "cards": [],
+  "boosts": [],
+  "devilFruits": [
+    {
+      "name": "Gomu Gomu no Mi",
+      "price": 0,
+      "description": "Rubber paramecia devil fruit that boosts all stats by 15%",
+      "type": "equipment",
+      "subtype": "devil_fruit",
+      "available": false,
+      "category": "devil_fruit",
+      "statBoost": {
+        "power": 15,
+        "health": 15,
+        "speed": 15
+      }
+    },
+    {
+      "name": "Mera Mera no Mi",
+      "price": 0,
+      "description": "Fire logia devil fruit that boosts all stats by 25%",
+      "type": "equipment",
+      "subtype": "devil_fruit",
+      "available": false,
+      "category": "devil_fruit",
+      "statBoost": {
+        "power": 25,
+        "health": 20,
+        "speed": 25
+      }
+    },
+    {
+      "name": "Hie Hie no Mi",
+      "price": 0,
+      "description": "Ice logia devil fruit that boosts all stats by 25%",
+      "type": "equipment",
+      "subtype": "devil_fruit",
+      "available": false,
+      "category": "devil_fruit",
+      "statBoost": {
+        "power": 25,
+        "health": 20,
+        "speed": 25
+      }
+    },
+    {
+      "name": "Yami Yami no Mi",
+      "price": 0,
+      "description": "Darkness logia devil fruit that boosts all stats by 30%",
+      "type": "equipment",
+      "subtype": "devil_fruit",
+      "available": false,
+      "category": "devil_fruit",
+      "statBoost": {
+        "power": 30,
+        "health": 25,
+        "speed": 30
+      }
     }
   ]
 }

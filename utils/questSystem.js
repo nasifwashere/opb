@@ -1,6 +1,7 @@
 const Quest = require('../db/models/Quest.js');
 const User = require('../db/models/User.js');
 const { saveUserWithRetry } = require('./saveWithRetry.js');
+const { distributeXPToTeam } = require('./levelSystem.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -294,6 +295,7 @@ async function claimQuestReward(user, questId) {
         
         // Award rewards
         let rewardText = '';
+        let totalXpAwarded = 0;
         for (const reward of quest.rewards) {
             switch (reward.type) {
                 case 'beli':
@@ -303,6 +305,7 @@ async function claimQuestReward(user, questId) {
                     
                 case 'xp':
                     user.xp = (user.xp || 0) + reward.amount;
+                    totalXpAwarded += reward.amount;
                     rewardText += `+${reward.amount} XP `;
                     break;
                     
@@ -326,7 +329,12 @@ async function claimQuestReward(user, questId) {
                     break;
             }
         }
-        
+
+        // Distribute XP to team cards if any XP was awarded
+        if (totalXpAwarded > 0) {
+            distributeXPToTeam(user, totalXpAwarded);
+        }
+
         // Mark quest as completed
         if (!user.completedQuests) user.completedQuests = [];
         user.completedQuests.push(claimId);

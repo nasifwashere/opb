@@ -14,8 +14,25 @@ try {
   allCards = [];
 }
 
+// Load shop data for equipment info
+let shopData = { items: [], devilFruits: [] };
+try {
+  const shopPath = path.resolve('data', 'shop.json');
+  shopData = JSON.parse(fs.readFileSync(shopPath, 'utf8'));
+} catch (error) {
+  console.log('Shop data not found, team command will work without equipment bonuses');
+}
+
 function normalize(str) {
   return String(str || '').replace(/\s+/g, '').toLowerCase();
+}
+
+function findShopItem(itemName) {
+  const allItems = [...shopData.items, ...(shopData.devilFruits || [])];
+  return allItems.find(item => 
+    normalize(item.name) === normalize(itemName) || 
+    item.name.toLowerCase().includes(itemName.toLowerCase())
+  );
 }
 
 function calculateCardStats(cardDef, level) {
@@ -262,19 +279,30 @@ async function execute(message, args) {
         const level = userCard.level || 1;
         const stats = calculateCardStats(cardDef, level);
 
-        // Apply equipment bonuses
+        // Apply equipment bonuses using new system
         let { power, health, speed } = stats;
 
-        // Check for equipped items using the same logic as other commands
+        // Check for equipped items
         const equipped = user.equipped;
         if (equipped) {
-          const normalizedCardName = normalize(cardDef.name);
-          const equippedItem = equipped[normalizedCardName];
-
-          if (equippedItem === 'strawhat') {
-            power = Math.ceil(power * 1.3);
-            health = Math.ceil(health * 1.3);
-            speed = Math.ceil(speed * 1.3);
+          const equippedItem = equipped[cardDef.name];
+          
+          if (equippedItem) {
+            const equipmentData = findShopItem(equippedItem);
+            if (equipmentData && equipmentData.statBoost) {
+              const boosts = equipmentData.statBoost;
+              
+              // Apply percentage boosts
+              if (boosts.power) {
+                power = Math.ceil(power * (1 + boosts.power / 100));
+              }
+              if (boosts.health) {
+                health = Math.ceil(health * (1 + boosts.health / 100));
+              }
+              if (boosts.speed) {
+                speed = Math.ceil(speed * (1 + boosts.speed / 100));
+              }
+            }
           }
         }
 

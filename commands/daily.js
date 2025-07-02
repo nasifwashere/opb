@@ -1,14 +1,19 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
+const { distributeXPToTeam } = require('../utils/levelSystem.js');
+
+function normalize(str) {
+    return String(str || '').replace(/\s+/g, '').toLowerCase();
+}
 
 const dailyRewards = [
   { beli: 100, xp: 50, item: null },           // Day 1
   { beli: 150, xp: 75, item: null },           // Day 2
-  { beli: 200, xp: 100, item: 'Health Potion' }, // Day 3
+  { beli: 200, xp: 100, item: 'Basic Potion' }, // Day 3
   { beli: 250, xp: 125, item: null },          // Day 4
-  { beli: 300, xp: 150, item: 'Strength Potion' }, // Day 5
-  { beli: 400, xp: 200, item: null },          // Day 6
-  { beli: 500, xp: 300, item: 'Rare Card Pack' }  // Day 7 (Premium)
+  { beli: 300, xp: 150, item: 'Normal Potion' }, // Day 5
+  { beli: 400, xp: 200, item: 'Rusty Cutlass' },          // Day 6
+  { beli: 500, xp: 300, item: 'Max Potion' }  // Day 7 (Premium)
 ];
 
 const data = new SlashCommandBuilder()
@@ -102,9 +107,12 @@ async function execute(message, args) {
   user.beli = (user.beli || 0) + reward.beli;
   user.xp = (user.xp || 0) + reward.xp;
 
+  // Distribute XP to team cards
+  const levelUpChanges = distributeXPToTeam(user, reward.xp);
+
   if (reward.item) {
     if (!user.inventory) user.inventory = [];
-    user.inventory.push(reward.item);
+    user.inventory.push(normalize(reward.item));
   }
 
   // Save final rewards
@@ -122,6 +130,14 @@ async function execute(message, args) {
     .setFooter({ 
       text: `Streak: ${user.dailyReward.streak}/7 days • Next reward in 24 hours` 
     });
+
+  // Add level up notifications if any cards leveled up
+  if (levelUpChanges && levelUpChanges.length > 0) {
+    const levelUpText = levelUpChanges.map(change => 
+      `**${change.name}** leveled up! (${change.oldLevel} → ${change.newLevel})`
+    ).join('\n');
+    embed.addFields({ name: 'Team Level Ups!', value: levelUpText, inline: false });
+  }
 
   await message.reply({ embeds: [embed] });
 }

@@ -1,6 +1,11 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
-const { saveUserWithRetry } = require('../utils/saveWithRetry.js');
+const fs = require('fs');
+const path = require('path');
+
+// Load shop data for equipment info
+const shopPath = path.resolve('data', 'shop.json');
+const shopData = JSON.parse(fs.readFileSync(shopPath, 'utf8'));
 
 // Normalize string for fuzzy matching
 function normalize(str) {
@@ -57,116 +62,125 @@ function getEquipmentStats(itemName) {
 
 const data = new SlashCommandBuilder()
   .setName('equip')
-  .setDescription('Equip an item to a card to boost its stats.');
+  .setDescription('Equip items to your cards for stat bonuses');
 
 // Usage: op equip strawhat luffy
-async function execute(message, args, client) {
+async function execute(message, args) {
     const userId = message.author.id;
     const username = message.author.username;
-    const [itemName, ...cardParts] = args;
-    const cardName = cardParts.join(' ');
+    let user = await User.findOne({ userId });
 
-    if (!itemName || !cardName) {
-        const embed = new EmbedBuilder()
-            .setColor(0x2b2d31)
-            .setTitle('Equip Item')
-            .setDescription('Equip an item to boost your card\'s stats.')
-            .addFields(
-                { name: 'Usage', value: '`op equip <item> <card>`', inline: false },
-                { name: 'Example', value: '`op equip strawhat luffy`', inline: false }
-            )
-            .setFooter({ text: 'Items provide stat bonuses when equipped' });
-
-        return message.reply({ embeds: [embed] });
-    }
-
-    const user = await User.findOne({ userId });
     if (!user) {
-        const embed = new EmbedBuilder()
-            .setColor(0x2b2d31)
-            .setDescription('Start your journey with `op start` first!')
-            .setFooter({ text: 'Use op start to begin your adventure' });
+        return message.reply('Start your journey with `op start` first!');
+    }
 
+    // Ensure username is set if missing
+    if (!user.username) {
+        user.username = username;
+        await user.save();
+    }
+
+    if (args.length < 2) {
+        // Show equipped items
+        if (!user.equipped || Object.keys(user.equipped).length === 0) {
+            const embed = new EmbedBuilder()
+                .setTitle('Equipment Status')
+                .setDescription('No items are currently equipped.\n\nUse `op equip <item> <card>` to equip items.')
+                .setColor(0x2b2d31)
+                .setFooter({ text: 'Equipment boosts your cards in battle' });
+            
+            return message.reply({ embeds: [embed] });
+        }
+
+            // Show all equipped items
+    let equipmentText = '';
+    for (const [cardName, itemName] of Object.entries(user.equipped)) {
+      const item = findShopItem(itemName);
+      const statBoosts = item?.statBoost || {};
+      const boostText = Object.entries(statBoosts)
+        .map(([stat, boost]) => `${stat}: +${boost}%`)
+        .join(', ');
+      
+      equipmentText += `**${cardName}**: ${itemName}${boostText ? ` (${boostText})` : ''}\n`;
+    }
+
+        const embed = new EmbedBuilder()
+            .setTitle('Equipment Status')
+            .setDescription(equipmentText || 'No items are currently equipped.')
+            .setColor(0x2b2d31)
+            .setFooter({ text: 'Use op equip <item> <card> to equip items' });
+        
         return message.reply({ embeds: [embed] });
     }
 
-    if (!Array.isArray(user.inventory) || user.inventory.length === 0) {
-        const embed = new EmbedBuilder()
-            .setColor(0x2b2d31)
-            .setDescription('Your inventory is empty.')
-            .setFooter({ text: 'Use op shop to buy items' });
+    const itemName = args[0];
+    const cardName = args.slice(1).join(' ');
 
-        return message.reply({ embeds: [embed] });
+    // Check if user owns the item
+    const normalizedItemName = normalize(itemName);
+    const hasItem = user.inventory?.includes(normalizedItemName);
+
+    if (!hasItem) {
+        return message.reply(`You don't own **${itemName}**.`);
     }
 
-    const ownedItem = fuzzyFind(user.inventory, itemName);
-    if (!ownedItem) {
-        const embed = new EmbedBuilder()
-            .setColor(0x2b2d31)
-            .setDescription(`You don't have **${itemName}** in your inventory.`)
-            .setFooter({ text: 'Check your inventory with op inventory' });
+      // Check if item is equipment
+  const item = findShopItem(itemName);
+  if (!item || (item.type !== 'equipment')) {
+    return message.reply(`**${itemName}** is not an equipment item that can be equipped.`);
+  }
 
-        return message.reply({ embeds: [embed] });
+    // Find the card
+    const card = fuzzyFindCard(user.cards || [], cardName);
+    if (!card) {
+        return message.reply(`You don't own a card named **${cardName}**.`);
     }
 
-    const cardObj = fuzzyFindCard(user.cards || [], cardName);
-    if (!cardObj) {
-        const embed = new EmbedBuilder()
-            .setColor(0x2b2d31)
-            .setDescription(`You don't have a card named **${cardName}**.`)
-            .setFooter({ text: 'Check your collection with op collection' });
-
-        return message.reply({ embeds: [embed] });
-    }
-
-    const normItem = normalize(ownedItem);
-    const normCard = normalize(cardObj.name);
-
-    if (normItem === 'strawhat' && !normCard.includes('luffy')) {
-        const embed = new EmbedBuilder()
-            .setColor(0x2b2d31)
-            .setDescription('The Strawhat can only be equipped on Monkey D. Luffy.')
-            .setFooter({ text: 'Some items have specific requirements' });
-
-        return message.reply({ embeds: [embed] });
-    }
-
+    // Initialize equipped object if needed
     if (!user.equipped) user.equipped = {};
 
-    // Unequip old item if needed
-    if (user.equipped[normCard]) {
-        user.inventory.push(user.equipped[normCard]);
+    // Check if card already has something equipped
+    const currentEquipped = user.equipped[card.name];
+    if (currentEquipped) {
+        // Return the currently equipped item to inventory
+        user.inventory.push(normalize(currentEquipped));
     }
 
-    // Equip new item
-    user.equipped[normCard] = ownedItem;
-
     // Remove item from inventory
-    const idx = user.inventory.findIndex(i => normalize(i) === normItem);
-    if (idx !== -1) user.inventory.splice(idx, 1);
+    const itemIndex = user.inventory.indexOf(normalizedItemName);
+    user.inventory.splice(itemIndex, 1);
 
-    const itemStats = getEquipmentStats(ownedItem);
-    let statsText = '';
+    // Equip the new item
+    user.equipped[card.name] = item.name;
 
-    if (itemStats.hp > 0) statsText += `+${itemStats.hp} HP `;
-    if (itemStats.atk > 0) statsText += `+${itemStats.atk} ATK `;
-    if (itemStats.spd > 0) statsText += `+${itemStats.spd} SPD `;
-    if (itemStats.def > 0) statsText += `+${itemStats.def} DEF `;
+    // Mark as modified and save
+    user.markModified('equipped');
+    await user.save();
 
-    if (statsText === '') statsText = 'No stat bonuses';
-
-    await saveUserWithRetry(user);
+    // Build stat boost description
+    const statBoosts = item.statBoost || {};
+    const boostText = Object.entries(statBoosts)
+        .map(([stat, boost]) => `**${stat.charAt(0).toUpperCase() + stat.slice(1)}**: +${boost}%`)
+        .join('\n');
 
     const embed = new EmbedBuilder()
-        .setTitle('Item Equipped')
-        .setDescription(`Equipped **${ownedItem}** to **${cardObj.name}**`)
-        .addFields({
-            name: 'Stat Bonuses',
-            value: statsText.trim(),
-            inline: false
+        .setTitle('Equipment Changed')
+        .setDescription(`Equipped **${item.name}** to **${card.name}**!`)
+        .addFields({ 
+            name: 'Stat Bonuses', 
+            value: boostText || 'No stat bonuses', 
+            inline: false 
         })
         .setColor(0x2b2d31)
-        .setFooter({ text: 'Use op unequip to remove equipment' });
+        .setFooter({ text: 'Bonuses are applied in battles' });
+
+    if (currentEquipped) {
+        embed.addFields({ 
+            name: 'Previous Equipment', 
+            value: `**${currentEquipped}** was returned to your inventory`, 
+            inline: false 
+        });
+    }
 
     return message.reply({ embeds: [embed] });
 }

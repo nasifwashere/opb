@@ -7,6 +7,10 @@ const { calculateCardStats, XP_PER_LEVEL } = require('../utils/levelSystem.js');
 
 const MAX_STORAGE = 250;
 
+// Load shop data for equipment info
+const shopPath = path.resolve('data', 'shop.json');
+const shopData = JSON.parse(fs.readFileSync(shopPath, 'utf8'));
+
 const rankSettings = {
   C: { color: 0x2ecc40, rankName: "C", rankImage: "https://files.catbox.moe/80exn1.png" },
   B: { color: 0x3498db, rankName: "B", rankImage: "https://files.catbox.moe/ta2g9o.png" },
@@ -20,6 +24,14 @@ const allCards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
 
 function normalize(str) {
   return String(str || '').replace(/\s+/g, '').toLowerCase();
+}
+
+function findShopItem(itemName) {
+  const allItems = [...shopData.items, ...(shopData.devilFruits || [])];
+  return allItems.find(item => 
+    normalize(item.name) === normalize(itemName) || 
+    item.name.toLowerCase().includes(itemName.toLowerCase())
+  );
 }
 
 // Setup Fuse.js for fuzzy searching
@@ -53,16 +65,32 @@ function cardEmbed(cardInstance, cardDef, ownerName, index = 0, total = 1, user,
   health = (isNaN(health) || health === null || health === undefined) ? 50 : Math.floor(Number(health));
   speed = (isNaN(speed) || speed === null || speed === undefined) ? 30 : Math.floor(Number(speed));
 
-  // Stat boost from equipped items
+  // Get equipped item and apply stat boosts
+  let equippedItem = user && user.equipped && user.equipped[cardDef.name];
   let boostText = '';
-  let normCard = normalize(cardDef.name);
-  let equippedItem = user && user.equipped && user.equipped[normCard];
-
-  if (equippedItem === 'strawhat') {
-    power = Math.ceil(power * 1.3);
-    health = Math.ceil(health * 1.3);
-    speed = Math.ceil(speed * 1.3);
-    boostText = "\n**Strawhat equipped! Stats boosted by 30%.**";
+  
+  if (equippedItem) {
+    const equipmentData = findShopItem(equippedItem);
+    if (equipmentData && equipmentData.statBoost) {
+      const boosts = equipmentData.statBoost;
+      
+      // Apply percentage boosts
+      if (boosts.power) {
+        power = Math.ceil(power * (1 + boosts.power / 100));
+      }
+      if (boosts.health) {
+        health = Math.ceil(health * (1 + boosts.health / 100));
+      }
+      if (boosts.speed) {
+        speed = Math.ceil(speed * (1 + boosts.speed / 100));
+      }
+      
+      // Build boost description
+      const boostDescriptions = Object.entries(boosts)
+        .map(([stat, boost]) => `${stat} +${boost}%`)
+        .join(', ');
+      boostText = `\n**Equipment**: ${equippedItem} (${boostDescriptions})`;
+    }
   }
 
   // Calculate attack range using damage multiplier system from battle
@@ -195,15 +223,31 @@ async function execute(message, args) {
         speed = 30;
       }
 
-      let normCard = normalize(cardDef.name);
-      let equippedItem = user && user.equipped && user.equipped[normCard];
+      let equippedItem = user && user.equipped && user.equipped[cardDef.name];
       let boostText = '';
 
-      if (equippedItem === 'strawhat') {
-        power = Math.round(power * 1.3);
-        health = Math.round(health * 1.3);
-        speed = Math.round(speed * 1.3);
-        boostText = '\n**Equipment**: Strawhat (+30% all stats)';
+      if (equippedItem) {
+        const equipmentData = findShopItem(equippedItem);
+        if (equipmentData && equipmentData.statBoost) {
+          const boosts = equipmentData.statBoost;
+          
+          // Apply percentage boosts
+          if (boosts.power) {
+            power = Math.round(power * (1 + boosts.power / 100));
+          }
+          if (boosts.health) {
+            health = Math.round(health * (1 + boosts.health / 100));
+          }
+          if (boosts.speed) {
+            speed = Math.round(speed * (1 + boosts.speed / 100));
+          }
+          
+          // Build boost description
+          const boostDescriptions = Object.entries(boosts)
+            .map(([stat, boost]) => `${stat} +${boost}%`)
+            .join(', ');
+          boostText = `\n**Equipment**: ${equippedItem} (${boostDescriptions})`;
+        }
       }
 
       const rankMultipliers = {
@@ -241,4 +285,4 @@ async function execute(message, args) {
   });
 }
 
-module.exports = { data, execute };;
+module.exports = { data, execute };
