@@ -13,7 +13,12 @@ async function execute(message, args, client) {
     let user = await User.findOne({ userId });
     
     if (user) {
-        return message.reply('You have already started your adventure! Use `op explore` to continue.');
+        const embed = new EmbedBuilder()
+            .setColor(0x2b2d31)
+            .setDescription('You have already started your adventure!\n\nUse `op explore` to continue your journey.')
+            .setFooter({ text: 'Your adventure is already underway' });
+        
+        return message.reply({ embeds: [embed] });
     }
 
     // Create new user with all required fields
@@ -69,40 +74,38 @@ async function execute(message, args, client) {
         await user.save();
         
         const embed = new EmbedBuilder()
-            .setTitle('🏴‍☠️ Welcome to the Grand Line!')
-            .setDescription(`**${username}**, your legendary journey begins now!\n\n*"I'm gonna be King of the Pirates!"* - Monkey D. Luffy`)
-            .setColor(0xFF6B35)
-            .setThumbnail(message.author.displayAvatarURL())
+            .setTitle('Welcome to the Grand Line')
+            .setDescription(`**${username}**, your legendary journey begins now!`)
+            .setColor(0x2b2d31)
             .addFields(
                 { 
-                    name: '💰 Starting Resources', 
+                    name: 'Starting Resources', 
                     value: `**${config.defaultCurrency}** Beli\n**3** Basic Potions`, 
                     inline: true 
                 },
                 { 
-                    name: '⚔️ Your Stats', 
-                    value: `**HP:** ${user.hp}/${user.maxHp}\n**ATK:** ${user.atk}\n**DEF:** ${user.def}\n**SPD:** ${user.spd}`, 
+                    name: 'Your Stats', 
+                    value: `**HP** ${user.hp}/${user.maxHp}\n**ATK** ${user.atk} • **DEF** ${user.def}\n**SPD** ${user.spd}`, 
                     inline: true 
                 },
                 { 
-                    name: '📊 Progress', 
-                    value: `**Level:** ${user.level}\n**XP:** ${user.xp}`, 
+                    name: 'Level', 
+                    value: `**${user.level}** (${user.xp} XP)`, 
                     inline: true 
-                },
-                {
-                    name: '🗺️ Get Started',
-                    value: '• Use `op explore` to begin your adventure\n• Use `op quest` to see available quests\n• Use `op help` for all commands',
-                    inline: false
                 }
             )
-            .setFooter({ text: 'Your adventure awaits in the East Blue!' })
-            .setImage('https://i.imgur.com/YourOnePieceImage.png') // You can add a One Piece themed image URL here
+            .setFooter({ text: 'Use op explore to begin your adventure' });
 
         await message.reply({ embeds: [embed] });
         
     } catch (error) {
         console.error('Error creating user:', error);
-        await message.reply('There was an error starting your adventure. Please try again.');
+        const errorEmbed = new EmbedBuilder()
+            .setColor(0x2b2d31)
+            .setDescription('There was an error starting your adventure. Please try again.')
+            .setFooter({ text: 'Please try again' });
+            
+        await message.reply({ embeds: [errorEmbed] });
     }
 }
 

@@ -29,7 +29,12 @@ async function execute(message, args) {
   let user = await User.findOne({ userId });
 
   if (!user) {
-    return message.reply('Start your journey with `op start` first!');
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription('Start your journey with `op start` first!')
+      .setFooter({ text: 'Use op start to begin your adventure' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   // Ensure username is set if missing
@@ -39,21 +44,42 @@ async function execute(message, args) {
   }
 
   if (args.length === 0) {
-    return message.reply('Usage: `op level <card name> [amount]`\n\nLevel up your cards using duplicate cards and Beli.');
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setTitle('Level Up Cards')
+      .setDescription('Level up your cards using duplicate cards and Beli.')
+      .addFields({
+        name: 'Usage',
+        value: '`op level <card name> [amount]`',
+        inline: false
+      })
+      .setFooter({ text: 'Use duplicates and Beli to make your cards stronger' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   const amount = parseInt(args[args.length - 1]) || 1;
   const cardName = amount > 1 ? args.slice(0, -1).join(' ').trim() : args.join(' ').trim();
 
   if (!cardName) {
-    return message.reply('Please specify a card name.');
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription('Please specify a card name.')
+      .setFooter({ text: 'Card name is required' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   // Find the card in user's collection
   const userCards = user.cards.filter(c => normalize(c.name) === normalize(cardName));
 
   if (userCards.length === 0) {
-    return message.reply(`<:arrow:1375872983029256303> You don't own "${cardName}".`);
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription(`You don't own "${cardName}".`)
+      .setFooter({ text: 'Card not found in your collection' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   const mainCard = userCards[0];
@@ -61,18 +87,33 @@ async function execute(message, args) {
   const currentLevel = mainCard.level || 1;
 
   if (currentLevel >= 100) {
-    return message.reply(`❌ "${mainCard.name}" is already at maximum level (100).`);
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription(`"${mainCard.name}" is already at maximum level (100).`)
+      .setFooter({ text: 'Card is at max level' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   if (duplicates < amount) {
-    return message.reply(`❌ You need ${amount} duplicate card${amount > 1 ? 's' : ''} to level up. You have ${duplicates} duplicate${duplicates !== 1 ? 's' : ''}.`);
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription(`You need ${amount} duplicate card${amount > 1 ? 's' : ''} to level up. You have ${duplicates} duplicate${duplicates !== 1 ? 's' : ''}.`)
+      .setFooter({ text: 'Not enough duplicates' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   // Get card definition for stat calculation
   const cardDef = allCards.find(c => normalize(c.name) === normalize(cardName));
 
   if (!cardDef) {
-    return message.reply('❌ Card definition not found.');
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription('Card definition not found.')
+      .setFooter({ text: 'Database error' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   // Use level system functions
@@ -81,10 +122,20 @@ async function execute(message, args) {
   // Check if we can level up
   if (!canLevelUp(mainCard, duplicates)) {
     if (duplicates === 0) {
-      return message.reply(`❌ You need duplicate cards to level up "${mainCard.name}". You currently have ${duplicates} duplicates.`);
+      const embed = new EmbedBuilder()
+        .setColor(0x2b2d31)
+        .setDescription(`You need duplicate cards to level up "${mainCard.name}". You currently have ${duplicates} duplicates.`)
+        .setFooter({ text: 'No duplicates available' });
+      
+      return message.reply({ embeds: [embed] });
     }
     if (currentLevel >= 100) {
-      return message.reply(`❌ "${mainCard.name}" is already at maximum level (100).`);
+      const embed = new EmbedBuilder()
+        .setColor(0x2b2d31)
+        .setDescription(`"${mainCard.name}" is already at maximum level (100).`)
+        .setFooter({ text: 'Card is at max level' });
+      
+      return message.reply({ embeds: [embed] });
     }
   }
 
@@ -93,7 +144,12 @@ async function execute(message, args) {
   const totalCost = costPerLevel * amount;
 
   if ((user.beli || 0) < totalCost) {
-    return message.reply(`❌ You need **${totalCost}** Beli to level up ${amount} time${amount > 1 ? 's' : ''}. You have **${user.beli || 0}** Beli.`);
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription(`You need **${totalCost}** Beli to level up ${amount} time${amount > 1 ? 's' : ''}. You have **${user.beli || 0}** Beli.`)
+      .setFooter({ text: 'Insufficient Beli' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   // Calculate old stats
@@ -103,7 +159,12 @@ async function execute(message, args) {
   const levelsGained = levelUp(mainCard, duplicates, amount);
 
   if (levelsGained === 0) {
-    return message.reply(`❌ Unable to level up "${mainCard.name}".`);
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription(`Unable to level up "${mainCard.name}".`)
+      .setFooter({ text: 'Level up failed' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   // Remove duplicate cards used
@@ -135,47 +196,31 @@ async function execute(message, args) {
   const newLevel = currentLevel + levelsGained;
   const newStats = calculateCardStats(cardDef, newLevel);
 
-  // Create beautiful level up embed
+  // Create modern level up embed
   const levelUpEmbed = new EmbedBuilder()
-    .setTitle(`🎉 **LEVEL UP SUCCESSFUL!** 🎉`)
-    .setDescription(`✨ **${mainCard.name}** has grown stronger! ✨`)
-    .setColor(0x4169E1)
+    .setTitle('Level Up Complete')
+    .setDescription(`**${mainCard.name}** has grown stronger!`)
+    .setColor(0x2b2d31)
     .addFields(
       { 
-        name: '📊 **Level Progress**', 
-        value: `\`\`\`diff\n- Level ${currentLevel}\n+ Level ${newLevel}\n\`\`\``, 
-        inline: false 
-      },
-      { 
-        name: '💎 **Investment**', 
-        value: `💰 **${actualCost.toLocaleString()}** Beli spent\n🃏 **${levelsGained}** duplicate card${levelsGained > 1 ? 's' : ''} consumed`, 
-        inline: false 
-      },
-      { 
-        name: '⚔️ **Power**', 
-        value: `\`\`\`diff\n- ${oldStats.power}\n+ ${newStats.power} (+${newStats.power - oldStats.power})\n\`\`\``, 
+        name: 'Level Progress', 
+        value: `${currentLevel} → **${newLevel}**`, 
         inline: true 
       },
       { 
-        name: '❤️ **Health**', 
-        value: `\`\`\`diff\n- ${oldStats.health}\n+ ${newStats.health} (+${newStats.health - oldStats.health})\n\`\`\``, 
+        name: 'Cost', 
+        value: `**${actualCost.toLocaleString()}** Beli\n**${levelsGained}** duplicate${levelsGained > 1 ? 's' : ''}`, 
         inline: true 
       },
       { 
-        name: '💨 **Speed**', 
-        value: `\`\`\`diff\n- ${oldStats.speed}\n+ ${newStats.speed} (+${newStats.speed - oldStats.speed})\n\`\`\``, 
+        name: 'Stats Gained', 
+        value: `**Power** +${newStats.power - oldStats.power}\n**Health** +${newStats.health - oldStats.health}\n**Speed** +${newStats.speed - oldStats.speed}`, 
         inline: true 
       }
     )
     .setFooter({ 
-      text: `${cardDef.rank} Rank • Total Power: ${newStats.power + newStats.health + newStats.speed}`,
-      iconURL: 'https://cdn.discordapp.com/emojis/1234567890123456789.png' 
-    })
-    .setTimestamp();
-
-  if (cardDef.image) {
-    levelUpEmbed.setThumbnail(cardDef.image);
-  }
+      text: `${cardDef.rank} Rank • Total Power: ${newStats.power + newStats.health + newStats.speed}`
+    });
 
   return message.reply({ embeds: [levelUpEmbed] });
 }

@@ -12,7 +12,12 @@ async function execute(message, args) {
   let user = await User.findOne({ userId });
 
   if (!user) {
-    return message.reply('You need to start your adventure first! Use `op start` to begin.');
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription('Start your journey with `op start` first!')
+      .setFooter({ text: 'Use op start to begin your adventure' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   // Update username if not set
@@ -24,15 +29,10 @@ async function execute(message, args) {
   const beli = user.beli || 0;
 
   const embed = new EmbedBuilder()
-    .setColor(0x2C2F33)
-    .setDescription([
-      `**${username}'s Balance**`,
-      '',
-      `**${beli.toLocaleString()}** Beli`,
-      '',
-      'Use `op shop` to spend your Beli'
-    ].join('\n'))
-    .setFooter({ text: 'Economy System' });
+    .setColor(0x2b2d31)
+    .setTitle('Balance')
+    .setDescription(`**${beli.toLocaleString()}** Beli`)
+    .setFooter({ text: 'Use op shop to spend your Beli' });
 
   await message.reply({ embeds: [embed] });
 }

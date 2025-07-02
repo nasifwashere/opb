@@ -1,16 +1,23 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const User = require('../db/models/User.js');
+
 const data = new SlashCommandBuilder()
   .setName('progress')
   .setDescription('View your current saga.');
-
-const User = require('../db/models/User.js');
 
 async function execute(message) {
   const userId = message.author.id;
   const username = message.author.username;
   let user = await User.findOne({ userId });
   
-  if (!user) return message.reply('Start your journey with `op start` first!');
+  if (!user) {
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription('Start your journey with `op start` first!')
+      .setFooter({ text: 'Use op start to begin your adventure' });
+    
+    return message.reply({ embeds: [embed] });
+  }
 
   // Ensure username is set if missing
   if (!user.username) {
@@ -32,23 +39,18 @@ async function execute(message) {
   const currentLocation = getCurrentLocation(user.stage || 0);
   const stage = user.stage || 0;
   
-  const { EmbedBuilder } = require('discord.js');
   const embed = new EmbedBuilder()
-    .setColor(0x2C2F33)
-    .setDescription([
-      `**${username}'s Progress**`,
-      '',
-      `**Current Saga** ${user.saga || 'East Blue'}`,
-      `**Current Location** ${currentLocation}`,
-      `**Stage** ${stage}`,
-      '',
-      `Level: ${user.level || 1}`,
-      `XP: ${user.xp || 0}`
-    ].join('\n'))
-    .setFooter({ text: 'Adventure Progress' });
+    .setColor(0x2b2d31)
+    .setTitle('Adventure Progress')
+    .addFields(
+      { name: 'Current Saga', value: user.saga || 'East Blue', inline: true },
+      { name: 'Location', value: currentLocation, inline: true },
+      { name: 'Stage', value: `${stage}`, inline: true },
+      { name: 'Level', value: `${user.level || 1} (${user.xp || 0} XP)`, inline: false }
+    )
+    .setFooter({ text: 'Use op explore to continue your journey' });
 
   message.reply({ embeds: [embed] });
 }
-
 
 module.exports = { data, execute };

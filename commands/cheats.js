@@ -5,7 +5,6 @@ const data = new SlashCommandBuilder()
   .setName('cheats')
   .setDescription('cheats command');
 
-
 module.exports = {
   data: {
     name: 'cheats',

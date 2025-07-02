@@ -19,7 +19,12 @@ async function execute(message, args) {
   let user = await User.findOne({ userId });
 
   if (!user) {
-    return message.reply('Start your journey with `op start` first!');
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription('Start your journey with `op start` first!')
+      .setFooter({ text: 'Use op start to begin your adventure' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   // Ensure username is set if missing
@@ -29,7 +34,18 @@ async function execute(message, args) {
   }
 
   if (args.length === 0) {
-    return message.reply('Usage: `op unlock <card name>`\n\nUnlocking a card allows it to be sold or traded again.');
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setTitle('Unlock Card')
+      .setDescription('Unlocking a card allows it to be sold or traded again.')
+      .addFields({
+        name: 'Usage',
+        value: '`op unlock <card name>`',
+        inline: false
+      })
+      .setFooter({ text: 'Remove protection from cards' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   const cardName = args.join(' ').trim();
@@ -37,12 +53,22 @@ async function execute(message, args) {
   // Find the card in user's collection
   const userCard = findUserCard(user, cardName);
   if (!userCard) {
-    return message.reply(`❌ You don't own "${cardName}".`);
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription(`You don't own "${cardName}".`)
+      .setFooter({ text: 'Card not found in your collection' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   // Check if card is locked
   if (!userCard.locked) {
-    return message.reply(`❌ "${userCard.name}" is not locked.`);
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription(`"${userCard.name}" is not locked.`)
+      .setFooter({ text: 'Card is not protected' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   // Unlock the card
@@ -53,16 +79,16 @@ async function execute(message, args) {
 
   // Create success embed
   const embed = new EmbedBuilder()
-    .setTitle('🔓 Card Unlocked!')
+    .setTitle('Card Unlocked')
     .setDescription(`**${userCard.name}** has been unlocked.`)
     .addFields(
       { name: 'Status', value: 'This card can now be sold or traded', inline: false },
-      { name: 'Note', value: 'Use `op lock <card name>` to protect it again', inline: false }
+      { name: 'Protection', value: 'Use `op lock <card name>` to protect it again', inline: false }
     )
-    .setColor(0x2ecc40);
+    .setColor(0x2b2d31)
+    .setFooter({ text: 'Card protection removed' });
 
   await message.reply({ embeds: [embed] });
 }
-
 
 module.exports = { data, execute };

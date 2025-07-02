@@ -22,7 +22,12 @@ async function execute(message, args) {
   let user = await User.findOne({ userId });
 
   if (!user) {
-    return message.reply('Start your journey with `op start` first!');
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription('Start your journey with `op start` first!')
+      .setFooter({ text: 'Use op start to begin your adventure' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   // Ensure username is set if missing
@@ -32,7 +37,18 @@ async function execute(message, args) {
   }
 
   if (args.length === 0) {
-    return message.reply('Usage: `op lock <card name>`\n\nLocking a card prevents it from being sold, traded, or accidentally deleted.');
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setTitle('Lock Card')
+      .setDescription('Locking a card prevents it from being sold, traded, or accidentally deleted.')
+      .addFields({
+        name: 'Usage',
+        value: '`op lock <card name>`',
+        inline: false
+      })
+      .setFooter({ text: 'Protect your valuable cards' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   const cardName = args.join(' ').trim();
@@ -40,12 +56,22 @@ async function execute(message, args) {
   // Find the card in user's collection
   const userCard = findUserCard(user, cardName);
   if (!userCard) {
-    return message.reply(`❌ You don't own "${cardName}".`);
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription(`You don't own "${cardName}".`)
+      .setFooter({ text: 'Card not found in your collection' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   // Check if card is already locked
   if (userCard.locked) {
-    return message.reply(`❌ "${userCard.name}" is already locked.`);
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription(`"${userCard.name}" is already locked.`)
+      .setFooter({ text: 'Card is already protected' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   // Lock the card
@@ -56,13 +82,14 @@ async function execute(message, args) {
 
   // Create success embed
   const embed = new EmbedBuilder()
-    .setTitle('🔒 Card Locked!')
-    .setDescription(`**${userCard.name}** has been locked and is now protected from:`)
+    .setTitle('Card Locked')
+    .setDescription(`**${userCard.name}** has been locked and is now protected.`)
     .addFields(
-      { name: 'Protection', value: '• Selling\n• Trading\n• Accidental deletion', inline: false },
-      { name: 'Note', value: 'Use `op unlock <card name>` to remove protection', inline: false }
+      { name: 'Protection', value: 'Selling • Trading • Accidental deletion', inline: false },
+      { name: 'Unlock', value: 'Use `op unlock <card name>` to remove protection', inline: false }
     )
-    .setColor(0xe67e22);
+    .setColor(0x2b2d31)
+    .setFooter({ text: 'Card is now protected' });
 
   await message.reply({ embeds: [embed] });
 }

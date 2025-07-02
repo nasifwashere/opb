@@ -1,4 +1,3 @@
-
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
 
@@ -21,7 +20,12 @@ async function execute(message, args) {
   let user = await User.findOne({ userId });
 
   if (!user) {
-    return message.reply('Start your journey with `op start` first!');
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription('Start your journey with `op start` first!')
+      .setFooter({ text: 'Use op start to begin your adventure' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   // Initialize daily reward data if needed
@@ -43,9 +47,10 @@ async function execute(message, args) {
     if (hoursDiff < 24) { // Must wait 24 hours between claims
       const hoursLeft = Math.ceil(24 - hoursDiff);
       const embed = new EmbedBuilder()
-        .setTitle('⏰ Daily Reward on Cooldown')
+        .setTitle('Daily Reward on Cooldown')
         .setDescription(`You've already claimed your daily reward!\n\nCome back in **${hoursLeft} hours**.`)
-        .setColor(0x95a5a6);
+        .setColor(0x2b2d31)
+        .setFooter({ text: 'Daily rewards reset every 24 hours' });
       
       return message.reply({ embeds: [embed] });
     }
@@ -76,21 +81,17 @@ async function execute(message, args) {
   await user.save();
 
   const embed = new EmbedBuilder()
-    .setTitle('🎁 Daily Reward Claimed!')
-    .setDescription(`**Day ${user.dailyReward.streak}** reward collected!`)
+    .setTitle('Daily Reward Claimed')
+    .setDescription(`**Day ${user.dailyReward.streak}** reward collected!${user.dailyReward.streak === 7 ? '\n*Maximum streak achieved!*' : ''}`)
     .addFields(
-      { name: '💰 Beli', value: `+${reward.beli}`, inline: true },
-      { name: '⭐ XP', value: `+${reward.xp}`, inline: true },
-      { name: '🎒 Item', value: reward.item || 'None', inline: true }
+      { name: 'Beli', value: `+${reward.beli}`, inline: true },
+      { name: 'XP', value: `+${reward.xp}`, inline: true },
+      { name: 'Item', value: reward.item || 'None', inline: true }
     )
-    .setColor(user.dailyReward.streak === 7 ? 0xffd700 : 0x2ecc71)
+    .setColor(0x2b2d31)
     .setFooter({ 
       text: `Streak: ${user.dailyReward.streak}/7 days • Next reward in 24 hours` 
     });
-
-  if (user.dailyReward.streak === 7) {
-    embed.setDescription(`**Day ${user.dailyReward.streak}** reward collected! ✨\n*Maximum streak achieved!*`);
-  }
 
   await message.reply({ embeds: [embed] });
 }

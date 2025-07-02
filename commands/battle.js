@@ -1,9 +1,4 @@
-
-const { SlashCommandBuilder, ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  EmbedBuilder
- } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
 
 const data = new SlashCommandBuilder()
@@ -21,14 +16,10 @@ async function execute(message) {
   }
 
   const embed = new EmbedBuilder()
-    .setTitle('⚔️ Boss Battles Moved!')
-    .setDescription(
-      `Boss battles are now part of your **adventure** and tied to **story progression**.\n\n` +
-      `To fight epic bosses and earn rewards, use:\n\n**/op explore** 🚀`
-    )
-    .setColor(0xff4d4d)
-    .setThumbnail('https://i.imgur.com/oZ5vZgN.png')
-    .setFooter({ text: 'Explore to unlock and battle bosses!' });
+    .setTitle('Boss Battles Moved')
+    .setDescription('Boss battles are now part of your adventure and tied to story progression.\n\nUse **op explore** to fight epic bosses and earn rewards.')
+    .setColor(0x2b2d31)
+    .setFooter({ text: 'Explore to unlock and battle bosses' });
 
   return message.reply({ embeds: [embed] });
 }

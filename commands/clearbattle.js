@@ -1,5 +1,4 @@
-
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
 
 const data = new SlashCommandBuilder()
@@ -11,18 +10,33 @@ async function execute(message, args) {
   let user = await User.findOne({ userId });
 
   if (!user) {
-    return message.reply('Start your journey with `op start` first!');
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription('Start your journey with `op start` first!')
+      .setFooter({ text: 'Use op start to begin your adventure' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   if (!user.battleState || !user.battleState.inBattle) {
-    return message.reply('✅ You are not currently in a battle.');
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription('You are not currently in a battle.')
+      .setFooter({ text: 'No battle to clear' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   // Clear battle state
   user.battleState = { inBattle: false };
   await user.save();
 
-  return message.reply('✅ Battle state cleared! You can now start new battles.');
+  const embed = new EmbedBuilder()
+    .setColor(0x2b2d31)
+    .setDescription('Battle state cleared! You can now start new battles.')
+    .setFooter({ text: 'Battle state reset' });
+
+  return message.reply({ embeds: [embed] });
 }
 
 module.exports = { data, execute };

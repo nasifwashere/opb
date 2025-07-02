@@ -9,11 +9,11 @@ const allCards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
 
 // Rank settings for border/rarity visuals
 const rankSettings = {
-  C: { color: 0x2ecc40, rankName: "C", rankImage: "https://files.catbox.moe/80exn1.png" },
-  B: { color: 0x3498db, rankName: "B", rankImage: "https://files.catbox.moe/ta2g9o.png" },
-  A: { color: 0x9b59b6, rankName: "A", rankImage: "https://files.catbox.moe/hcyso9.png" },
-  S: { color: 0xe67e22, rankName: "S", rankImage: "https://files.catbox.moe/niidag.png" },
-  UR: { color: 0xe74c3c, rankName: "UR", rankImage: "https://via.placeholder.com/32x32/e74c3c/ffffff?text=UR" }
+  C: { color: 0x2b2d31, rankName: "C" },
+  B: { color: 0x2b2d31, rankName: "B" },
+  A: { color: 0x2b2d31, rankName: "A" },
+  S: { color: 0x2b2d31, rankName: "S" },
+  UR: { color: 0x2b2d31, rankName: "UR" }
 };
 
 // Evolution requirements matrix
@@ -64,26 +64,29 @@ function attackRange(phs, rank) {
   const attackLow = Math.floor(baseDamage * 1.0);
   const attackHigh = Math.floor(baseDamage * 1.5);
   
-  return `🗡️ Attack: ${attackLow} ~ ${attackHigh} (Power: ${power})`;
+  return `**Attack** ${attackLow} - ${attackHigh} (Power: ${power})`;
 }
 
 // Compute evolution requirements from matrix and data
 function getEvolutionRequirements(card) {
   let next = allCards.find(c => c.evolvesFrom === card.name);
-  if (!next) return "No further evolutions.";
-  // Check matrix for cost/level, fallback to unknown if not found
+  if (!next) return "No further evolutions available.";
+  
   const rule = evoMatrix.find(row =>
       row.from === card.rank && row.to === next.rank
   );
+  
   let reqs = [];
-  if (next.saga) reqs.push(`📍 Saga: ${next.saga}`);
-  if (next.rank) reqs.push(`<:snoopy_sparkles:1388585338821152978> Next Rank: ${next.rank}`);
   if (rule) {
-    reqs.unshift(`<:Money:1375579299565928499> Cost: ${rule.cost} Beli`);
-    reqs.unshift(`<:snoopy_sparkles:1388585338821152978> Level Required: ${rule.level}`);
+    reqs.push(`**Level Required** ${rule.level}`);
+    reqs.push(`**Cost** ${rule.cost} Beli`);
   }
+  if (next.rank) reqs.push(`**Next Rank** ${next.rank}`);
+  if (next.saga) reqs.push(`**Saga** ${next.saga}`);
+  
   return [
-    `<:snoopy_sparkles:1388585338821152978> Upgrade to [${next.rank}] ${next.name}`,
+    `**Upgrade to [${next.rank}] ${next.name}**`,
+    '',
     ...reqs
   ].join("\n");
 }
@@ -94,24 +97,20 @@ function infoEmbed(card, ownedCount, userCard) {
   if (!level) level = 1;
   const lockStatus = userCard?.locked ? ' 🔒' : '';
   
-  let desc = [
-    `**[${card.rank}] ${card.name}${lockStatus}**`,
-    `*${card.shortDesc}*`,
-    '',
-    `**Level** ${level}`,
-    `${attackRange(card.phs, card.rank)}`,
-    '',
-    ownedCount === 0 ? '*You do not own this card*' : `**Owned** ${ownedCount}`
-  ].filter(Boolean).join('\n');
-
   const embed = new EmbedBuilder()
-    .setColor(0x2C2F33)
-    .setDescription(desc)
-    .setFooter({ text: `Card Information • ${card.name}` });
+    .setTitle(`[${card.rank}] ${card.name}${lockStatus}`)
+    .setDescription(card.shortDesc)
+    .setColor(0x2b2d31)
+    .addFields(
+      { name: 'Level', value: `${level}`, inline: true },
+      { name: 'Owned', value: ownedCount === 0 ? 'Not owned' : `${ownedCount}`, inline: true },
+      { name: 'Stats', value: attackRange(card.phs, card.rank), inline: false }
+    )
+    .setFooter({ text: `Card Information • ${card.rank} Rank` });
 
-  if (card.image && card.image !== "placeholder") embed.setImage(card.image);
-  const rankSet = rankSettings[card.rank];
-  if (rankSet && rankSet.rankImage) embed.setThumbnail(rankSet.rankImage);
+  if (card.image && card.image !== "placeholder") {
+    embed.setImage(card.image);
+  }
 
   return embed;
 }
@@ -121,17 +120,17 @@ function buildRow(prev, canEvolve, next) {
   const buttons = [
     new ButtonBuilder()
       .setCustomId('evo_prev')
-      .setLabel('⬅ Previous Evolution')
+      .setLabel('Previous Evolution')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(!prev),
     new ButtonBuilder()
       .setCustomId('evo_req')
-      .setLabel('View Upgrade Requirements')
+      .setLabel('Upgrade Requirements')
       .setStyle(ButtonStyle.Primary)
       .setDisabled(!canEvolve),
     new ButtonBuilder()
       .setCustomId('evo_next')
-      .setLabel('Next Evolution ')
+      .setLabel('Next Evolution')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(!next)
   ];
@@ -148,7 +147,12 @@ async function execute(message, args) {
   let user = await User.findOne({ userId });
 
   if (!user) {
-    return message.reply('Start your journey with `op start` first!');
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription('Start your journey with `op start` first!')
+      .setFooter({ text: 'Use op start to begin your adventure' });
+    
+    return message.reply({ embeds: [embed] });
   }
 
   // Ensure username is set if missing
@@ -158,10 +162,30 @@ async function execute(message, args) {
   }
 
   const query = args.join(' ').trim();
-  if (!query) return message.reply('Usage: `op info <card name or ID>`');
+  if (!query) {
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setTitle('Card Information')
+      .setDescription('View detailed information about any card.')
+      .addFields({
+        name: 'Usage',
+        value: '`op info <card name>`',
+        inline: false
+      })
+      .setFooter({ text: 'Search for any card by name' });
+    
+    return message.reply({ embeds: [embed] });
+  }
 
   let card = fuzzyFindCard(query);
-  if (!card) return message.reply("Card not found! Check the name or spelling.");
+  if (!card) {
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription('Card not found! Check the name or spelling.')
+      .setFooter({ text: 'Make sure the card name is correct' });
+    
+    return message.reply({ embeds: [embed] });
+  }
 
   // Get evolution navigation
   let { prev, next } = getEvolutionChain(card);
@@ -193,8 +217,14 @@ async function execute(message, args) {
 
     // Evolution button (requirements)
     if (interaction.customId === 'evo_req') {
+      const reqEmbed = new EmbedBuilder()
+        .setTitle('Evolution Requirements')
+        .setDescription(getEvolutionRequirements(card))
+        .setColor(0x2b2d31)
+        .setFooter({ text: 'Requirements for next evolution' });
+      
       await interaction.followUp({
-        content: "```yaml\n" + getEvolutionRequirements(card) + "\n```",
+        embeds: [reqEmbed],
         ephemeral: true
       });
       return;
@@ -216,6 +246,5 @@ async function execute(message, args) {
     msg.edit({ components: [] }).catch(() => {});
   });
 }
-
 
 module.exports = { data, execute };
