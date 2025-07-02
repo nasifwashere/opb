@@ -8,13 +8,15 @@ const data = new SlashCommandBuilder()
 
 async function execute(interaction) {
     const userId = interaction.author ? interaction.author.id : interaction.user.id;
-    let user = await User.findOne({ userId });
-    
-    if (!user) {
-        return interaction.reply('You need to start your adventure first! Use `op start` to begin.');
-    }
+    let user;
     
     try {
+        user = await User.findOne({ userId });
+        
+        if (!user) {
+            return interaction.reply('You need to start your adventure first! Use `op start` to begin.');
+        }
+        
         // Create main quest menu
         await showQuestMenu(interaction, user);
         

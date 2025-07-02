@@ -197,15 +197,13 @@ async function execute(message) {
         await user.save();
     }
     
-    // Check if 24+ hours have passed since last reset - ONLY reset when truly needed
+    // Check if 24+ hours have passed since last reset
     const now = Date.now();
     const timeSinceLastReset = now - user.pullData.lastReset;
     const hoursSinceReset = timeSinceLastReset / (1000 * 60 * 60);
     
-    // Only reset if BOTH conditions are met:
-    // 1. 24+ hours have passed since last reset
-    // 2. User has actually used their daily pulls (to avoid resetting unused counters)
-    if (hoursSinceReset >= 24 && user.pullData.dailyPulls >= DAILY_PULL_LIMIT) {
+    // Reset daily pulls if 24+ hours have passed since last reset
+    if (hoursSinceReset >= 24) {
         user.pullData.dailyPulls = 0;
         user.pullData.lastReset = now;
         await user.save();

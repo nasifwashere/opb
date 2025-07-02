@@ -55,6 +55,12 @@ const userSchema = new mongoose.Schema({
   lastDaily: { type: Date },
   nextPullReset: { type: Date },
   
+  // Pull system
+  pullData: {
+    dailyPulls: { type: Number, default: 0 },
+    lastReset: { type: Number, default: Date.now }
+  },
+  
   // Trading and market
   tradeOffers: [{
     offerId: String,
@@ -123,6 +129,14 @@ userSchema.pre('save', function(next) {
     this.questData = {
       lastReset: { daily: 0, weekly: 0 },
       migrationVersion: 1
+    };
+  }
+  
+  // Ensure pullData structure exists
+  if (!this.pullData) {
+    this.pullData = {
+      dailyPulls: 0,
+      lastReset: Date.now()
     };
   }
   
