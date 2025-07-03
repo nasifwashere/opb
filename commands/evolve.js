@@ -1,3 +1,4 @@
+
 const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
 const fs = require('fs');
