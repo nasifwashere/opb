@@ -64,6 +64,8 @@ async function execute(message, args) {
             { name: 'op start', value: 'Start your pirate journey', inline: true },
             { name: 'op daily', value: 'Claim daily rewards', inline: true },
             { name: 'op balance', value: 'Check your Beli and stats', inline: true },
+            { name: 'op user [@player]', value: 'View profile stats and rankings', inline: true },
+            { name: 'op leaderboard', value: 'View top player rankings', inline: true },
             { name: 'op progress', value: 'View your overall progress', inline: true },
             { name: 'op timers', value: 'Check all active cooldowns', inline: true },
             { name: 'op help', value: 'Show this help menu', inline: true }
@@ -112,6 +114,7 @@ async function execute(message, args) {
           .setDescription('Manage your wealth and trade with others')
           .addFields(
             { name: 'op shop', value: 'Buy items and card packs', inline: true },
+            { name: 'op gamble', value: 'Test your luck with Nami (3h cooldown)', inline: true },
             { name: 'op sell <n>', value: 'Sell cards for Beli', inline: true },
             { name: 'op trade @user', value: 'Trade cards with players', inline: true },
             { name: 'op market', value: 'Browse player market', inline: true },

@@ -91,6 +91,15 @@ const userSchema = new mongoose.Schema({
     dailyPulls: { type: Number, default: 0 },
     lastReset: { type: Number, default: Date.now }
   },
+
+  // Bounty system
+  bounty: { type: Number, default: 0 },
+
+  // Gambling system
+  gamblingData: {
+    lastGamble: { type: Number, default: 0 },
+    remainingGambles: { type: Number, default: 3 }
+  },
   
   // Trading and market
   tradeOffers: [{

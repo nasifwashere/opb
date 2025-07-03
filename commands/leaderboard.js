@@ -4,50 +4,19 @@ const User = require('../db/models/User.js');
 const leaderboardTypes = {
     beli: { name: 'Richest Pirates', field: 'beli' },
     wins: { name: 'Battle Champions', field: 'wins' },
-    xp: { name: 'Most Experienced', field: 'xp' },
-    cards: { name: 'Biggest Collections', field: 'cardCount' },
-    level: { name: 'Highest Level Cards', field: 'maxLevel' }
+    bounty: { name: 'Most Wanted', field: 'bounty' }
 };
 
 async function getLeaderboardData(type, page = 0, limit = 10) {
     const skip = page * limit;
-    let aggregation = [];
-
-    if (type === 'cards') {
-        // Count total cards per user
-        aggregation = [
-            { $addFields: { cardCount: { $size: { $ifNull: ['$cards', []] } } } },
-            { $sort: { cardCount: -1 } },
-            { $skip: skip },
-            { $limit: limit }
-        ];
-    } else if (type === 'level') {
-        // Find user with highest level card
-        aggregation = [
-            { $addFields: {
-                maxLevel: {
-                    $max: {
-                        $map: {
-                            input: { $ifNull: ['$cards', []] },
-                            as: 'card',
-                            in: { $ifNull: ['$$card.level', 1] }
-                        }
-                    }
-                }
-            }},
-            { $sort: { maxLevel: -1 } },
-            { $skip: skip },
-            { $limit: limit }
-        ];
-    } else {
-        // Standard numeric field sorting
-        const sortField = leaderboardTypes[type].field;
-        aggregation = [
-            { $sort: { [sortField]: -1 } },
-            { $skip: skip },
-            { $limit: limit }
-        ];
-    }
+    const sortField = leaderboardTypes[type].field;
+    
+    // Standard numeric field sorting for all types
+    const aggregation = [
+        { $sort: { [sortField]: -1 } },
+        { $skip: skip },
+        { $limit: limit }
+    ];
 
     return await User.aggregate(aggregation);
 }
@@ -58,12 +27,8 @@ function formatLeaderboardValue(type, user) {
             return `${(user.beli || 0).toLocaleString()} Beli`;
         case 'wins':
             return `${user.wins || 0} wins`;
-        case 'xp':
-            return `${(user.xp || 0).toLocaleString()} XP`;
-        case 'cards':
-            return `${user.cardCount || 0} cards`;
-        case 'level':
-            return `Level ${user.maxLevel || 1}`;
+        case 'bounty':
+            return `${(user.bounty || 0).toLocaleString()} bounty`;
         default:
             return 'N/A';
     }

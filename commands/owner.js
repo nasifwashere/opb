@@ -20,6 +20,13 @@ async function saveUserWithRetry(user, maxRetries = 3) {
           freshUser.xp = user.xp;
           freshUser.banned = user.banned;
           freshUser.banReason = user.banReason;
+          freshUser.bounty = user.bounty;
+          freshUser.gamblingData = user.gamblingData;
+          freshUser.inventory = user.inventory;
+          freshUser.team = user.team;
+          freshUser.case = user.case;
+          freshUser.activeQuests = user.activeQuests;
+          freshUser.completedQuests = user.completedQuests;
           user = freshUser;
           continue;
         }
@@ -241,11 +248,25 @@ async function handleGiveCommand(message, args) {
       activeQuests: [],
       completedQuests: [],
       equipped: {},
+      bounty: 0,
       pullData: {
         dailyPulls: 0,
         lastReset: Date.now()
+      },
+      gamblingData: {
+        lastGamble: 0,
+        remainingGambles: 3
       }
     });
+    
+    // Save the new user first
+    try {
+      await saveUserWithRetry(user);
+      console.log(`[OWNER] Created new user: ${targetUser.username} (${targetUser.id})`);
+    } catch (error) {
+      console.error(`[OWNER] Error creating user ${targetUser.id}:`, error);
+      return message.reply(`❌ Error creating user ${targetUser.username}. Please try again.`);
+    }
   }
 
   // Check if it's beli or xp (numeric amount)
@@ -282,6 +303,9 @@ async function handleGiveCommand(message, args) {
       timesUpgraded: 0,
       locked: false
     });
+    
+    // Mark the cards array as modified
+    user.markModified('cards');
     
     // Use the same save method as pull command for reliability
     try {

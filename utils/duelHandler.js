@@ -201,11 +201,18 @@ async function endDuel(messageId, client, reason, winner = null) {
 
         if (user1) {
             user1.battleState = { inBattle: false };
+            // Initialize bounty if missing
+            if (typeof user1.bounty !== 'number') user1.bounty = 0;
+            
             if (winner && winner.id === user1.userId) {
                 user1.wins = (user1.wins || 0) + 1;
                 user1.beli = (user1.beli || 0) + 100;
+                // Add bounty for winning (50,000 for East Blue Saga)
+                user1.bounty += 50000;
             } else if (reason !== 'timeout') {
                 user1.losses = (user1.losses || 0) + 1;
+                // Lose bounty for losing (10,000 penalty)
+                user1.bounty = Math.max(0, user1.bounty - 10000);
             }
             user1.duelCooldown = Date.now() + (10 * 60 * 1000);
             await user1.save();
@@ -213,11 +220,18 @@ async function endDuel(messageId, client, reason, winner = null) {
 
         if (user2) {
             user2.battleState = { inBattle: false };
+            // Initialize bounty if missing
+            if (typeof user2.bounty !== 'number') user2.bounty = 0;
+            
             if (winner && winner.id === user2.userId) {
                 user2.wins = (user2.wins || 0) + 1;
                 user2.beli = (user2.beli || 0) + 100;
+                // Add bounty for winning (50,000 for East Blue Saga)
+                user2.bounty += 50000;
             } else if (reason !== 'timeout') {
                 user2.losses = (user2.losses || 0) + 1;
+                // Lose bounty for losing (10,000 penalty)
+                user2.bounty = Math.max(0, user2.bounty - 10000);
             }
             user2.duelCooldown = Date.now() + (10 * 60 * 1000);
             await user2.save();
