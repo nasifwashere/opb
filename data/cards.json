@@ -13,7 +13,7 @@
       "requiredLevel": 5,
       "cost": 50,
       "requiredSaga": "East Blue",
-      "image": "placeholder"
+      "image": "https://files.catbox.moe/1ggrbd.jpg"
     }
   },
   {
@@ -21,7 +21,7 @@
     "shortDesc": "Straw Hat Pirate (Gear Second)",
     "phs": "115 / 110 / 118",
     "rank": "A",
-    "image": "https://files.catbox.moe/rekpfw.jpg",
+    "image": "https://files.catbox.moe/1ggrbd.jpg",
     "evolvesFrom": "Monkey D. Luffy",
     "saga": "East Blue",
     "evolution": {
@@ -29,7 +29,7 @@
       "requiredLevel": 30,
       "cost": 2500,
       "requiredSaga": "East Blue",
-      "image": "placeholder"
+      "image": "https://files.catbox.moe/l5tm3a.jpg"
     }
   },
   {
@@ -37,7 +37,7 @@
     "shortDesc": "Snakeman",
     "phs": "140 / 125 / 142",
     "rank": "S",
-    "image": "https://files.catbox.moe/5rwtpi.jpg",
+    "image": "https://files.catbox.moe/l5tm3a.jpg",
     "evolvesFrom": "Monkey D. Luffy (Gear Second)",
     "saga": "East Blue",
     "evolution": {
@@ -45,7 +45,7 @@
       "requiredLevel": 90,
       "cost": 30000,
       "requiredSaga": "East Blue",
-      "image": "placeholder"
+      "image": "https://files.catbox.moe/hd1t4e.jpg"
     }
   },
   {
@@ -70,7 +70,7 @@
       "requiredLevel": 30,
       "cost": 2500,
       "requiredSaga": "Enies Lobby",
-      "image": "placeholder"
+      "image": "https://files.catbox.moe/ujqbw3.webp"
     }
   },
   {
@@ -86,7 +86,7 @@
       "requiredLevel": 90,
       "cost": 30000,
       "requiredSaga": "Wano",
-      "image": "placeholder"
+      "image": "https://files.catbox.moe/3kgnfn.jpg"
     }
   },
   {
@@ -103,7 +103,7 @@
     "shortDesc": "Navigator (East Blue)",
     "phs": "66 / 70 / 75",
     "rank": "C",
-    "image": "placeholder",
+    "image": "https://files.catbox.moe/xt28vb.jpg",
     "evolvesFrom": null,
     "saga": "East Blue",
     "evolution": {
@@ -111,7 +111,7 @@
       "requiredLevel": 5,
       "cost": 250,
       "requiredSaga": "Alabasta",
-      "image": "placeholder"
+      "image": "https://files.catbox.moe/ljuvfe.jpg"
     }
   },
   {
@@ -127,7 +127,7 @@
       "requiredLevel": 60,
       "cost": 2500,
       "requiredSaga": "Wano",
-      "image": "placeholder"
+      "image": "https://files.catbox.moe/s9qk23.webp"
     }
   },
   {
@@ -152,7 +152,7 @@
       "requiredLevel": 5,
       "cost": 250,
       "requiredSaga": "Enies Lobby",
-      "image": "placeholder"
+      "image": "https://files.catbox.moe/6jaq4i.webp"
     }
   },
   {
@@ -168,7 +168,7 @@
       "requiredLevel": 100,
       "cost": 50000,
       "requiredSaga": "Dressrosa",
-      "image": "placeholder"
+      "image": "https://files.catbox.moe/6jaq4i.webp"
     }
   },
   {
@@ -193,7 +193,7 @@
       "requiredLevel": 25,
       "cost": 1000,
       "requiredSaga": "Enies Lobby",
-      "image": "placeholder"
+      "image": "https://files.catbox.moe/6jaq4i.webp"
     }
   },
   {
@@ -209,7 +209,7 @@
       "requiredLevel": 90,
       "cost": 30000,
       "requiredSaga": "Wano",
-      "image": "placeholder"
+      "image": "https://files.catbox.moe/6jaq4i.webp"
     }
   },
   {
@@ -234,7 +234,7 @@
       "requiredLevel": 90,
       "cost": 30000,
       "requiredSaga": "Final Saga",
-      "image": "placeholder"
+      "image": "https://files.catbox.moe/6jaq4i.webpe"
     }
   },
   {
@@ -268,7 +268,7 @@
       "requiredLevel": 90,
       "cost": 30000,
       "requiredSaga": "Final Saga",
-      "image": "placeholder"
+      "image": "https://files.catbox.moe/6jaq4i.web"
     }
   },
   {
@@ -474,7 +474,7 @@
     "shortDesc": "Warlord of the Sea (East Blue)",
     "phs": "148 / 145 / 150",
     "rank": "S",
-    "image": "https://files.catbox.moe/3irsub.webpr",
+    "image": "https://files.catbox.moe/6dnodp.jpg",
     "evolvesFrom": null,
     "saga": "East Blue",
     "evolution": {
@@ -482,7 +482,7 @@
       "requiredLevel": 90,
       "cost": 30000,
       "requiredSaga": "Final Saga",
-      "image": "placeholder"
+      "image": "https://files.catbox.moe/6jaq4i.webpe"
     }
   },
   {
@@ -508,7 +508,7 @@
     "shortDesc": "Corrupt Marine Captain (East Blue)",
     "phs": "70 / 75 / 72",
     "rank": "C",
-    "image": "https://files.catbox.moe/9q2x5p.webp",
+    "image": "https://files.catbox.moe/sy9zex.jpg",
     "evolvesFrom": null,
     "saga": "East Blue"
   },
@@ -517,7 +517,7 @@
     "shortDesc": "Octopus Fishman (East Blue)",
     "phs": "85 / 90 / 95",
     "rank": "B",
-    "image": "https://files.catbox.moe/k8m3r1.webp",
+    "image": "https://files.catbox.moe/r56rvd.jpg",
     "evolvesFrom": null,
     "saga": "East Blue"
   },
@@ -526,7 +526,7 @@
     "shortDesc": "Ray Fishman (East Blue)",
     "phs": "90 / 95 / 88",
     "rank": "B",
-    "image": "https://files.catbox.moe/p7n2x9.webp",
+    "image": "https://files.catbox.moe/456kd6.jpg",
     "evolvesFrom": null,
     "saga": "East Blue"
   },
@@ -535,7 +535,7 @@
     "shortDesc": "Smelt-Whiting Fishman (East Blue)",
     "phs": "88 / 92 / 90",
     "rank": "B",
-    "image": "https://files.catbox.moe/q5t8m4.webp",
+    "image": "https://files.catbox.moe/e3sepj.jpg",
     "evolvesFrom": null,
     "saga": "East Blue"
   },
@@ -544,7 +544,7 @@
     "shortDesc": "Marine Captain (East Blue)",
     "phs": "108 / 105 / 102",
     "rank": "A",
-    "image": "https://files.catbox.moe/x1v9b2.webp",
+    "image": "https://files.catbox.moe/3n6l3r.jpg",
     "evolvesFrom": null,
     "saga": "East Blue",
     "evolution": {
@@ -552,15 +552,24 @@
       "requiredLevel": 40,
       "cost": 3000,
       "requiredSaga": "Punk Hazard",
-      "image": "placeholder"
+      "image": "https://files.catbox.moe/3n6l3r.jpg"
     }
+   },
+  {
+    "name": "Smoker (Vice Admiral, Punk Hazard)",
+    "shortDesc": "Vice admiral",
+    "phs": "125 / 110 / 110",
+    "rank": "S",
+    "image": "https://files.catbox.moe/4hftgx.jpg",
+    "evolvesFrom": "Smoker",
+    "saga": "Punk Hazard"
   },
   {
     "name": "Tashigi",
     "shortDesc": "Marine Swordswoman (East Blue)",
     "phs": "85 / 88 / 90",
     "rank": "B",
-    "image": "https://files.catbox.moe/m9k7p3.webp",
+    "image": "https://files.catbox.moe/7wqqvk.webp",
     "evolvesFrom": null,
     "saga": "East Blue"
   },
@@ -569,7 +578,7 @@
     "shortDesc": "Clown Pirate (East Blue)",
     "phs": "80 / 85 / 88",
     "rank": "B",
-    "image": "https://files.catbox.moe/n4x2q8.webp",
+    "image": "https://files.catbox.moe/dsj8ha.webp",
     "evolvesFrom": null,
     "saga": "East Blue",
     "evolution": {
@@ -577,15 +586,24 @@
       "requiredLevel": 80,
       "cost": 25000,
       "requiredSaga": "Final Saga",
-      "image": "placeholder"
+      "image": "https://files.catbox.moe/01ui1d.jpg"
     }
+  },
+  {
+    "name": "Buggy (Yonko, Final Saga)",
+    "shortDesc": "Fraud.",
+    "phs": "120 / 105 / 104",
+    "rank": "S",
+    "image": "https://files.catbox.moe/4mkpzk.jpg",
+    "evolvesFrom": "Buggy",
+    "saga": "Final Saga"
   },
   {
     "name": "Cabaji",
     "shortDesc": "Acrobat (East Blue)",
     "phs": "78 / 82 / 92",
     "rank": "C",
-    "image": "https://files.catbox.moe/r8t5k1.webp",
+    "image": "https://files.catbox.moe/iod23c.webp",
     "evolvesFrom": null,
     "saga": "East Blue"
   },
@@ -594,7 +612,7 @@
     "shortDesc": "Beast Tamer (East Blue)",
     "phs": "72 / 78 / 75",
     "rank": "C",
-    "image": "https://files.catbox.moe/b3m9x7.webp",
+    "image": "https://files.catbox.moe/bo370k.jpg",
     "evolvesFrom": null,
     "saga": "East Blue"
   },
@@ -603,7 +621,7 @@
     "shortDesc": "Lion (East Blue)",
     "phs": "80 / 88 / 85",
     "rank": "C",
-    "image": "https://files.catbox.moe/v5k8p2.webp",
+    "image": "https://files.catbox.moe/nb5hv5.webp",
     "evolvesFrom": null,
     "saga": "East Blue"
   },
@@ -612,7 +630,7 @@
     "shortDesc": "Iron Mace Pirate (East Blue)",
     "phs": "75 / 82 / 68",
     "rank": "C",
-    "image": "https://files.catbox.moe/j7q4m8.webp",
+    "image": "https://files.catbox.moe/01ui1d.jpg",
     "evolvesFrom": null,
     "saga": "East Blue",
     "evolution": {
@@ -620,7 +638,7 @@
       "requiredLevel": 15,
       "cost": 500,
       "requiredSaga": "East Blue",
-      "image": "placeholder"
+      "image": "https://files.catbox.moe/01ui1d.jpg"
     }
   },
   {
@@ -628,7 +646,7 @@
     "shortDesc": "Beautiful Pirate (East Blue)",
     "phs": "88 / 92 / 95",
     "rank": "B",
-    "image": "https://files.catbox.moe/k2p9v5.webp",
+    "image": "https://files.catbox.moe/z6qmth.webp",
     "evolvesFrom": "Alvida",
     "saga": "East Blue"
   },
@@ -637,7 +655,7 @@
     "shortDesc": "Treasure Guardian (East Blue)",
     "phs": "65 / 70 / 68",
     "rank": "C",
-    "image": "placeholder",
+    "image": "https://files.catbox.moe/k71fcl.jpg",
     "evolvesFrom": null,
     "saga": "East Blue"
   },
@@ -646,7 +664,7 @@
     "shortDesc": "Baratie Cook (East Blue)",
     "phs": "82 / 85 / 80",
     "rank": "C",
-    "image": "placeholder",
+    "image": "https://files.catbox.moe/tpxg8r.webp",
     "evolvesFrom": null,
     "saga": "East Blue"
   },
@@ -655,7 +673,7 @@
     "shortDesc": "Marine & Mother (East Blue)",
     "phs": "78 / 82 / 85",
     "rank": "C",
-    "image": "placeholder",
+    "image": "https://files.catbox.moe/5zy6ar.webp",
     "evolvesFrom": null,
     "saga": "East Blue"
   },
@@ -664,7 +682,7 @@
     "shortDesc": "Tangerine Farmer (East Blue)",
     "phs": "68 / 72 / 75",
     "rank": "C",
-    "image": "placeholder",
+    "image": "https://files.catbox.moe/afhs8c.webp",
     "evolvesFrom": null,
     "saga": "East Blue"
   },
@@ -673,7 +691,7 @@
     "shortDesc": "Village Sheriff (East Blue)",
     "phs": "75 / 78 / 72",
     "rank": "C",
-    "image": "placeholder",
+    "image": "https://files.catbox.moe/vzt386.webp",
     "evolvesFrom": null,
     "saga": "East Blue"
   },
@@ -682,7 +700,7 @@
     "shortDesc": "Iron Wall (East Blue)",
     "phs": "70 / 95 / 65",
     "rank": "C",
-    "image": "placeholder",
+    "image": "https://files.catbox.moe/49nuo9.webp",
     "evolvesFrom": null,
     "saga": "East Blue"
   }
