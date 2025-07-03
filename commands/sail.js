@@ -183,9 +183,9 @@ async function execute(message, args, client) {
   // Progress tracking
   if (!user.sailsCompleted) user.sailsCompleted = {};
   if (!user.sailsCompleted[arc]) user.sailsCompleted[arc] = 0;
+  user.sailsCompleted[arc]++;
   const sailsDone = user.sailsCompleted[arc];
   const event = getSailEvent(sailsDone);
-  user.sailsCompleted[arc]++;
 
   // UI helpers
   const { createProfessionalTeamDisplay, createEnemyDisplay, createBattleLogDisplay, createProgressDisplay } = require('../utils/uiHelpers.js');
