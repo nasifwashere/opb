@@ -159,8 +159,11 @@ function getLevelUpRewards(level) {
 function getUserLevelProgress(user) {
   if (!user) return { level: 1, currentXP: 0, neededXP: USER_XP_PER_LEVEL, progress: 0 };
   
-  const level = user.level || 1;
   const currentXP = user.xp || 0;
+  
+  // Always calculate level from XP to ensure accuracy
+  const level = Math.floor(currentXP / USER_XP_PER_LEVEL) + 1;
+  
   const xpForCurrentLevel = (level - 1) * USER_XP_PER_LEVEL;
   const xpInCurrentLevel = currentXP - xpForCurrentLevel;
   const neededXP = USER_XP_PER_LEVEL - xpInCurrentLevel;
@@ -198,12 +201,33 @@ function formatLevelUpRewards(rewards) {
   return text;
 }
 
+/**
+ * Fix user level based on their current XP (for migration/correction)
+ * @param {Object} user - User document
+ * @returns {boolean} Whether the level was corrected
+ */
+function fixUserLevel(user) {
+  if (!user) return false;
+  
+  const currentXP = user.xp || 0;
+  const correctLevel = Math.floor(currentXP / USER_XP_PER_LEVEL) + 1;
+  const storedLevel = user.level || 1;
+  
+  if (correctLevel !== storedLevel) {
+    user.level = correctLevel;
+    return true;
+  }
+  
+  return false;
+}
+
 module.exports = {
   awardUserXP,
   calculateBountyReward,
   getLevelUpRewards,
   getUserLevelProgress,
   formatLevelUpRewards,
+  fixUserLevel,
   USER_XP_PER_LEVEL,
   BASE_BOUNTY_REWARD
 };

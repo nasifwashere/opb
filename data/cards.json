@@ -614,5 +614,59 @@
     "image": "https://files.catbox.moe/k2p9v5.webp",
     "evolvesFrom": "Alvida",
     "saga": "East Blue"
+  },
+  {
+    "name": "Gaimon",
+    "shortDesc": "Treasure Guardian (East Blue)",
+    "phs": "65 / 70 / 68",
+    "rank": "C",
+    "image": "placeholder",
+    "evolvesFrom": null,
+    "saga": "East Blue"
+  },
+  {
+    "name": "Patty",
+    "shortDesc": "Baratie Cook (East Blue)",
+    "phs": "82 / 85 / 80",
+    "rank": "C",
+    "image": "placeholder",
+    "evolvesFrom": null,
+    "saga": "East Blue"
+  },
+  {
+    "name": "Belle-mere",
+    "shortDesc": "Marine & Mother (East Blue)",
+    "phs": "78 / 82 / 85",
+    "rank": "C",
+    "image": "placeholder",
+    "evolvesFrom": null,
+    "saga": "East Blue"
+  },
+  {
+    "name": "Nojiko",
+    "shortDesc": "Tangerine Farmer (East Blue)",
+    "phs": "68 / 72 / 75",
+    "rank": "C",
+    "image": "placeholder",
+    "evolvesFrom": null,
+    "saga": "East Blue"
+  },
+  {
+    "name": "Genzo",
+    "shortDesc": "Village Sheriff (East Blue)",
+    "phs": "75 / 78 / 72",
+    "rank": "C",
+    "image": "placeholder",
+    "evolvesFrom": null,
+    "saga": "East Blue"
+  },
+  {
+    "name": "Pearl",
+    "shortDesc": "Iron Wall (East Blue)",
+    "phs": "70 / 95 / 65",
+    "rank": "C",
+    "image": "placeholder",
+    "evolvesFrom": null,
+    "saga": "East Blue"
   }
 ]

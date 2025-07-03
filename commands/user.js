@@ -61,8 +61,12 @@ async function execute(message, args, client) {
     crewInfo = user.crew;
   }
 
-  // Get user level progress
-  const { getUserLevelProgress } = require('../utils/userLevelSystem.js');
+  // Fix user level if needed and get progress
+  const { getUserLevelProgress, fixUserLevel } = require('../utils/userLevelSystem.js');
+  const levelFixed = fixUserLevel(user);
+  if (levelFixed) {
+    await user.save(); // Save corrected level
+  }
   const levelProgress = getUserLevelProgress(user);
   
   // Create level progress bar

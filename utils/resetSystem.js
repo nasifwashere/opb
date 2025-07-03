@@ -239,7 +239,7 @@ class ResetSystem {
                 .setTimestamp();
 
             await channel.send({ 
-                content: '@everyone',
+                content: '<@&1389619213492158464>',
                 embeds: [embed] 
             });
         } catch (error) {
@@ -259,7 +259,7 @@ class ResetSystem {
                 .setTimestamp();
 
             await channel.send({ 
-                content: '@everyone',
+                content: '<@&1389619213492158464>',
                 embeds: [embed] 
             });
         } catch (error) {

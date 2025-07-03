@@ -141,7 +141,7 @@ async function sendResetNotification(client) {
             .setTimestamp();
 
         await channel.send({ 
-            content: '<@&resetping>', 
+            content: '<@&1389619213492158464>', 
             embeds: [embed] 
         });
 
