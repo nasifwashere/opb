@@ -184,6 +184,7 @@ async function execute(message, args, client) {
   if (!user.sailsCompleted) user.sailsCompleted = {};
   if (!user.sailsCompleted[arc]) user.sailsCompleted[arc] = 0;
   user.sailsCompleted[arc]++;
+  await saveUserWithRetry(user);
   const sailsDone = user.sailsCompleted[arc];
   const event = getSailEvent(sailsDone);
 
