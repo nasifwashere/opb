@@ -14,67 +14,136 @@ const NAVY_RANKS = [
   'Navy Ensign', 'Navy Lieutenant', 'Navy Commander', 'Navy Captain', 'Navy Commodore', 'Navy Vice Admiral', 'Navy Admiral'
 ];
 
-// SAIL_EVENTS: a mix of battle, narrative, and choice events
-const SAIL_EVENTS = [
-  // Battle event
-  () => ({
+
+// Scaling function for rewards/enemies/items based on sails completed
+function getSailEvent(sailsCompleted) {
+  // 1–5: 1 Navy Soldier (30 HP), 5–10 Beli, 1–5 XP
+  if (sailsCompleted <= 5) {
+    return {
+      type: 'enemy',
+      title: 'Navy Patrol',
+      desc: 'A lone Navy Soldier blocks your way.',
+      enemies: [{
+        name: 'Navy Soldier',
+        hp: 30,
+        atk: [5, 10],
+        spd: 30,
+        rank: 'C',
+        currentHp: 30,
+        maxHp: 30
+      }],
+      reward: { type: 'multiple', rewards: [
+        { type: 'beli', amount: getRandomInt(5, 10) },
+        { type: 'xp', amount: getRandomInt(1, 5) }
+      ]}
+    };
+  }
+  // 6–10: 1 Stronger Navy (50 HP), 10–50 Beli, 5–10 XP
+  if (sailsCompleted <= 10) {
+    return {
+      type: 'enemy',
+      title: 'Stronger Navy',
+      desc: 'A stronger Navy officer appears!',
+      enemies: [{
+        name: 'Navy Officer',
+        hp: 50,
+        atk: [10, 15],
+        spd: 40,
+        rank: 'C',
+        currentHp: 50,
+        maxHp: 50
+      }],
+      reward: { type: 'multiple', rewards: [
+        { type: 'beli', amount: getRandomInt(10, 50) },
+        { type: 'xp', amount: getRandomInt(5, 10) }
+      ]}
+    };
+  }
+  // 11–20: 1–3 Navy Soldiers (100 HP), 50–100 Beli, 10–15 XP, Common item
+  if (sailsCompleted <= 20) {
+    const count = getRandomInt(1, 3);
+    return {
+      type: 'enemy',
+      title: 'Navy Squad',
+      desc: 'A squad of Navy Soldiers surrounds you!',
+      enemies: Array.from({ length: count }, () => ({
+        name: 'Navy Soldier',
+        hp: 100,
+        atk: [15, 20],
+        spd: 50,
+        rank: 'B',
+        currentHp: 100,
+        maxHp: 100
+      })),
+      reward: { type: 'multiple', rewards: [
+        { type: 'beli', amount: getRandomInt(50, 100) },
+        { type: 'xp', amount: getRandomInt(10, 15) },
+        { type: 'item', name: getRandomCommonItem() }
+      ]}
+    };
+  }
+  // 21–50: 1–3 Navy (100–300 HP), 100–250 Beli, 10–20 XP, Uncommon item
+  if (sailsCompleted <= 50) {
+    const count = getRandomInt(1, 3);
+    return {
+      type: 'enemy',
+      title: 'Navy Blockade',
+      desc: 'A blockade of Navy ships tries to stop you!',
+      enemies: Array.from({ length: count }, () => ({
+        name: 'Navy Enforcer',
+        hp: getRandomInt(100, 300),
+        atk: [20, 30],
+        spd: 60,
+        rank: 'A',
+        currentHp: 200,
+        maxHp: 200
+      })),
+      reward: { type: 'multiple', rewards: [
+        { type: 'beli', amount: getRandomInt(100, 250) },
+        { type: 'xp', amount: getRandomInt(10, 20) },
+        { type: 'item', name: getRandomUncommonItem() }
+      ]}
+    };
+  }
+  // 51+: 2–4 Elite Navy (200–500 HP), 250–500 Beli, 15–30 XP, Rare/Epic/Legendary item
+  const count = getRandomInt(2, 4);
+  const rarities = ['Rare', 'Epic', 'Legendary'];
+  return {
     type: 'enemy',
-    title: 'Navy Ambush!',
-    desc: 'A group of Navy officers block your path at sea.',
-    enemy: {
-      name: NAVY_RANKS[getRandomInt(0, NAVY_RANKS.length-1)],
-      hp: getRandomInt(80, 180),
-      atk: [getRandomInt(10, 20), getRandomInt(21, 35)],
-      spd: getRandomInt(40, 80),
-      rank: ['C','B','A'][getRandomInt(0,2)]
-    },
-    reward: { type: 'multiple', rewards: [
-      { type: 'beli', amount: getRandomInt(50, 200) },
-      { type: 'xp', amount: getRandomInt(10, 40) }
-    ]}
-  }),
-  // Narrative event
-  () => ({
-    type: 'narrative',
-    title: 'Calm Waters',
-    desc: 'The sea is calm. Your crew shares stories and enjoys a peaceful moment.',
-    reward: { type: 'xp', amount: getRandomInt(5, 15) }
-  }),
-  // Choice event
-  () => ({
-    type: 'choice',
-    title: 'Mysterious Crate',
-    desc: 'You spot a floating crate. Do you want to open it?',
-    choice: {
-      yes: { type: 'item', name: 'Basic Potion' },
-      no: { type: 'beli', amount: 20 }
-    }
-  }),
-  // Battle event (stronger)
-  () => ({
-    type: 'enemy',
-    title: 'Elite Navy Challenge',
-    desc: 'A high-ranking Navy officer challenges you to a duel!',
-    enemy: {
+    title: 'Elite Navy Assault',
+    desc: 'Elite Navy officers attack with full force!',
+    enemies: Array.from({ length: count }, () => ({
       name: NAVY_RANKS[getRandomInt(5, NAVY_RANKS.length-1)],
-      hp: getRandomInt(150, 300),
-      atk: [getRandomInt(20, 30), getRandomInt(31, 50)],
-      spd: getRandomInt(60, 100),
-      rank: ['A','S'][getRandomInt(0,1)]
-    },
+      hp: getRandomInt(200, 500),
+      atk: [30, 50],
+      spd: 80,
+      rank: ['A','S','UR'][getRandomInt(0,2)],
+      currentHp: 400,
+      maxHp: 400
+    })),
     reward: { type: 'multiple', rewards: [
-      { type: 'beli', amount: getRandomInt(150, 400) },
-      { type: 'xp', amount: getRandomInt(30, 70) }
+      { type: 'beli', amount: getRandomInt(250, 500) },
+      { type: 'xp', amount: getRandomInt(15, 30) },
+      { type: 'item', name: getRandomHighRarityItem(rarities) }
     ]}
-  }),
-  // Narrative event (rare)
-  () => ({
-    type: 'narrative',
-    title: 'Treasure Map',
-    desc: 'You find a tattered map hinting at hidden treasure. Your crew is excited!',
-    reward: { type: 'beli', amount: getRandomInt(100, 300) }
-  })
-];
+  };
+}
+
+function getRandomCommonItem() {
+  const commons = itemsData.filter(i => i.rarity === 'Common');
+  if (!commons.length) return 'Basic Potion';
+  return commons[getRandomInt(0, commons.length - 1)].name;
+}
+function getRandomUncommonItem() {
+  const uncommons = itemsData.filter(i => i.rarity === 'Uncommon');
+  if (!uncommons.length) return 'Normal Potion';
+  return uncommons[getRandomInt(0, uncommons.length - 1)].name;
+}
+function getRandomHighRarityItem(rarities) {
+  const high = itemsData.filter(i => rarities.includes(i.rarity));
+  if (!high.length) return 'Rare Potion';
+  return high[getRandomInt(0, high.length - 1)].name;
+}
 
 const data = new SlashCommandBuilder()
   .setName('sail')
@@ -114,12 +183,9 @@ async function execute(message, args, client) {
   // Progress tracking
   if (!user.sailsCompleted) user.sailsCompleted = {};
   if (!user.sailsCompleted[arc]) user.sailsCompleted[arc] = 0;
-  user.sailsCompleted[arc]++;
   const sailsDone = user.sailsCompleted[arc];
-
-  // Pick event for this sail (cycle through, or random)
-  const eventFn = SAIL_EVENTS[(sailsDone - 1) % SAIL_EVENTS.length];
-  const event = eventFn();
+  const event = getSailEvent(sailsDone);
+  user.sailsCompleted[arc]++;
 
   // UI helpers
   const { createProfessionalTeamDisplay, createEnemyDisplay, createBattleLogDisplay, createProgressDisplay } = require('../utils/uiHelpers.js');
@@ -128,18 +194,14 @@ async function execute(message, args, client) {
 
   // Handle event types
   if (event.type === 'enemy') {
-    // Use real battle system (single enemy)
-    const enemyObj = {
-      ...event.enemy,
-      currentHp: event.enemy.hp,
-      maxHp: event.enemy.hp
-    };
+    // Use real battle system (multi-enemy support)
+    const enemies = event.enemies.map(e => ({ ...e }));
     const battleTeam = calculateBattleStats(user);
     if (!battleTeam || battleTeam.length === 0) {
       return message.reply('❌ Your team is invalid or cards are missing. Please check your team with `op team` and fix any issues.');
     }
     // Initial battle log
-    const battleLog = [`A wild ${enemyObj.name} appears!`];
+    const battleLog = [`${enemies.length > 1 ? 'A group of enemies appear!' : 'A wild enemy appears!'}`];
     // Render battle UI with buttons
     const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
     const battleButtons = [
@@ -153,7 +215,7 @@ async function execute(message, args, client) {
       .setDescription(event.desc)
       .addFields(
         { name: 'Your Crew', value: createProfessionalTeamDisplay(battleTeam, 'Your Crew'), inline: false },
-        { name: 'Enemy', value: createEnemyDisplay([enemyObj]), inline: false },
+        { name: 'Enemy', value: createEnemyDisplay(enemies), inline: false },
         { name: 'Battle Log', value: createBattleLogDisplay(battleLog), inline: false }
       )
       .setColor(0x3498db)
@@ -166,7 +228,7 @@ async function execute(message, args, client) {
 
     // Minimal battle state for this encounter
     let playerTurn = true;
-    let enemy = { ...enemyObj };
+    let enemyArr = enemies.map(e => ({ ...e }));
     let team = battleTeam.map(card => ({ ...card }));
     let log = [...battleLog];
     let battleOver = false;
@@ -177,12 +239,46 @@ async function execute(message, args, client) {
         .setDescription(event.desc)
         .addFields(
           { name: 'Your Crew', value: createProfessionalTeamDisplay(team, 'Your Crew'), inline: false },
-          { name: 'Enemy', value: createEnemyDisplay([enemy]), inline: false },
+          { name: 'Enemy', value: createEnemyDisplay(enemyArr), inline: false },
           { name: 'Battle Log', value: createBattleLogDisplay(extraLog ? [...log, extraLog] : log), inline: false }
         )
         .setColor(0x3498db)
         .setFooter({ text: `Sails completed: ${sailsDone}` });
       await battleMessage.edit({ embeds: [embed] });
+    }
+
+    // --- Items logic copied from explore ---
+    async function showItemMenu(interaction) {
+      const inventory = user.inventory || [];
+      if (inventory.length === 0) {
+        log.push('You have no items!');
+        await updateBattleEmbed('You have no items!');
+        return;
+      }
+      const { ActionRowBuilder, ButtonBuilder } = require('discord.js');
+      const itemButtons = inventory.slice(0, 5).map(itemName =>
+        new ButtonBuilder()
+          .setCustomId('use_' + itemName.replace(/\s+/g, '_'))
+          .setLabel(itemName)
+          .setStyle(ButtonStyle.Primary)
+      );
+      const itemRow = new ActionRowBuilder().addComponents(itemButtons);
+      await battleMessage.edit({ components: [itemRow] });
+      // Wait for item use
+      try {
+        const itemFilter = i => i.user.id === userId && i.customId.startsWith('use_');
+        const itemInteraction = await battleMessage.awaitMessageComponent({ filter: itemFilter, time: 15000 });
+        const itemName = itemInteraction.customId.replace('use_', '').replace(/_/g, ' ');
+        // Remove item from inventory
+        const idx = user.inventory.indexOf(itemName);
+        if (idx !== -1) user.inventory.splice(idx, 1);
+        log.push(`You used ${itemName}!`);
+        await saveUserWithRetry(user);
+        await updateBattleEmbed(`You used ${itemName}!`);
+        await battleMessage.edit({ components: [row] });
+      } catch (e) {
+        await battleMessage.edit({ components: [row] });
+      }
     }
 
     collector.on('collect', async interaction => {
@@ -197,13 +293,25 @@ async function execute(message, args, client) {
           await updateBattleEmbed('All your crew are down!');
           return collector.stop('defeat');
         }
+        // Attack first alive enemy
+        const targetEnemy = enemyArr.find(e => e.currentHp > 0);
+        if (!targetEnemy) {
+          log.push('All enemies are down!');
+          battleOver = true;
+          await updateBattleEmbed('All enemies are down!');
+          return collector.stop('victory');
+        }
         // Calculate damage
         const { calculateDamage } = require('../utils/battleSystem.js');
-        let dmg = calculateDamage(attacker, enemy);
-        enemy.currentHp -= dmg;
-        log.push(`${attacker.name} attacks ${enemy.name} for ${dmg} damage!`);
-        if (enemy.currentHp <= 0) {
-          log.push(`${enemy.name} is defeated!`);
+        let dmg = calculateDamage(attacker, targetEnemy);
+        targetEnemy.currentHp -= dmg;
+        log.push(`${attacker.name} attacks ${targetEnemy.name} for ${dmg} damage!`);
+        if (targetEnemy.currentHp <= 0) {
+          log.push(`${targetEnemy.name} is defeated!`);
+        }
+        // Check if all enemies are defeated
+        if (!enemyArr.some(e => e.currentHp > 0)) {
+          log.push('All enemies are defeated!');
           battleOver = true;
           // Award rewards
           let rewardText = '';
@@ -227,18 +335,20 @@ async function execute(message, args, client) {
             }
           }
           await saveUserWithRetry(user);
-          await updateBattleEmbed(`${enemy.name} is defeated!\n**Reward:** ${rewardText}`);
+          await updateBattleEmbed(`All enemies are defeated!\n**Reward:** ${rewardText}`);
           await battleMessage.edit({ components: [] });
           return collector.stop('victory');
         }
-        // Enemy turn (simple)
-        const target = team.find(card => card.currentHp > 0);
-        if (target) {
-          let enemyDmg = require('../utils/battleSystem.js').calculateDamage(enemy, target);
-          target.currentHp -= enemyDmg;
-          log.push(`${enemy.name} attacks ${target.name} for ${enemyDmg} damage!`);
-          if (target.currentHp <= 0) {
-            log.push(`${target.name} is knocked out!`);
+        // Enemy turn (simple, each alive enemy attacks)
+        for (const enemy of enemyArr.filter(e => e.currentHp > 0)) {
+          const target = team.find(card => card.currentHp > 0);
+          if (target) {
+            let enemyDmg = require('../utils/battleSystem.js').calculateDamage(enemy, target);
+            target.currentHp -= enemyDmg;
+            log.push(`${enemy.name} attacks ${target.name} for ${enemyDmg} damage!`);
+            if (target.currentHp <= 0) {
+              log.push(`${target.name} is knocked out!`);
+            }
           }
         }
         // Check defeat
@@ -257,9 +367,7 @@ async function execute(message, args, client) {
         await battleMessage.edit({ components: [] });
         return collector.stop('fled');
       } else if (interaction.customId === 'sail_items') {
-        // For now, just log item use (expand as needed)
-        log.push('You rummage through your items (item use coming soon).');
-        await updateBattleEmbed('You rummage through your items (item use coming soon).');
+        await showItemMenu(interaction);
       }
     });
 
