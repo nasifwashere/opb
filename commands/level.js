@@ -71,7 +71,8 @@ async function execute(message, args) {
     return message.reply({ embeds: [embed] });
   }
 
-  // Find the card in user's collection
+
+  // Find all cards matching the name
   const userCards = user.cards.filter(c => normalize(c.name) === normalize(cardName));
 
   if (userCards.length === 0) {
@@ -79,12 +80,18 @@ async function execute(message, args) {
       .setColor(0x2b2d31)
       .setDescription(`You don't own "${cardName}".`)
       .setFooter({ text: 'Card not found in your collection' });
-    
     return message.reply({ embeds: [embed] });
   }
 
+  // Only the first card (lowest index) is the main card
   const mainCard = userCards[0];
-  const duplicates = userCards.length - 1;
+  // Only use level 1 duplicates for leveling up
+  const duplicateCards = user.cards.filter((c, idx) =>
+    idx !== user.cards.indexOf(mainCard) &&
+    normalize(c.name) === normalize(cardName) &&
+    (c.level === 1 || !c.level)
+  );
+  const duplicates = duplicateCards.length;
   const currentLevel = mainCard.level || 1;
 
   if (currentLevel >= 100) {
@@ -168,11 +175,12 @@ async function execute(message, args) {
     return message.reply({ embeds: [embed] });
   }
 
-  // Remove duplicate cards used
+  // Remove only level 1 duplicate cards used
   for (let i = 0; i < levelsGained; i++) {
-    const duplicateIndex = user.cards.findIndex((c, index) => 
-      index !== user.cards.indexOf(mainCard) && 
-      normalize(c.name) === normalize(cardName)
+    const duplicateIndex = user.cards.findIndex((c, idx) =>
+      idx !== user.cards.indexOf(mainCard) &&
+      normalize(c.name) === normalize(cardName) &&
+      (c.level === 1 || !c.level)
     );
     if (duplicateIndex !== -1) {
       user.cards.splice(duplicateIndex, 1);

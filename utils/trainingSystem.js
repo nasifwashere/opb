@@ -181,11 +181,16 @@ async function stopTraining(userId, cardName) {
         // Remove from training
         user.training.splice(trainingIndex, 1);
 
-        // Return card to collection with updated XP
+
+        // Calculate new level from XP
+        const XP_PER_LEVEL = 100;
+        const newLevel = Math.floor(totalXP / XP_PER_LEVEL) + 1;
+
+        // Return card to collection with updated XP and level
         user.cards.push({
             name: trainingCard.cardName,
             rank: trainingCard.rank,
-            level: trainingCard.level,
+            level: newLevel,
             experience: totalXP,
             timesUpgraded: trainingCard.timesUpgraded,
             locked: trainingCard.locked

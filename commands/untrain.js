@@ -68,7 +68,8 @@ async function execute(message, args) {
         .setTitle('Training Completed!')
         .setDescription(result.message)
         .addFields(
-            { name: 'Card', value: `**${result.card.cardName}** (${result.card.rank})`, inline: true },
+            { name: 'Card', value: `**${result.card.name}** (${result.card.rank})`, inline: true },
+            { name: 'Level', value: `${result.card.level}`, inline: true },
             { name: 'Training Time', value: timeText, inline: true },
             { name: 'XP Gained', value: `${result.xpGained}`, inline: true },
             { name: 'Total XP', value: `${result.totalXP}`, inline: true }
