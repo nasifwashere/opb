@@ -186,6 +186,8 @@ async function execute(message, args) {
   const { chest, rewards } = result;
   let rewardText = '';
   let totalXpAwarded = 0;
+  let userLevelResult = null;
+  
   for (const reward of rewards) {
     switch (reward.type) {
       case 'card':
@@ -198,7 +200,8 @@ async function execute(message, args) {
         rewardText += `<:Money:1375579299565928499> ${reward.amount} Beli\n`;
         break;
       case 'xp':
-        user.xp = (user.xp || 0) + reward.amount;
+        const { awardUserXP } = require('../utils/userLevelSystem.js');
+        userLevelResult = awardUserXP(user, reward.amount);
         totalXpAwarded += reward.amount;
         rewardText += `<:snoopy_sparkles:1388585338821152978> ${reward.amount} XP\n`;
         break;
@@ -209,6 +212,13 @@ async function execute(message, args) {
     }
   }
 
+  // Add user level up notifications
+  if (userLevelResult && userLevelResult.leveledUp) {
+    const { formatLevelUpRewards } = require('../utils/userLevelSystem.js');
+    const levelUpText = `**🌟 LEVEL UP! 🌟**\n${userLevelResult.oldLevel} → **${userLevelResult.newLevel}**\n${formatLevelUpRewards(userLevelResult.rewards)}`;
+    rewardText += `\n**Pirate Level Up:**\n${levelUpText.trim()}\n`;
+  }
+
   // Distribute XP to team cards if any XP was awarded
   if (totalXpAwarded > 0) {
     const levelUpChanges = distributeXPToTeam(user, totalXpAwarded);
@@ -216,7 +226,7 @@ async function execute(message, args) {
       const levelUpText = levelUpChanges.map(change => 
         `**${change.name}** leveled up! (${change.oldLevel} → ${change.newLevel})`
       ).join('\n');
-      rewardText += `\n**Team Level Ups:**\n${levelUpText}\n`;
+      rewardText += `\n**Card Level Ups:**\n${levelUpText}\n`;
     }
   }
 

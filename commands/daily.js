@@ -105,7 +105,10 @@ async function execute(message, args) {
 
   // Apply rewards
   user.beli = (user.beli || 0) + reward.beli;
-  user.xp = (user.xp || 0) + reward.xp;
+  
+  // Award XP to user with new leveling system
+  const { awardUserXP } = require('../utils/userLevelSystem.js');
+  const userLevelResult = awardUserXP(user, reward.xp);
 
   // Distribute XP to team cards
   const levelUpChanges = distributeXPToTeam(user, reward.xp);
@@ -131,12 +134,19 @@ async function execute(message, args) {
       text: `Streak: ${user.dailyReward.streak}/7 days • Next reward in 24 hours` 
     });
 
-  // Add level up notifications if any cards leveled up
+  // Add user level up notifications
+  if (userLevelResult.leveledUp) {
+    const { formatLevelUpRewards } = require('../utils/userLevelSystem.js');
+    const levelUpText = `**🌟 LEVEL UP! 🌟**\n${userLevelResult.oldLevel} → **${userLevelResult.newLevel}**\n${formatLevelUpRewards(userLevelResult.rewards)}`;
+    embed.addFields({ name: 'Pirate Level Up!', value: levelUpText.trim(), inline: false });
+  }
+
+  // Add card level up notifications if any cards leveled up
   if (levelUpChanges && levelUpChanges.length > 0) {
     const levelUpText = levelUpChanges.map(change => 
       `**${change.name}** leveled up! (${change.oldLevel} → ${change.newLevel})`
     ).join('\n');
-    embed.addFields({ name: 'Team Level Ups!', value: levelUpText, inline: false });
+    embed.addFields({ name: 'Card Level Ups!', value: levelUpText, inline: false });
   }
 
   await message.reply({ embeds: [embed] });

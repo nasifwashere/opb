@@ -61,11 +61,21 @@ async function execute(message, args, client) {
     crewInfo = user.crew;
   }
 
+  // Get user level progress
+  const { getUserLevelProgress } = require('../utils/userLevelSystem.js');
+  const levelProgress = getUserLevelProgress(user);
+  
+  // Create level progress bar
+  const progressBarLength = 10;
+  const filledBars = Math.floor((levelProgress.progress / 100) * progressBarLength);
+  const emptyBars = progressBarLength - filledBars;
+  const progressBar = '█'.repeat(filledBars) + '░'.repeat(emptyBars);
+  
   // Create profile embed with modern design
   const embed = new EmbedBuilder()
     .setTitle(`${user.username || targetUsername}`)
     .setColor('#2f3136')
-    .setDescription(`Pirate Profile • Level ${user.level || 1}`)
+    .setDescription(`Pirate Profile • Level ${levelProgress.level}\n${progressBar} ${levelProgress.progress}% (${levelProgress.currentXP}/${1000} XP)`)
     .addFields(
       {
         name: 'Wealth',

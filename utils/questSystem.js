@@ -286,9 +286,16 @@ async function claimQuestReward(user, questId) {
                     break;
                     
                 case 'xp':
-                    user.xp = (user.xp || 0) + reward.amount;
+                    const { awardUserXP } = require('./userLevelSystem.js');
+                    const userLevelResult = awardUserXP(user, reward.amount);
                     totalXpAwarded += reward.amount;
                     rewardText += `+${reward.amount} XP `;
+                    
+                    // Store user level up information for display
+                    if (userLevelResult.leveledUp) {
+                        if (!user.recentUserLevelUps) user.recentUserLevelUps = [];
+                        user.recentUserLevelUps.push(userLevelResult);
+                    }
                     break;
                     
                 case 'item':

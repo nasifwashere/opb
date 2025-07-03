@@ -280,9 +280,16 @@ async function handleGiveCommand(message, args) {
       return message.reply(`✅ Gave ${amount} Beli to ${targetUser.username}`);
       
     } else if (type === 'xp') {
-      user.xp = (user.xp || 0) + amount;
+      const { awardUserXP, formatLevelUpRewards } = require('../utils/userLevelSystem.js');
+      const userLevelResult = awardUserXP(user, amount);
       await user.save();
-      return message.reply(`✅ Gave ${amount} XP to ${targetUser.username}`);
+      
+      let response = `✅ Gave ${amount} XP to ${targetUser.username}`;
+      if (userLevelResult.leveledUp) {
+        response += `\n🌟 **Level Up!** ${userLevelResult.oldLevel} → ${userLevelResult.newLevel}\n${formatLevelUpRewards(userLevelResult.rewards)}`;
+      }
+      
+      return message.reply(response);
     }
   }
   

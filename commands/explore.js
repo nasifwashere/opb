@@ -339,17 +339,24 @@ async function addXP(user, amount) {
     );
     const finalAmount = xpBoost ? amount * 2 : amount;
 
-    // Add to user's total XP
-    user.xp = (user.xp || 0) + finalAmount;
+    // Award XP to user with new leveling system
+    const { awardUserXP } = require('../utils/userLevelSystem.js');
+    const userLevelResult = awardUserXP(user, finalAmount);
 
-    // Distribute XP to team members and handle level ups
+    // Store user level up information for display
+    if (userLevelResult.leveledUp) {
+        if (!user.recentUserLevelUps) user.recentUserLevelUps = [];
+        user.recentUserLevelUps.push(userLevelResult);
+    }
+
+    // Distribute XP to team members and handle card level ups
     if (user.team && user.team.length > 0) {
-        const levelUpChanges = distributeXPToTeam(user, finalAmount);
+        const cardLevelUpChanges = distributeXPToTeam(user, finalAmount);
 
-        // Store level up information for display
-        if (levelUpChanges && levelUpChanges.length > 0) {
+        // Store card level up information for display
+        if (cardLevelUpChanges && cardLevelUpChanges.length > 0) {
             if (!user.recentLevelUps) user.recentLevelUps = [];
-            user.recentLevelUps.push(...levelUpChanges);
+            user.recentLevelUps.push(...cardLevelUpChanges);
         }
 
         // Mark the user document as modified to ensure cards array is saved
@@ -1396,6 +1403,31 @@ async function handleBattleVictory(interaction, user, battleMessage, battleLog) 
     
     if (stageData.reward) {
         victoryEmbed.addFields({ name: 'Rewards', value: getRewardText(stageData.reward), inline: false });
+    }
+    
+    // Add user level up notifications
+    if (user.recentUserLevelUps && user.recentUserLevelUps.length > 0) {
+        const { formatLevelUpRewards } = require('../utils/userLevelSystem.js');
+        const userLevelUp = user.recentUserLevelUps[user.recentUserLevelUps.length - 1];
+        
+        if (userLevelUp.leveledUp) {
+            const levelUpText = `**🌟 LEVEL UP! 🌟**\n${userLevelUp.oldLevel} → **${userLevelUp.newLevel}**\n${formatLevelUpRewards(userLevelUp.rewards)}`;
+            victoryEmbed.addFields({ name: 'Pirate Level Up!', value: levelUpText.trim(), inline: false });
+        }
+        
+        // Clear the level up notification
+        user.recentUserLevelUps = [];
+    }
+    
+    // Add card level up notifications
+    if (user.recentLevelUps && user.recentLevelUps.length > 0) {
+        const cardLevelUpText = user.recentLevelUps.map(change => 
+            `**${change.name}** leveled up! (${change.oldLevel} → ${change.newLevel})`
+        ).join('\n');
+        victoryEmbed.addFields({ name: 'Card Level Ups!', value: cardLevelUpText, inline: false });
+        
+        // Clear card level up notifications
+        user.recentLevelUps = [];
     }
     
     await battleMessage.edit({ embeds: [victoryEmbed], components: [] });
