@@ -39,6 +39,11 @@ async function execute(message, args) {
         label: 'Team & Equipment',
         description: 'Team setup and item management',
         value: 'team'
+      },
+      {
+        label: 'Crews & Raids',
+        description: 'Crew management and raid battles',
+        value: 'crews'
       }
     ]);
 
@@ -141,6 +146,28 @@ async function execute(message, args) {
           )
           .setColor(0x2b2d31)
           .setFooter({ text: 'Build your team and optimize your setup' });
+        break;
+
+      case 'crews':
+        categoryEmbed = new EmbedBuilder()
+          .setTitle('Crews & Raids')
+          .setDescription('Join crews and participate in challenging raids')
+          .addFields(
+            { name: 'op crew', value: 'View your crew information', inline: true },
+            { name: 'op crew create <name>', value: 'Create a new crew (as captain)', inline: true },
+            { name: 'op crew invite @user', value: 'Invite someone to your crew', inline: true },
+            { name: 'op crew accept', value: 'Accept a crew invitation', inline: true },
+            { name: 'op crew decline', value: 'Decline a crew invitation', inline: true },
+            { name: 'op crew leave', value: 'Leave your current crew', inline: true },
+            { name: 'op crew kick @user', value: 'Kick member from crew (captain only)', inline: true },
+            { name: 'op raid <boss>', value: 'Start raid vs boss (captain only, needs ticket)', inline: true },
+            { name: 'op raid add @user', value: 'Add crew member to active raid', inline: true },
+            { name: 'op raid leave', value: 'Leave current raid', inline: true },
+            { name: 'op raid start', value: 'Force start raid early (captain only)', inline: true },
+            { name: 'op raid cancel', value: 'Cancel active raid (captain only)', inline: true }
+          )
+          .setColor(0x2b2d31)
+          .setFooter({ text: 'Team up with others and defeat powerful bosses' });
         break;
     }
 

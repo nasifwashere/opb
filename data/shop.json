@@ -140,6 +140,15 @@
       "statBoost": {
         "health": 20
       }
+    },
+    {
+      "name": "Raid Ticket",
+      "price": 1000,
+      "description": "Allows crew captains to start raids against powerful bosses",
+      "type": "consumable",
+      "available": true,
+      "category": "raid",
+      "uses": 1
     }
   ],
   "cards": [],
