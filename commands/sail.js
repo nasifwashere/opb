@@ -45,9 +45,16 @@ async function execute(message, args, client) {
   const arc = SAIL_SAGA_LIST.find(s => s.toLowerCase().includes(arcInput));
   if (!arc) return message.reply('Unknown arc. Try: `op sail east blue`');
 
-  // Unlock check
+  // Unlock check: allow if saga completed OR user has reached/passed global stage 42 (end of East Blue)
   if (!user.completedSagas || !user.completedSagas.includes(SAIL_UNLOCK_SAGA)) {
-    return message.reply('You must complete the full saga (e.g., defeat Arlong in East Blue) to unlock infinite sail mode!');
+    if (typeof user.stage !== 'number' || user.stage < 42) {
+      return message.reply('You must complete the full saga (e.g., defeat Arlong in East Blue) to unlock infinite sail mode!');
+    } else {
+      // Auto-fix: add saga to completedSagas for legacy users
+      if (!user.completedSagas) user.completedSagas = [];
+      user.completedSagas.push(SAIL_UNLOCK_SAGA);
+      await saveUserWithRetry(user);
+    }
   }
 
   // Progress tracking
