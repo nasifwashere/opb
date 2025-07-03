@@ -24,6 +24,13 @@ async function migrateQuestData() {
       try {
         let userModified = false;
         
+        // Skip users without username - they're likely corrupted entries
+        if (!user.username) {
+          console.log(`[QUEST MIGRATION] Skipping user ${user.userId} - no username`);
+          errorCount++;
+          continue;
+        }
+        
         // Fix activeQuests structure
         if (user.activeQuests) {
           const cleanedActiveQuests = [];
@@ -104,7 +111,8 @@ async function migrateQuestData() {
           user.markModified('completedQuests');
           user.markModified('questData');
           
-          await user.save();
+          // Use save with validation disabled for migration
+          await user.save({ validateBeforeSave: false });
           migratedCount++;
         }
         
@@ -179,6 +187,12 @@ async function migrateSingleUser(user) {
   }
   
   try {
+    // Skip users without username - they're likely corrupted entries
+    if (!user.username) {
+      console.log(`[QUEST MIGRATION] Skipping user ${user.userId} - no username`);
+      return false;
+    }
+    
     let userModified = false;
     
     // Fix activeQuests

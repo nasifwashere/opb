@@ -22,10 +22,11 @@ async function execute(message, args, client) {
 
   if (!user) {
     const embed = new EmbedBuilder()
-      .setColor(0x2b2d31)
+      .setColor('#1a1a1a')
+      .setTitle('Profile Not Found')
       .setDescription(mentionedUser ? 
-        `${mentionedUser.username} hasn't started their journey yet!` : 
-        'Start your journey with `op start` first!')
+        `**${mentionedUser.username}** hasn't started their journey yet.` : 
+        'Start your journey with `op start` first.')
       .setFooter({ text: 'Use op start to begin your adventure' });
     
     return message.reply({ embeds: [embed] });
@@ -55,45 +56,45 @@ async function execute(message, args, client) {
   }
 
   // Get crew information
-  let crewInfo = 'Not in a crew';
+  let crewInfo = 'Independent Pirate';
   if (user.crew) {
     crewInfo = user.crew;
   }
 
-  // Create profile embed
+  // Create profile embed with modern design
   const embed = new EmbedBuilder()
-    .setTitle(`🏴‍☠️ Pirate Profile: ${user.username || targetUsername}`)
-    .setColor(0x2b2d31)
-    .setDescription(`${mentionedUser ? `${mentionedUser.username}'s` : 'Your'} pirate stats and achievements`)
+    .setTitle(`${user.username || targetUsername}`)
+    .setColor('#2f3136')
+    .setDescription(`Pirate Profile • Level ${user.level || 1}`)
     .addFields(
       {
-        name: '💰 Wealth',
-        value: `**${user.beli.toLocaleString()}** Beli\n🏆 **Global Rank:** #${beliRank}`,
+        name: 'Wealth',
+        value: `**${user.beli.toLocaleString()}** Beli\nRank: **#${beliRank}**`,
         inline: true
       },
       {
-        name: '⚔️ Battle Record',
-        value: `**${user.wins}** Wins\n🏆 **Global Rank:** #${winsRank}`,
+        name: 'Combat Record',
+        value: `**${user.wins}** Victories\nRank: **#${winsRank}**`,
         inline: true
       },
       {
-        name: '🎯 Bounty',
-        value: `**${user.bounty.toLocaleString()}** Bounty\n🏆 **Global Rank:** #${bountyRank}`,
+        name: 'Bounty',
+        value: `**${user.bounty.toLocaleString()}**\nRank: **#${bountyRank}**`,
         inline: true
       },
       {
-        name: '👥 Crew',
+        name: 'Crew Status',
         value: crewInfo,
         inline: true
       },
       {
-        name: '🌟 Main Card',
+        name: 'Main Character',
         value: mostUsedCard,
         inline: true
       },
       {
-        name: '📊 Additional Stats',
-        value: `**Level:** ${user.level || 1}\n**Cards:** ${user.cards ? user.cards.length : 0}\n**Losses:** ${user.losses || 0}`,
+        name: 'Statistics',
+        value: `Cards: **${user.cards ? user.cards.length : 0}**\nDefeats: **${user.losses || 0}**`,
         inline: true
       }
     )
@@ -101,7 +102,8 @@ async function execute(message, args, client) {
       text: mentionedUser ? 
         `Profile for ${targetUsername}` : 
         'Use op user @player to view someone else\'s profile'
-    });
+    })
+    .setTimestamp();
 
   // Set profile picture if available
   try {
