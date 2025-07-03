@@ -190,16 +190,16 @@ async function stopTraining(userId, cardName) {
         // Try to get the correct name/rank from cards.json if missing
         const cardsPath = require('path').resolve('data', 'cards.json');
         const allCards = JSON.parse(require('fs').readFileSync(cardsPath, 'utf8'));
-        let fixedName = trainingCard.name || trainingCard.cardName;
+        let fixedName = trainingCard.cardName || trainingCard.name;
         let fixedRank = trainingCard.rank;
-        if (!fixedRank || !fixedName) {
-          // Try to find by cardName
-          const def = allCards.find(c => c && c.name && normalize(c.name) === normalize(trainingCard.cardName));
-          if (def) {
-            fixedName = def.name;
-            fixedRank = def.rank;
-          }
+        // Always try to find the canonical name/rank from cards.json
+        const def = allCards.find(c => c && c.name && normalize(c.name) === normalize(trainingCard.cardName || trainingCard.name));
+        if (def) {
+          fixedName = def.name;
+          fixedRank = def.rank;
         }
+        if (!fixedName) fixedName = '[Unknown Card]';
+        if (!fixedRank) fixedRank = '[Unknown Rank]';
         const returnedCard = {
           name: fixedName,
           rank: fixedRank,
@@ -309,9 +309,21 @@ async function autoUntrainExpiredCards() {
 
                     // Return card to collection
                     if (!user.cards) user.cards = [];
+                    // Always use cards.json for canonical name/rank
+                    const cardsPath = require('path').resolve('data', 'cards.json');
+                    const allCards = JSON.parse(require('fs').readFileSync(cardsPath, 'utf8'));
+                    let fixedName = trainingCard.cardName || trainingCard.name;
+                    let fixedRank = trainingCard.rank;
+                    const def = allCards.find(c => c && c.name && normalize(c.name) === normalize(trainingCard.cardName || trainingCard.name));
+                    if (def) {
+                      fixedName = def.name;
+                      fixedRank = def.rank;
+                    }
+                    if (!fixedName) fixedName = '[Unknown Card]';
+                    if (!fixedRank) fixedRank = '[Unknown Rank]';
                     user.cards.push({
-                        name: trainingCard.cardName,
-                        rank: trainingCard.rank,
+                        name: fixedName,
+                        rank: fixedRank,
                         level: trainingCard.level,
                         experience: totalXP,
                         timesUpgraded: trainingCard.timesUpgraded,
@@ -319,7 +331,7 @@ async function autoUntrainExpiredCards() {
                     });
 
                     expiredCards.push({
-                        name: trainingCard.cardName,
+                        name: fixedName,
                         xpGained: accumulatedXP,
                         totalXP: totalXP
                     });
