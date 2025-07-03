@@ -57,8 +57,33 @@ async function execute(message, args, client) {
 
   // Get crew information
   let crewInfo = 'Independent Pirate';
-  if (user.crew) {
-    crewInfo = user.crew;
+  if (user.crewId) {
+    try {
+      // Import crew system to get crew data
+      const { crews } = require('./crew.js');
+      const crew = crews.get(user.crewId);
+      
+      if (crew) {
+        const roleText = user.crewRole === 'captain' ? 'Captain' : 'Member';
+        crewInfo = `${crew.name} (${roleText})`;
+      } else {
+        // Fallback: try to find crew name from other members
+        const crewMember = await User.findOne({ 
+          crewId: user.crewId, 
+          crewRole: 'captain' 
+        });
+        if (crewMember) {
+          const roleText = user.crewRole === 'captain' ? 'Captain' : 'Member';
+          crewInfo = `Crew ${user.crewId.slice(-8)} (${roleText})`;
+        } else {
+          crewInfo = 'Independent Pirate';
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching crew info:', error);
+      const roleText = user.crewRole === 'captain' ? 'Captain' : 'Member';
+      crewInfo = `Crew ${user.crewId.slice(-8)} (${roleText})`;
+    }
   }
 
   // Fix user level if needed and get progress

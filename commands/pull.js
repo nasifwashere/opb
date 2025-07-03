@@ -83,63 +83,8 @@ async function getUserPullState(userId, username) {
     let user = await User.findOne({ userId });
     
     if (!user) {
-        const config = require('../config.json');
-        user = new User({
-            userId: userId,
-            username: username || `User_${userId.slice(-4)}`,
-            beli: config.defaultCurrency || 500,
-            xp: 0,
-            level: 1,
-            stage: 0,
-            hp: 100,
-            maxHp: 100,
-            atk: 15,
-            spd: 50,
-            def: 10,
-            wins: 0,
-            losses: 0,
-            saga: "East Blue",
-            team: [],
-            pulls: [],
-            lastPull: 0,
-            cards: [],
-            inventory: ["Basic Potion", "Basic Potion", "Basic Potion"],
-            equipped: new Map(),
-            battleState: {
-                inBattle: false,
-                enemy: null,
-                battleHp: 100,
-                turnCount: 0,
-                battleLog: []
-            },
-            exploreStates: {
-                inBossFight: false,
-                battleState: null,
-                currentStage: null,
-                currentLocation: null,
-                defeatCooldown: null
-            },
-            lastExplore: null,
-            lastBattle: null,
-            defeatedAt: null,
-            questData: {
-                progress: new Map(),
-                completed: [],
-                lastReset: {
-                    daily: 0,
-                    weekly: 0
-                }
-            },
-            pullData: {
-                dailyPulls: 0,
-                lastReset: Date.now()
-            },
-            activeBoosts: [],
-            createdAt: new Date(),
-            lastActive: new Date()
-        });
-        
-        await saveUserWithRetry(user);
+        // Don't create user automatically - require op start first
+        return null;
     }
     
     // Initialize pullData if missing for existing users (one-time only)
@@ -217,6 +162,17 @@ async function execute(message) {
     const userId = message.author.id;
     const username = message.author.username;
     let user = await getUserPullState(userId, username);
+    
+    // Check if user exists - require op start first
+    if (!user) {
+        const embed = new EmbedBuilder()
+            .setColor(0xff6b6b)
+            .setTitle('Adventure Not Started')
+            .setDescription('You need to start your One Piece adventure first!\n\nUse `op start` to begin your journey.')
+            .setFooter({ text: 'Start your adventure with op start' });
+        
+        return message.reply({ embeds: [embed] });
+    }
     
     let needsSave = false;
     
