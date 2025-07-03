@@ -577,6 +577,12 @@ async function execute(message, args, client) {
         const nextLocation = getNextLocation(currentLocation);
         
         if (nextLocation === 'COMPLETED') {
+            // Mark saga as completed for infinite sail eligibility
+            if (!user.completedSagas) user.completedSagas = [];
+            if (!user.completedSagas.includes('East Blue')) {
+                user.completedSagas.push('East Blue');
+                await saveUserWithRetry(user);
+            }
             return message.reply('🎉 Congratulations! You have completed all available locations in the East Blue saga!');
         }
         
