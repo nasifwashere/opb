@@ -187,14 +187,28 @@ async function stopTraining(userId, cardName) {
         const newLevel = Math.floor(totalXP / XP_PER_LEVEL) + 1;
 
         // Return card to collection with updated XP and level
-        user.cards.push({
-            name: trainingCard.name || trainingCard.cardName,
-            rank: trainingCard.rank,
-            level: newLevel,
-            experience: totalXP,
-            timesUpgraded: trainingCard.timesUpgraded,
-            locked: trainingCard.locked
-        });
+        // Try to get the correct name/rank from cards.json if missing
+        const cardsPath = require('path').resolve('data', 'cards.json');
+        const allCards = JSON.parse(require('fs').readFileSync(cardsPath, 'utf8'));
+        let fixedName = trainingCard.name || trainingCard.cardName;
+        let fixedRank = trainingCard.rank;
+        if (!fixedRank || !fixedName) {
+          // Try to find by cardName
+          const def = allCards.find(c => c && c.name && normalize(c.name) === normalize(trainingCard.cardName));
+          if (def) {
+            fixedName = def.name;
+            fixedRank = def.rank;
+          }
+        }
+        const returnedCard = {
+          name: fixedName,
+          rank: fixedRank,
+          level: newLevel,
+          experience: totalXP,
+          timesUpgraded: trainingCard.timesUpgraded,
+          locked: trainingCard.locked
+        };
+        user.cards.push(returnedCard);
 
         // Mark arrays as modified and save
         user.markModified('training');
@@ -208,8 +222,8 @@ async function stopTraining(userId, cardName) {
 
         return { 
             success: true, 
-            message: `**${trainingCard.cardName}** has finished training!`,
-            card: trainingCard,
+            message: `**${fixedName}** has finished training!`,
+            card: returnedCard,
             xpGained: accumulatedXP,
             totalXP: totalXP,
             trainingTime: { hours: hoursTrained, minutes: remainingMinutes, total: minutesTrained }
