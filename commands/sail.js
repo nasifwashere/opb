@@ -250,33 +250,73 @@ async function execute(message, args, client) {
 
     // --- Items logic copied from explore ---
     async function showItemMenu(interaction) {
-      const inventory = user.inventory || [];
-      if (inventory.length === 0) {
-        log.push('You have no items!');
-        await updateBattleEmbed('You have no items!');
+      // --- Use explore's item logic for consistency ---
+      const { ActionRowBuilder, ButtonBuilder, EmbedBuilder } = require('discord.js');
+      const canUseInventoryItem = require('./explore.js').canUseInventoryItem;
+      const useInventoryItem = require('./explore.js').useInventoryItem;
+      // Only allow usable items (potions, etc)
+      const usableItems = ['basicpotion', 'normalpotion', 'maxpotion'];
+      const availableItems = usableItems.filter(item => canUseInventoryItem(user, item));
+      if (availableItems.length === 0) {
+        log.push('You have no usable items!');
+        await updateBattleEmbed('You have no usable items!');
         return;
       }
-      const { ActionRowBuilder, ButtonBuilder } = require('discord.js');
-      const itemButtons = inventory.slice(0, 5).map(itemName =>
+      const itemLabels = {
+        'basicpotion': 'Basic Potion',
+        'normalpotion': 'Normal Potion',
+        'maxpotion': 'Max Potion'
+      };
+      const itemButtons = availableItems.map(item =>
         new ButtonBuilder()
-          .setCustomId('use_' + itemName.replace(/\s+/g, '_'))
-          .setLabel(itemName)
+          .setCustomId(`use_${item}`)
+          .setLabel(itemLabels[item] || item)
           .setStyle(ButtonStyle.Primary)
       );
-      const itemRow = new ActionRowBuilder().addComponents(itemButtons);
+      const itemRow = new ActionRowBuilder().addComponents(itemButtons.slice(0, 5));
       await battleMessage.edit({ components: [itemRow] });
-      // Wait for item use
       try {
         const itemFilter = i => i.user.id === userId && i.customId.startsWith('use_');
         const itemInteraction = await battleMessage.awaitMessageComponent({ filter: itemFilter, time: 15000 });
-        const itemName = itemInteraction.customId.replace('use_', '').replace(/_/g, ' ');
-        // Remove item from inventory
-        const idx = user.inventory.indexOf(itemName);
-        if (idx !== -1) user.inventory.splice(idx, 1);
-        log.push(`You used ${itemName}!`);
+        const itemName = itemInteraction.customId.replace('use_', '');
+        const effect = useInventoryItem(user, itemName);
+        if (!effect) {
+          log.push('Item could not be used!');
+          await updateBattleEmbed('Item could not be used!');
+          await battleMessage.edit({ components: [row] });
+          return;
+        }
+        let effectText = '';
+        // Apply item effects (heal, boosts)
+        if (effect.type === 'heal') {
+          // Heal the first injured team member
+          const injuredCard = team.find(card => card.currentHp < card.maxHp && card.currentHp > 0);
+          if (injuredCard) {
+            const healAmount = Math.floor(injuredCard.maxHp * (effect.percent / 100));
+            const actualHeal = Math.min(healAmount, injuredCard.maxHp - injuredCard.currentHp);
+            injuredCard.currentHp += actualHeal;
+            effectText = `Healed ${injuredCard.name} for ${actualHeal} HP (${effect.percent}% of max HP)!`;
+          } else {
+            effectText = `No injured crew members to heal!`;
+          }
+        } else if (effect.type === 'attack_boost') {
+          if (!user.sailBattleBoosts) user.sailBattleBoosts = {};
+          user.sailBattleBoosts.attack_boost = { amount: effect.amount, duration: effect.duration };
+          effectText = `Attack increased by ${effect.amount}!`;
+        } else if (effect.type === 'speed_boost') {
+          if (!user.sailBattleBoosts) user.sailBattleBoosts = {};
+          user.sailBattleBoosts.speed_boost = { amount: effect.amount, duration: effect.duration };
+          effectText = `Speed increased by ${effect.amount}!`;
+        } else if (effect.type === 'defense_boost') {
+          if (!user.sailBattleBoosts) user.sailBattleBoosts = {};
+          user.sailBattleBoosts.defense_boost = { amount: effect.amount, duration: effect.duration };
+          effectText = `Defense increased by ${effect.amount}!`;
+        }
         await saveUserWithRetry(user);
-        await updateBattleEmbed(`You used ${itemName}!`);
+        await updateBattleEmbed(effectText);
         await battleMessage.edit({ components: [row] });
+        // Continue battle (advance turn, enemy turn, etc.)
+        // (You may want to add logic here to trigger the enemy turn if needed)
       } catch (e) {
         await battleMessage.edit({ components: [row] });
       }
