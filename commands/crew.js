@@ -73,18 +73,18 @@ async function handleCreateCrew(message, user, args) {
     await user.save();
 
     const embed = new EmbedBuilder()
-        .setTitle('🏴‍☠️ Crew Created!')
+        .setTitle(`Crew "${crewName}" Created`)
         .setDescription([
-            `**${crewName}** has been established!`,
+            `**${crewName}** has been established successfully`,
             '',
-            `👑 **Captain:** ${user.username || message.author.username}`,
-            `👥 **Members:** 1/${MAX_CREW_SIZE}`,
-            `💰 **Total Bounty:** ${user.bounty || 0} Beli`,
-            `📊 **Average Bounty:** ${user.bounty || 0} Beli`,
+            `**Captain:** ${user.username || message.author.username}`,
+            `**Members:** 1/${MAX_CREW_SIZE}`,
+            `**Total Bounty:** ${(user.bounty || 0).toLocaleString()} Beli`,
+            `**Average Bounty:** ${(user.bounty || 0).toLocaleString()} Beli`,
             '',
-            'Use `op crew invite @user` to recruit more pirates!'
+            'Use `op crew invite @user` to recruit more pirates'
         ].join('\n'))
-        .setColor(0x2C2F33)
+        .setColor(0x2f3136)
         .setFooter({ text: 'Crew Management' });
 
     return message.reply({ embeds: [embed] });
@@ -154,19 +154,19 @@ async function handleInviteUser(message, user, args) {
 
     // Send invite embed
     const inviteEmbed = new EmbedBuilder()
-        .setTitle('🏴‍☠️ Crew Invitation!')
+        .setTitle('Crew Invitation')
         .setDescription([
-            `**${user.username || message.author.username}** has invited you to join their crew:`,
+            `**${user.username || message.author.username}** has invited you to join their crew`,
             '',
-            `**Crew:** ${crew.name}`,
+            `**Crew Name:** ${crew.name}`,
             `**Captain:** ${user.username || message.author.username}`,
             `**Members:** ${crew.members.length}/${MAX_CREW_SIZE}`,
             '',
-            'Use `op crew accept` to join or `op crew decline` to refuse.',
+            'Use `op crew accept` to join or `op crew decline` to refuse',
             '',
             '*This invitation will expire in 24 hours*'
         ].join('\n'))
-        .setColor(0x2C2F33)
+        .setColor(0x2f3136)
         .setFooter({ text: 'Crew Invitation System' });
 
     try {
@@ -218,8 +218,8 @@ async function handleLeaveCrew(message, user) {
         await user.save();
         
         const embed = new EmbedBuilder()
-            .setTitle('🏴‍☠️ Crew Disbanded')
-            .setDescription(`**${crewName}** has been disbanded.`)
+            .setTitle('Crew Disbanded')
+            .setDescription(`**${crewName}** has been disbanded`)
             .setColor(0x95a5a6);
 
         return message.reply({ embeds: [embed] });
@@ -237,8 +237,8 @@ async function handleLeaveCrew(message, user) {
     await user.save();
 
     const embed = new EmbedBuilder()
-        .setTitle('🚪 Left Crew')
-        .setDescription(`You left **${crewName}**.`)
+        .setTitle('Left Crew')
+        .setDescription(`You left **${crewName}**`)
         .setColor(0x95a5a6);
 
     return message.reply({ embeds: [embed] });
@@ -280,16 +280,16 @@ async function handleKickMember(message, user, args) {
 async function showCrewInfo(message, user) {
     if (!user.crewId) {
         const embed = new EmbedBuilder()
-            .setTitle('🏴‍☠️ No Crew')
+            .setTitle('No Crew')
             .setDescription([
-                'You are not part of any crew.',
+                'You are not currently part of any crew',
                 '',
                 '**Available Commands:**',
                 '`op crew create <name>` - Create a new crew',
                 '`op crew accept` - Accept a crew invitation',
                 '`op crew decline` - Decline a crew invitation',
                 '',
-                'Join a crew to adventure together with other pirates!'
+                'Join a crew to adventure together with other pirates'
             ].join('\n'))
             .setColor(0x95a5a6)
             .setFooter({ text: 'Crew System' });
@@ -317,29 +317,29 @@ async function showCrewInfo(message, user) {
         const isCaptain = member.crewRole === 'captain';
         const isYou = member.userId === user.userId;
         
-        let status = isCaptain ? '👑' : '👤';
+        let status = isCaptain ? 'Captain' : 'Member';
         if (isYou) status += ' (You)';
         
-        membersList += `${status} ${member.username || 'Unknown'} - ${bounty.toLocaleString()} Bounty\n`;
+        membersList += `**${member.username || 'Unknown'}** - ${status}\n${bounty.toLocaleString()} Bounty\n\n`;
     }
     
     const averageBounty = crewMembers.length > 0 ? Math.floor(totalBounty / crewMembers.length) : 0;
 
     const embed = new EmbedBuilder()
-        .setTitle(`🏴‍☠️ ${crew.name}`)
+        .setTitle(`${crew.name}`)
         .setDescription([
             `**Captain:** ${crewMembers.find(m => m.crewRole === 'captain')?.username || 'Unknown'}`,
             `**Members:** ${crewMembers.length}/${MAX_CREW_SIZE}`,
-            `💰 **Total Bounty:** ${totalBounty.toLocaleString()} Beli`,
-            `📊 **Average Bounty:** ${averageBounty.toLocaleString()} Beli`,
+            `**Total Bounty:** ${totalBounty.toLocaleString()} Beli`,
+            `**Average Bounty:** ${averageBounty.toLocaleString()} Beli`,
             ''
         ].join('\n'))
         .addFields({
-            name: '👥 Crew Members',
+            name: 'Crew Members',
             value: membersList || 'No members found',
             inline: false
         })
-        .setColor(0x2C2F33)
+        .setColor(0x2f3136)
         .setFooter({ text: `Created ${crew.createdAt.toLocaleDateString()}` });
 
     return message.reply({ embeds: [embed] });

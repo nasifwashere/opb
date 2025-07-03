@@ -10,9 +10,9 @@
     "saga": "East Blue",
     "evolution": {
       "nextId": "Monkey D. Luffy (Gear Second)",
-      "requiredLevel": 25,
-      "cost": 1000,
-      "requiredSaga": "Water 7"
+      "requiredLevel": 5,
+      "cost": 50,
+      "requiredSaga": "East Blue"
     }
   },
   {
