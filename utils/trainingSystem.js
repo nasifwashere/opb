@@ -250,6 +250,8 @@ async function getTrainingStatus(userId) {
         }
 
         // Calculate current XP for each training card
+        const cardsPath = require('path').resolve('data', 'cards.json');
+        const allCards = JSON.parse(require('fs').readFileSync(cardsPath, 'utf8'));
         const trainingStatus = user.training.map(trainingCard => {
             const currentXP = calculateTrainingXP(trainingCard.startTime);
             const totalXP = trainingCard.experience + currentXP;
@@ -257,9 +259,18 @@ async function getTrainingStatus(userId) {
             const minutesTrained = Math.floor(trainingDuration / (1000 * 60));
             const hoursTrained = Math.floor(minutesTrained / 60);
             const remainingMinutes = minutesTrained % 60;
-            
+            // Always resolve name/rank from cards.json if possible
+            let fixedName = trainingCard.name || trainingCard.cardName;
+            let fixedRank = trainingCard.rank;
+            const def = allCards.find(c => c && c.name && normalize(c.name) === normalize(fixedName));
+            if (def) {
+              fixedName = def.name;
+              fixedRank = def.rank;
+            }
             return {
                 ...trainingCard,
+                name: fixedName,
+                rank: fixedRank,
                 currentAccumulatedXP: currentXP,
                 currentTotalXP: totalXP,
                 trainingTime: { hours: hoursTrained, minutes: remainingMinutes, total: minutesTrained }
