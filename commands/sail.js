@@ -129,7 +129,6 @@ async function execute(message, args, client) {
   // Handle event types
   if (event.type === 'enemy') {
     // Use real battle system (single enemy)
-    // Prepare enemy as array for compatibility
     const enemyObj = {
       ...event.enemy,
       currentHp: event.enemy.hp,
@@ -139,43 +138,135 @@ async function execute(message, args, client) {
     if (!battleTeam || battleTeam.length === 0) {
       return message.reply('❌ Your team is invalid or cards are missing. Please check your team with `op team` and fix any issues.');
     }
-    // Simulate a simple battle (one round, user always wins for now)
-    // TODO: Replace with full turn-based system if needed
-    const battleLog = [`Your crew defeats the ${enemyObj.name}!`];
-    // Award rewards
-    let rewardText = '';
-    if (event.reward) {
-      if (event.reward.type === 'multiple') {
-        for (const r of event.reward.rewards) {
-          if (r.type === 'beli') user.beli = (user.beli || 0) + r.amount;
-          if (r.type === 'xp') distributeXPToTeam(user, r.amount);
-          if (r.type === 'item') user.inventory = [...(user.inventory || []), r.name];
-        }
-        rewardText = event.reward.rewards.map(r => `${r.type === 'beli' ? '💰' : r.type === 'xp' ? '⭐' : '🎁'} ${r.amount || r.name}`).join('  ');
-      } else if (event.reward.type === 'beli') {
-        user.beli = (user.beli || 0) + event.reward.amount;
-        rewardText = `💰 ${event.reward.amount}`;
-      } else if (event.reward.type === 'xp') {
-        distributeXPToTeam(user, event.reward.amount);
-        rewardText = `⭐ ${event.reward.amount}`;
-      } else if (event.reward.type === 'item') {
-        user.inventory = [...(user.inventory || []), event.reward.name];
-        rewardText = `🎁 ${event.reward.name}`;
-      }
-    }
-    await saveUserWithRetry(user);
+    // Initial battle log
+    const battleLog = [`A wild ${enemyObj.name} appears!`];
+    // Render battle UI with buttons
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+    const battleButtons = [
+      new ButtonBuilder().setCustomId('sail_attack').setLabel('Attack').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('sail_items').setLabel('Items').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('sail_flee').setLabel('Flee').setStyle(ButtonStyle.Secondary)
+    ];
+    const row = new ActionRowBuilder().addComponents(battleButtons);
     const embed = new EmbedBuilder()
       .setTitle(`⚔️ ${event.title}`)
       .setDescription(event.desc)
       .addFields(
         { name: 'Your Crew', value: createProfessionalTeamDisplay(battleTeam, 'Your Crew'), inline: false },
         { name: 'Enemy', value: createEnemyDisplay([enemyObj]), inline: false },
-        { name: 'Battle Log', value: createBattleLogDisplay(battleLog), inline: false },
-        { name: 'Reward', value: rewardText, inline: false }
+        { name: 'Battle Log', value: createBattleLogDisplay(battleLog), inline: false }
       )
       .setColor(0x3498db)
       .setFooter({ text: `Sails completed: ${sailsDone}` });
-    return message.reply({ embeds: [embed] });
+    const battleMessage = await message.reply({ embeds: [embed], components: [row] });
+
+    // Set up collector for battle actions
+    const filter = i => i.user.id === userId && i.customId.startsWith('sail_');
+    const collector = battleMessage.createMessageComponentCollector({ filter, time: 120000 });
+
+    // Minimal battle state for this encounter
+    let playerTurn = true;
+    let enemy = { ...enemyObj };
+    let team = battleTeam.map(card => ({ ...card }));
+    let log = [...battleLog];
+    let battleOver = false;
+
+    async function updateBattleEmbed(extraLog = null) {
+      const embed = new EmbedBuilder()
+        .setTitle(`⚔️ ${event.title}`)
+        .setDescription(event.desc)
+        .addFields(
+          { name: 'Your Crew', value: createProfessionalTeamDisplay(team, 'Your Crew'), inline: false },
+          { name: 'Enemy', value: createEnemyDisplay([enemy]), inline: false },
+          { name: 'Battle Log', value: createBattleLogDisplay(extraLog ? [...log, extraLog] : log), inline: false }
+        )
+        .setColor(0x3498db)
+        .setFooter({ text: `Sails completed: ${sailsDone}` });
+      await battleMessage.edit({ embeds: [embed] });
+    }
+
+    collector.on('collect', async interaction => {
+      await interaction.deferUpdate();
+      if (battleOver) return;
+      if (interaction.customId === 'sail_attack') {
+        // Find first alive team member
+        const attacker = team.find(card => card.currentHp > 0);
+        if (!attacker) {
+          log.push('All your crew are down!');
+          battleOver = true;
+          await updateBattleEmbed('All your crew are down!');
+          return collector.stop('defeat');
+        }
+        // Calculate damage
+        const { calculateDamage } = require('../utils/battleSystem.js');
+        let dmg = calculateDamage(attacker, enemy);
+        enemy.currentHp -= dmg;
+        log.push(`${attacker.name} attacks ${enemy.name} for ${dmg} damage!`);
+        if (enemy.currentHp <= 0) {
+          log.push(`${enemy.name} is defeated!`);
+          battleOver = true;
+          // Award rewards
+          let rewardText = '';
+          if (event.reward) {
+            if (event.reward.type === 'multiple') {
+              for (const r of event.reward.rewards) {
+                if (r.type === 'beli') user.beli = (user.beli || 0) + r.amount;
+                if (r.type === 'xp') distributeXPToTeam(user, r.amount);
+                if (r.type === 'item') user.inventory = [...(user.inventory || []), r.name];
+              }
+              rewardText = event.reward.rewards.map(r => `${r.type === 'beli' ? '💰' : r.type === 'xp' ? '⭐' : '🎁'} ${r.amount || r.name}`).join('  ');
+            } else if (event.reward.type === 'beli') {
+              user.beli = (user.beli || 0) + event.reward.amount;
+              rewardText = `💰 ${event.reward.amount}`;
+            } else if (event.reward.type === 'xp') {
+              distributeXPToTeam(user, event.reward.amount);
+              rewardText = `⭐ ${event.reward.amount}`;
+            } else if (event.reward.type === 'item') {
+              user.inventory = [...(user.inventory || []), event.reward.name];
+              rewardText = `🎁 ${event.reward.name}`;
+            }
+          }
+          await saveUserWithRetry(user);
+          await updateBattleEmbed(`${enemy.name} is defeated!\n**Reward:** ${rewardText}`);
+          await battleMessage.edit({ components: [] });
+          return collector.stop('victory');
+        }
+        // Enemy turn (simple)
+        const target = team.find(card => card.currentHp > 0);
+        if (target) {
+          let enemyDmg = require('../utils/battleSystem.js').calculateDamage(enemy, target);
+          target.currentHp -= enemyDmg;
+          log.push(`${enemy.name} attacks ${target.name} for ${enemyDmg} damage!`);
+          if (target.currentHp <= 0) {
+            log.push(`${target.name} is knocked out!`);
+          }
+        }
+        // Check defeat
+        if (!team.some(card => card.currentHp > 0)) {
+          log.push('All your crew are down!');
+          battleOver = true;
+          await updateBattleEmbed('All your crew are down!');
+          await battleMessage.edit({ components: [] });
+          return collector.stop('defeat');
+        }
+        await updateBattleEmbed();
+      } else if (interaction.customId === 'sail_flee') {
+        log.push('You fled the battle!');
+        battleOver = true;
+        await updateBattleEmbed('You fled the battle!');
+        await battleMessage.edit({ components: [] });
+        return collector.stop('fled');
+      } else if (interaction.customId === 'sail_items') {
+        // For now, just log item use (expand as needed)
+        log.push('You rummage through your items (item use coming soon).');
+        await updateBattleEmbed('You rummage through your items (item use coming soon).');
+      }
+    });
+
+    collector.on('end', async () => {
+      await battleMessage.edit({ components: [] });
+    });
+    return;
   } else if (event.type === 'narrative') {
     // Narrative event UI
     let rewardText = '';
