@@ -184,7 +184,8 @@ async function execute(message, args, client) {
   if (!user.sailsCompleted) user.sailsCompleted = {};
   if (!user.sailsCompleted[arc]) user.sailsCompleted[arc] = 0;
   const sailsDone = user.sailsCompleted[arc];
-  const event = getSailEvent(sailsDone + 1); // Preview next event, but only increment after completion
+  const eventNumber = sailsDone + 1;
+  const event = getSailEvent(eventNumber); // Preview next event, but only increment after completion
 
   // UI helpers
   const { createProfessionalTeamDisplay, createEnemyDisplay, createBattleLogDisplay, createProgressDisplay } = require('../utils/uiHelpers.js');
@@ -218,7 +219,7 @@ async function execute(message, args, client) {
         { name: 'Battle Log', value: createBattleLogDisplay(battleLog), inline: false }
       )
       .setColor(0x3498db)
-      .setFooter({ text: `Sails completed: ${sailsDone}` });
+      .setFooter({ text: `Sails completed: ${eventNumber}` });
     const battleMessage = await message.reply({ embeds: [embed], components: [row] });
 
     // Set up collector for battle actions
@@ -242,7 +243,7 @@ async function execute(message, args, client) {
           { name: 'Battle Log', value: createBattleLogDisplay(extraLog ? [...log, extraLog] : log), inline: false }
         )
         .setColor(0x3498db)
-        .setFooter({ text: `Sails completed: ${sailsDone}` });
+        .setFooter({ text: `Sails completed: ${eventNumber}` });
       await battleMessage.edit({ embeds: [embed] });
     }
 
@@ -444,7 +445,7 @@ async function execute(message, args, client) {
         { name: 'Reward', value: rewardText, inline: false }
       )
       .setColor(0x2ecc71)
-      .setFooter({ text: `Sails completed: ${user.sailsCompleted[arc]}` });
+      .setFooter({ text: `Sails completed: ${eventNumber}` });
     return message.reply({ embeds: [embed] });
   } else if (event.type === 'choice') {
     // Choice event UI (simple yes/no)
@@ -462,7 +463,7 @@ async function execute(message, args, client) {
       .setTitle(`❓ ${event.title}`)
       .setDescription(event.desc)
       .setColor(0xf1c40f)
-      .setFooter({ text: `Sails completed: ${sailsDone}` });
+      .setFooter({ text: `Sails completed: ${eventNumber}` });
     if (row) {
       const sent = await message.reply({ embeds: [embed], components: [row] });
       // Wait for button interaction (simple version)
@@ -489,7 +490,7 @@ async function execute(message, args, client) {
           .setTitle('Result')
           .setDescription(`You chose **${choice}**!`)
           .addFields({ name: 'Reward', value: rewardText, inline: false })
-          .setFooter({ text: `Sails completed: ${user.sailsCompleted[arc]}` });
+          .setFooter({ text: `Sails completed: ${eventNumber}` });
         return collected.update({ embeds: [resultEmbed], components: [] });
       } catch (e) {
         // Timeout or error
