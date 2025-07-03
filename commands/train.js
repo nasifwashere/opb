@@ -49,8 +49,8 @@ async function execute(message, args) {
             const timeText = card.trainingTime.hours > 0 
                 ? `${card.trainingTime.hours}h ${card.trainingTime.minutes}m`
                 : `${card.trainingTime.minutes}m`;
-            
-            trainingText += `**${card.cardName}** (${card.rank})\n`;
+            // Always use .name for display
+            trainingText += `**${card.name}** (${card.rank})\n`;
             trainingText += `\`\`\`Training time: ${timeText}\nXP gained: ${card.currentAccumulatedXP}\nTotal XP: ${card.currentTotalXP}\`\`\`\n`;
         }
 
@@ -63,15 +63,13 @@ async function execute(message, args) {
         return message.reply({ embeds: [embed] });
     }
 
+    // Fuzzy recognition for card name
     const cardName = args.join(' ');
-    
     // Start training the specified card
     const result = await startTraining(userId, cardName);
-    
     if (!result.success) {
         return message.reply(result.message);
     }
-
     const embed = new EmbedBuilder()
         .setTitle('Training Started!')
         .setDescription(result.message)
@@ -82,7 +80,6 @@ async function execute(message, args) {
         )
         .setColor(0x2ecc71)
         .setFooter({ text: 'Use "op untrain <card name>" to stop training and get your card back' });
-
     return message.reply({ embeds: [embed] });
 }
 

@@ -121,9 +121,23 @@ async function startTraining(userId, cardName) {
         user.cards.splice(cardIndex, 1);
 
         // Add to training
+        // Always resolve name/rank from cards.json if possible, using fuzzy match
+        const cardsPath = require('path').resolve('data', 'cards.json');
+        const allCards = JSON.parse(require('fs').readFileSync(cardsPath, 'utf8'));
+        let fixedName = card.name;
+        let fixedRank = card.rank;
+        let def = allCards.find(c => c && c.name && normalize(c.name) === normalize(fixedName));
+        if (!def && fixedName) {
+            def = fuzzyFindCard(allCards, fixedName);
+        }
+        if (def) {
+            fixedName = def.name;
+            fixedRank = def.rank;
+        }
         user.training.push({
-            cardName: card.name,
-            rank: card.rank,
+            name: fixedName,
+            cardName: fixedName, // for legacy compatibility
+            rank: fixedRank,
             level: card.level || 1,
             experience: card.experience || 0,
             timesUpgraded: card.timesUpgraded || 0,
