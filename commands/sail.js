@@ -32,7 +32,10 @@ const data = new SlashCommandBuilder()
       .setRequired(true)
   );
 
-async function execute(message, args) {
+console.log('[SAIL] sail.js loaded');
+
+async function execute(message, args, client) {
+  console.log('[SAIL] execute called', { args, user: message.author?.id || message.user?.id });
   const userId = message.author.id;
   let user = await User.findOne({ userId });
   if (!user) return message.reply('Start your journey with `op start` first!');
