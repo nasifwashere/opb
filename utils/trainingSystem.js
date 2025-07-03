@@ -252,6 +252,23 @@ async function getTrainingStatus(userId) {
         // Calculate current XP for each training card
         const cardsPath = require('path').resolve('data', 'cards.json');
         const allCards = JSON.parse(require('fs').readFileSync(cardsPath, 'utf8'));
+        function fuzzyFindCard(cards, input) {
+            const normInput = normalize(input);
+            let bestMatch = null;
+            let bestScore = 0;
+            for (const card of cards) {
+                const normName = normalize(card.name);
+                let score = 0;
+                if (normName === normInput) score = 3;
+                else if (normName.includes(normInput)) score = 2;
+                else if (normName.startsWith(normInput)) score = 1;
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMatch = card;
+                }
+            }
+            return bestMatch;
+        }
         const trainingStatus = user.training.map(trainingCard => {
             const currentXP = calculateTrainingXP(trainingCard.startTime);
             const totalXP = trainingCard.experience + currentXP;
@@ -259,13 +276,16 @@ async function getTrainingStatus(userId) {
             const minutesTrained = Math.floor(trainingDuration / (1000 * 60));
             const hoursTrained = Math.floor(minutesTrained / 60);
             const remainingMinutes = minutesTrained % 60;
-            // Always resolve name/rank from cards.json if possible
+            // Always resolve name/rank from cards.json if possible, using fuzzy match
             let fixedName = trainingCard.name || trainingCard.cardName;
             let fixedRank = trainingCard.rank;
-            const def = allCards.find(c => c && c.name && normalize(c.name) === normalize(fixedName));
+            let def = allCards.find(c => c && c.name && normalize(c.name) === normalize(fixedName));
+            if (!def && fixedName) {
+                def = fuzzyFindCard(allCards, fixedName);
+            }
             if (def) {
-              fixedName = def.name;
-              fixedRank = def.rank;
+                fixedName = def.name;
+                fixedRank = def.rank;
             }
             return {
                 ...trainingCard,
