@@ -183,10 +183,8 @@ async function execute(message, args, client) {
   // Progress tracking
   if (!user.sailsCompleted) user.sailsCompleted = {};
   if (!user.sailsCompleted[arc]) user.sailsCompleted[arc] = 0;
-  user.sailsCompleted[arc]++;
-  await saveUserWithRetry(user);
   const sailsDone = user.sailsCompleted[arc];
-  const event = getSailEvent(sailsDone);
+  const event = getSailEvent(sailsDone + 1); // Preview next event, but only increment after completion
 
   // UI helpers
   const { createProfessionalTeamDisplay, createEnemyDisplay, createBattleLogDisplay, createProgressDisplay } = require('../utils/uiHelpers.js');
@@ -375,6 +373,8 @@ async function execute(message, args, client) {
               rewardText = `🎁 ${event.reward.name}`;
             }
           }
+          // INCREMENT sailsCompleted *after* successful event
+          user.sailsCompleted[arc]++;
           await saveUserWithRetry(user);
           await updateBattleEmbed(`All enemies are defeated!\n**Reward:** ${rewardText}`);
           await battleMessage.edit({ components: [] });
@@ -404,6 +404,8 @@ async function execute(message, args, client) {
       } else if (interaction.customId === 'sail_flee') {
         log.push('You fled the battle!');
         battleOver = true;
+        // Only increment sailsCompleted if you want fleeing to count as a completed sail (optional)
+        // user.sailsCompleted[arc]++;
         await updateBattleEmbed('You fled the battle!');
         await battleMessage.edit({ components: [] });
         return collector.stop('fled');
@@ -431,6 +433,8 @@ async function execute(message, args, client) {
         rewardText = `🎁 ${event.reward.name}`;
       }
     }
+    // INCREMENT sailsCompleted *after* successful event
+    user.sailsCompleted[arc]++;
     await saveUserWithRetry(user);
     const embed = new EmbedBuilder()
       .setTitle(`🗺️ ${event.title}`)
@@ -440,7 +444,7 @@ async function execute(message, args, client) {
         { name: 'Reward', value: rewardText, inline: false }
       )
       .setColor(0x2ecc71)
-      .setFooter({ text: `Sails completed: ${sailsDone}` });
+      .setFooter({ text: `Sails completed: ${user.sailsCompleted[arc]}` });
     return message.reply({ embeds: [embed] });
   } else if (event.type === 'choice') {
     // Choice event UI (simple yes/no)
@@ -478,12 +482,14 @@ async function execute(message, args, client) {
           user.inventory = [...(user.inventory || []), reward.name];
           rewardText = `🎁 ${reward.name}`;
         }
+        // INCREMENT sailsCompleted *after* successful event
+        user.sailsCompleted[arc]++;
         await saveUserWithRetry(user);
         const resultEmbed = new EmbedBuilder()
           .setTitle('Result')
           .setDescription(`You chose **${choice}**!`)
           .addFields({ name: 'Reward', value: rewardText, inline: false })
-          .setFooter({ text: `Sails completed: ${sailsDone}` });
+          .setFooter({ text: `Sails completed: ${user.sailsCompleted[arc]}` });
         return collected.update({ embeds: [resultEmbed], components: [] });
       } catch (e) {
         // Timeout or error
