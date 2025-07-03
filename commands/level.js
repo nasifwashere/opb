@@ -84,10 +84,19 @@ async function execute(message, args) {
   }
 
   // Only the first card (lowest index) is the main card
-  const mainCard = userCards[0];
-  // Only use level 1 duplicates for leveling up
+  // Find the main card in the user's collection (by reference, not just value)
+  const mainCardIndex = user.cards.findIndex(c => normalize(c.name) === normalize(cardName));
+  if (mainCardIndex === -1) {
+    const embed = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setDescription(`You don't own "${cardName}".`)
+      .setFooter({ text: 'Card not found in your collection' });
+    return message.reply({ embeds: [embed] });
+  }
+  const mainCard = user.cards[mainCardIndex];
+  // Only use level 1 duplicates for leveling up, and skip the main card
   const duplicateCards = user.cards.filter((c, idx) =>
-    idx !== user.cards.indexOf(mainCard) &&
+    idx !== mainCardIndex &&
     normalize(c.name) === normalize(cardName) &&
     (c.level === 1 || !c.level)
   );

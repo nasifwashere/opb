@@ -294,49 +294,43 @@ async function handleGiveCommand(message, args) {
   }
   
   // Otherwise treat as card name and rank
-  const cardName = args.slice(2, -1).join(' '); // All args except last one as card name
-  const rank = args[args.length - 1].toUpperCase(); // Last arg as rank
-  
-  if (cardName && rank && ['C', 'B', 'A', 'S', 'UR'].includes(rank)) {
-    // Initialize cards array if needed
+  const cardName = args.slice(2, -1).join(' ');
+  const rank = args[args.length - 1].toUpperCase();
+
+  // Validate card exists in cards.json
+  const cardsPath = require('path').resolve('data', 'cards.json');
+  const allCards = JSON.parse(require('fs').readFileSync(cardsPath, 'utf8'));
+  const cardDef = allCards.find(c => c && c.name && c.rank && normalize(c.name) === normalize(cardName) && c.rank.toUpperCase() === rank);
+
+  if (cardDef && ['C', 'B', 'A', 'S', 'UR'].includes(rank)) {
     if (!user.cards) user.cards = [];
-    
-    // Add card using the same method as pull command
     user.cards.push({
-      name: cardName,
-      rank: rank,
+      name: cardDef.name,
+      rank: cardDef.rank,
       level: 1,
       experience: 0,
       timesUpgraded: 0,
       locked: false
     });
-    
-    // Mark the cards array as modified
     user.markModified('cards');
-    
-    // Use the same save method as pull command for reliability
     try {
       await saveUserWithRetry(user);
-      
-      // Update quest progress like pull command does (treat as a "pull")
       try {
         const { updateQuestProgress } = require('../utils/questSystem.js');
         await updateQuestProgress(user, 'pull', 1);
-        await saveUserWithRetry(user); // Save quest progress
+        await saveUserWithRetry(user);
       } catch (questError) {
         console.log(`[OWNER] Quest progress update failed for ${targetUser.id}:`, questError);
-        // Don't fail the give command if quest update fails
       }
-      
-      console.log(`[OWNER] Successfully gave ${cardName} (${rank}) to ${targetUser.username} (${targetUser.id})`);
-      return message.reply(`✅ Gave ${cardName} (${rank}) to ${targetUser.username}`);
+      console.log(`[OWNER] Successfully gave ${cardDef.name} (${cardDef.rank}) to ${targetUser.username} (${targetUser.id})`);
+      return message.reply(`✅ Gave ${cardDef.name} (${cardDef.rank}) to ${targetUser.username}`);
     } catch (error) {
       console.error(`[OWNER] Error saving card for user ${targetUser.id}:`, error);
       return message.reply(`❌ Error giving card to ${targetUser.username}. Please try again.`);
     }
   }
 
-  return message.reply('❌ Invalid command format. Use: `op owner give @user <amount> <beli/xp>` or `op owner give @user <card_name> <rank>`');
+  return message.reply('❌ Invalid command format or card does not exist. Use: `op owner give @user <amount> <beli/xp>` or `op owner give @user <card_name> <rank>`');
 }
 
 async function handleResetCommand(message, args) {
@@ -489,6 +483,15 @@ async function handleSpawnCommand(message, args) {
   const cardName = args[1];
   const rank = args[2].toUpperCase();
 
+  // Validate card exists in cards.json
+  const cardsPath = require('path').resolve('data', 'cards.json');
+  const allCards = JSON.parse(require('fs').readFileSync(cardsPath, 'utf8'));
+  const cardDef = allCards.find(c => c && c.name && c.rank && normalize(c.name) === normalize(cardName) && c.rank.toUpperCase() === rank);
+
+  if (!cardDef) {
+    return message.reply('❌ Card not found in database. Please check the card name and rank.');
+  }
+
   let user = await User.findOne({ userId: message.author.id });
   if (!user) {
     return message.reply('❌ You need to be registered first.');
@@ -496,8 +499,8 @@ async function handleSpawnCommand(message, args) {
 
   if (!user.cards) user.cards = [];
   user.cards.push({
-    name: cardName,
-    rank: rank,
+    name: cardDef.name,
+    rank: cardDef.rank,
     level: 1,
     experience: 0,
     timesUpgraded: 0,
@@ -505,7 +508,7 @@ async function handleSpawnCommand(message, args) {
   });
 
   await user.save();
-  return message.reply(`✅ Spawned ${cardName} (${rank}) for yourself`);
+  return message.reply(`✅ Spawned ${cardDef.name} (${cardDef.rank}) for yourself`);
 }
 
 async function handleItemCommand(message, args) {
