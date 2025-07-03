@@ -188,7 +188,7 @@ async function stopTraining(userId, cardName) {
 
         // Return card to collection with updated XP and level
         user.cards.push({
-            name: trainingCard.cardName,
+            name: trainingCard.name || trainingCard.cardName,
             rank: trainingCard.rank,
             level: newLevel,
             experience: totalXP,

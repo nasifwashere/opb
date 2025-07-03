@@ -590,4 +590,8 @@ function formatUptime(seconds) {
   return parts.join(' ') || '< 1m';
 }
 
+function normalize(str) {
+  return String(str || '').replace(/\s+/g, '').toLowerCase();
+}
+
 module.exports = { data, execute };
