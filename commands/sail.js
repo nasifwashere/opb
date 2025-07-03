@@ -7,21 +7,74 @@ const itemsData = require('../data/shop.json');
 const SAIL_UNLOCK_SAGA = 'East Blue';
 const SAIL_SAGA_LIST = ['East Blue']; // Expandable for future sagas
 
-// Reward scaling table for East Blue
-const SAIL_REWARDS = [
-  { min: 1, max: 5,   beli: [5, 10], xp: [1, 5], items: [], enemies: [{ hp: 30, count: 1, type: 'Navy Soldier' }] },
-  { min: 6, max: 10,  beli: [10, 50], xp: [5, 10], items: [], enemies: [{ hp: 50, count: 1, type: 'Stronger Navy' }] },
-  { min: 11, max: 20, beli: [50, 100], xp: [10, 15], items: ['Common'], enemies: [{ hp: 100, count: getRandomInt(1, 3), type: 'Navy Soldier' }] },
-  { min: 21, max: 50, beli: [100, 250], xp: [10, 20], items: ['Uncommon'], enemies: [{ hp: getRandomInt(100, 300), count: getRandomInt(1, 3), type: 'Navy' }] },
-  { min: 51, max: 9999, beli: [250, 500], xp: [15, 30], items: ['Rare', 'Epic', 'Legendary'], enemies: [{ hp: getRandomInt(200, 500), count: getRandomInt(2, 4), type: 'Elite Navy' }] }
+
+// Navy ranks for variety
+const NAVY_RANKS = [
+  'Navy Recruit', 'Navy Seaman', 'Navy Petty Officer', 'Navy Chief Petty Officer',
+  'Navy Ensign', 'Navy Lieutenant', 'Navy Commander', 'Navy Captain', 'Navy Commodore', 'Navy Vice Admiral', 'Navy Admiral'
 ];
 
-function getSailReward(sailsCompleted) {
-  for (const row of SAIL_REWARDS) {
-    if (sailsCompleted >= row.min && sailsCompleted <= row.max) return row;
-  }
-  return SAIL_REWARDS[SAIL_REWARDS.length - 1];
-}
+// SAIL_EVENTS: a mix of battle, narrative, and choice events
+const SAIL_EVENTS = [
+  // Battle event
+  () => ({
+    type: 'enemy',
+    title: 'Navy Ambush!',
+    desc: 'A group of Navy officers block your path at sea.',
+    enemy: {
+      name: NAVY_RANKS[getRandomInt(0, NAVY_RANKS.length-1)],
+      hp: getRandomInt(80, 180),
+      atk: [getRandomInt(10, 20), getRandomInt(21, 35)],
+      spd: getRandomInt(40, 80),
+      rank: ['C','B','A'][getRandomInt(0,2)]
+    },
+    reward: { type: 'multiple', rewards: [
+      { type: 'beli', amount: getRandomInt(50, 200) },
+      { type: 'xp', amount: getRandomInt(10, 40) }
+    ]}
+  }),
+  // Narrative event
+  () => ({
+    type: 'narrative',
+    title: 'Calm Waters',
+    desc: 'The sea is calm. Your crew shares stories and enjoys a peaceful moment.',
+    reward: { type: 'xp', amount: getRandomInt(5, 15) }
+  }),
+  // Choice event
+  () => ({
+    type: 'choice',
+    title: 'Mysterious Crate',
+    desc: 'You spot a floating crate. Do you want to open it?',
+    choice: {
+      yes: { type: 'item', name: 'Basic Potion' },
+      no: { type: 'beli', amount: 20 }
+    }
+  }),
+  // Battle event (stronger)
+  () => ({
+    type: 'enemy',
+    title: 'Elite Navy Challenge',
+    desc: 'A high-ranking Navy officer challenges you to a duel!',
+    enemy: {
+      name: NAVY_RANKS[getRandomInt(5, NAVY_RANKS.length-1)],
+      hp: getRandomInt(150, 300),
+      atk: [getRandomInt(20, 30), getRandomInt(31, 50)],
+      spd: getRandomInt(60, 100),
+      rank: ['A','S'][getRandomInt(0,1)]
+    },
+    reward: { type: 'multiple', rewards: [
+      { type: 'beli', amount: getRandomInt(150, 400) },
+      { type: 'xp', amount: getRandomInt(30, 70) }
+    ]}
+  }),
+  // Narrative event (rare)
+  () => ({
+    type: 'narrative',
+    title: 'Treasure Map',
+    desc: 'You find a tattered map hinting at hidden treasure. Your crew is excited!',
+    reward: { type: 'beli', amount: getRandomInt(100, 300) }
+  })
+];
 
 const data = new SlashCommandBuilder()
   .setName('sail')
@@ -57,52 +110,150 @@ async function execute(message, args, client) {
     }
   }
 
+
   // Progress tracking
   if (!user.sailsCompleted) user.sailsCompleted = {};
   if (!user.sailsCompleted[arc]) user.sailsCompleted[arc] = 0;
   user.sailsCompleted[arc]++;
   const sailsDone = user.sailsCompleted[arc];
 
-  // Get reward scaling
-  const reward = getSailReward(sailsDone);
-  const earnedBeli = getRandomInt(reward.beli[0], reward.beli[1]);
-  const earnedXP = getRandomInt(reward.xp[0], reward.xp[1]);
-  let earnedItems = [];
-  if (reward.items.length > 0) {
-    // Pick a random item of the allowed rarities
-    const possibleItems = itemsData.filter(i => reward.items.includes(i.rarity));
-    if (possibleItems.length > 0) {
-      const item = possibleItems[getRandomInt(0, possibleItems.length - 1)];
-      earnedItems.push(item.name);
+  // Pick event for this sail (cycle through, or random)
+  const eventFn = SAIL_EVENTS[(sailsDone - 1) % SAIL_EVENTS.length];
+  const event = eventFn();
+
+  // UI helpers
+  const { createProfessionalTeamDisplay, createEnemyDisplay, createBattleLogDisplay, createProgressDisplay } = require('../utils/uiHelpers.js');
+  const { calculateBattleStats, resetTeamHP } = require('../utils/battleSystem.js');
+  const { distributeXPToTeam } = require('../utils/levelSystem.js');
+
+  // Handle event types
+  if (event.type === 'enemy') {
+    // Use real battle system (single enemy)
+    // Prepare enemy as array for compatibility
+    const enemyObj = {
+      ...event.enemy,
+      currentHp: event.enemy.hp,
+      maxHp: event.enemy.hp
+    };
+    const battleTeam = calculateBattleStats(user);
+    if (!battleTeam || battleTeam.length === 0) {
+      return message.reply('❌ Your team is invalid or cards are missing. Please check your team with `op team` and fix any issues.');
+    }
+    // Simulate a simple battle (one round, user always wins for now)
+    // TODO: Replace with full turn-based system if needed
+    const battleLog = [`Your crew defeats the ${enemyObj.name}!`];
+    // Award rewards
+    let rewardText = '';
+    if (event.reward) {
+      if (event.reward.type === 'multiple') {
+        for (const r of event.reward.rewards) {
+          if (r.type === 'beli') user.beli = (user.beli || 0) + r.amount;
+          if (r.type === 'xp') distributeXPToTeam(user, r.amount);
+          if (r.type === 'item') user.inventory = [...(user.inventory || []), r.name];
+        }
+        rewardText = event.reward.rewards.map(r => `${r.type === 'beli' ? '💰' : r.type === 'xp' ? '⭐' : '🎁'} ${r.amount || r.name}`).join('  ');
+      } else if (event.reward.type === 'beli') {
+        user.beli = (user.beli || 0) + event.reward.amount;
+        rewardText = `💰 ${event.reward.amount}`;
+      } else if (event.reward.type === 'xp') {
+        distributeXPToTeam(user, event.reward.amount);
+        rewardText = `⭐ ${event.reward.amount}`;
+      } else if (event.reward.type === 'item') {
+        user.inventory = [...(user.inventory || []), event.reward.name];
+        rewardText = `🎁 ${event.reward.name}`;
+      }
+    }
+    await saveUserWithRetry(user);
+    const embed = new EmbedBuilder()
+      .setTitle(`⚔️ ${event.title}`)
+      .setDescription(event.desc)
+      .addFields(
+        { name: 'Your Crew', value: createProfessionalTeamDisplay(battleTeam, 'Your Crew'), inline: false },
+        { name: 'Enemy', value: createEnemyDisplay([enemyObj]), inline: false },
+        { name: 'Battle Log', value: createBattleLogDisplay(battleLog), inline: false },
+        { name: 'Reward', value: rewardText, inline: false }
+      )
+      .setColor(0x3498db)
+      .setFooter({ text: `Sails completed: ${sailsDone}` });
+    return message.reply({ embeds: [embed] });
+  } else if (event.type === 'narrative') {
+    // Narrative event UI
+    let rewardText = '';
+    if (event.reward) {
+      if (event.reward.type === 'beli') {
+        user.beli = (user.beli || 0) + event.reward.amount;
+        rewardText = `💰 ${event.reward.amount}`;
+      } else if (event.reward.type === 'xp') {
+        distributeXPToTeam(user, event.reward.amount);
+        rewardText = `⭐ ${event.reward.amount}`;
+      } else if (event.reward.type === 'item') {
+        user.inventory = [...(user.inventory || []), event.reward.name];
+        rewardText = `🎁 ${event.reward.name}`;
+      }
+    }
+    await saveUserWithRetry(user);
+    const embed = new EmbedBuilder()
+      .setTitle(`🗺️ ${event.title}`)
+      .setDescription(event.desc)
+      .addFields(
+        { name: 'Your Crew', value: createProfessionalTeamDisplay(calculateBattleStats(user), 'Your Crew'), inline: false },
+        { name: 'Reward', value: rewardText, inline: false }
+      )
+      .setColor(0x2ecc71)
+      .setFooter({ text: `Sails completed: ${sailsDone}` });
+    return message.reply({ embeds: [embed] });
+  } else if (event.type === 'choice') {
+    // Choice event UI (simple yes/no)
+    const row = require('discord.js').ActionRowBuilder ? new (require('discord.js').ActionRowBuilder)().addComponents(
+      new (require('discord.js').ButtonBuilder)()
+        .setCustomId('sail_choice_yes')
+        .setLabel('Yes')
+        .setStyle(require('discord.js').ButtonStyle.Success),
+      new (require('discord.js').ButtonBuilder)()
+        .setCustomId('sail_choice_no')
+        .setLabel('No')
+        .setStyle(require('discord.js').ButtonStyle.Secondary)
+    ) : null;
+    const embed = new EmbedBuilder()
+      .setTitle(`❓ ${event.title}`)
+      .setDescription(event.desc)
+      .setColor(0xf1c40f)
+      .setFooter({ text: `Sails completed: ${sailsDone}` });
+    if (row) {
+      const sent = await message.reply({ embeds: [embed], components: [row] });
+      // Wait for button interaction (simple version)
+      const filter = i => i.user.id === userId && i.customId.startsWith('sail_choice_');
+      try {
+        const collected = await sent.awaitMessageComponent({ filter, time: 15000 });
+        let choice = collected.customId.endsWith('yes') ? 'yes' : 'no';
+        let reward = event.choice[choice];
+        let rewardText = '';
+        if (reward.type === 'beli') {
+          user.beli = (user.beli || 0) + reward.amount;
+          rewardText = `💰 ${reward.amount}`;
+        } else if (reward.type === 'xp') {
+          distributeXPToTeam(user, reward.amount);
+          rewardText = `⭐ ${reward.amount}`;
+        } else if (reward.type === 'item') {
+          user.inventory = [...(user.inventory || []), reward.name];
+          rewardText = `🎁 ${reward.name}`;
+        }
+        await saveUserWithRetry(user);
+        const resultEmbed = new EmbedBuilder()
+          .setTitle('Result')
+          .setDescription(`You chose **${choice}**!`)
+          .addFields({ name: 'Reward', value: rewardText, inline: false })
+          .setFooter({ text: `Sails completed: ${sailsDone}` });
+        return collected.update({ embeds: [resultEmbed], components: [] });
+      } catch (e) {
+        // Timeout or error
+        return sent.edit({ content: 'No choice made. The opportunity passes.', components: [], embeds: [embed] });
+      }
+    } else {
+      // Fallback: no buttons
+      return message.reply({ embeds: [embed] });
     }
   }
-
-  // Simulate enemies
-  const enemy = reward.enemies[0];
-  const enemyDesc = `${enemy.count}x ${enemy.type} (${enemy.hp} HP)`;
-
-  // Award rewards
-  user.beli = (user.beli || 0) + earnedBeli;
-  user.xp = (user.xp || 0) + earnedXP;
-  if (!user.inventory) user.inventory = [];
-  for (const item of earnedItems) user.inventory.push(item);
-  await saveUserWithRetry(user);
-
-  // TODO: Award XP to team cards, allow healing item use, and use real combat logic
-
-  const embed = new EmbedBuilder()
-    .setTitle(`🌊 Sailing: ${arc}`)
-    .setDescription(`You encountered ${enemyDesc} and won!`)
-    .addFields(
-      { name: 'Sails Completed', value: sailsDone.toString(), inline: true },
-      { name: 'Beli Earned', value: `${earnedBeli}`, inline: true },
-      { name: 'XP Earned', value: `${earnedXP}`, inline: true },
-      { name: 'Items', value: earnedItems.length ? earnedItems.join(', ') : 'None', inline: true }
-    )
-    .setColor(0x3498db)
-    .setFooter({ text: 'No cooldowns! Use healing items and grind as much as you want.' });
-
-  return message.reply({ embeds: [embed] });
 }
 
 module.exports = { data, execute };
