@@ -12,7 +12,8 @@
       "nextId": "Monkey D. Luffy (Gear Second)",
       "requiredLevel": 5,
       "cost": 50,
-      "requiredSaga": "East Blue"
+      "requiredSaga": "East Blue",
+      "image": "placeholder"
     }
   },
   {
@@ -27,7 +28,8 @@
       "nextId": "Monkey D. Luffy (Snakeman)",
       "requiredLevel": 30,
       "cost": 2500,
-      "requiredSaga": "East Blue"
+      "requiredSaga": "East Blue",
+      "image": "placeholder"
     }
   },
   {
@@ -42,7 +44,8 @@
       "nextId": "Monkey D. Luffy (Sun God Nika)",
       "requiredLevel": 90,
       "cost": 30000,
-      "requiredSaga": "East Blue"
+      "requiredSaga": "East Blue",
+      "image": "placeholder"
     }
   },
   {
@@ -66,7 +69,8 @@
       "nextId": "Roronoa Zoro (Asura, Enies Lobby)",
       "requiredLevel": 30,
       "cost": 2500,
-      "requiredSaga": "Enies Lobby"
+      "requiredSaga": "Enies Lobby",
+      "image": "placeholder"
     }
   },
   {
@@ -81,7 +85,8 @@
       "nextId": "Roronoa Zoro (King of Hell, Wano)",
       "requiredLevel": 90,
       "cost": 30000,
-      "requiredSaga": "Wano"
+      "requiredSaga": "Wano",
+      "image": "placeholder"
     }
   },
   {
@@ -105,7 +110,8 @@
       "nextId": "Nami (Climatact, Alabasta)",
       "requiredLevel": 5,
       "cost": 250,
-      "requiredSaga": "Alabasta"
+      "requiredSaga": "Alabasta",
+      "image": "placeholder"
     }
   },
   {
@@ -120,7 +126,8 @@
       "nextId": "Nami (Zeus, Wano)",
       "requiredLevel": 60,
       "cost": 2500,
-      "requiredSaga": "Wano"
+      "requiredSaga": "Wano",
+      "image": "placeholder"
     }
   },
   {
@@ -144,7 +151,8 @@
       "nextId": "Usopp (Sogeking, Enies Lobby)",
       "requiredLevel": 5,
       "cost": 250,
-      "requiredSaga": "Enies Lobby"
+      "requiredSaga": "Enies Lobby",
+      "image": "placeholder"
     }
   },
   {
@@ -159,7 +167,8 @@
       "nextId": "Usopp (God, Dressrosa)",
       "requiredLevel": 100,
       "cost": 50000,
-      "requiredSaga": "Dressrosa"
+      "requiredSaga": "Dressrosa",
+      "image": "placeholder"
     }
   },
   {
@@ -183,7 +192,8 @@
       "nextId": "Sanji (Diable Jambe, Enies Lobby)",
       "requiredLevel": 25,
       "cost": 1000,
-      "requiredSaga": "Enies Lobby"
+      "requiredSaga": "Enies Lobby",
+      "image": "placeholder"
     }
   },
   {
@@ -198,7 +208,8 @@
       "nextId": "Sanji (Germa Raid Suit, Wano)",
       "requiredLevel": 90,
       "cost": 30000,
-      "requiredSaga": "Wano"
+      "requiredSaga": "Wano",
+      "image": "placeholder"
     }
   },
   {
@@ -222,7 +233,8 @@
       "nextId": "Garp (Retired, Final Saga)",
       "requiredLevel": 90,
       "cost": 30000,
-      "requiredSaga": "Final Saga"
+      "requiredSaga": "Final Saga",
+      "image": "placeholder"
     }
   },
   {
@@ -255,7 +267,8 @@
       "nextId": "Shanks (Emperor, Final Saga)",
       "requiredLevel": 90,
       "cost": 30000,
-      "requiredSaga": "Final Saga"
+      "requiredSaga": "Final Saga",
+      "image": "placeholder"
     }
   },
   {
@@ -468,7 +481,8 @@
       "nextId": "Dracule Mihawk (Cross Guild, Final Saga)",
       "requiredLevel": 90,
       "cost": 30000,
-      "requiredSaga": "Final Saga"
+      "requiredSaga": "Final Saga",
+      "image": "placeholder"
     }
   },
   {
@@ -537,7 +551,8 @@
       "nextId": "Smoker (Vice Admiral, Punk Hazard)",
       "requiredLevel": 40,
       "cost": 3000,
-      "requiredSaga": "Punk Hazard"
+      "requiredSaga": "Punk Hazard",
+      "image": "placeholder"
     }
   },
   {
@@ -561,7 +576,8 @@
       "nextId": "Buggy (Yonko, Final Saga)",
       "requiredLevel": 80,
       "cost": 25000,
-      "requiredSaga": "Final Saga"
+      "requiredSaga": "Final Saga",
+      "image": "placeholder"
     }
   },
   {
@@ -603,7 +619,8 @@
       "nextId": "Alvida (Slip-Slip Fruit, East Blue)",
       "requiredLevel": 15,
       "cost": 500,
-      "requiredSaga": "East Blue"
+      "requiredSaga": "East Blue",
+      "image": "placeholder"
     }
   },
   {
