@@ -84,18 +84,40 @@ async function buildQuestMenuContent(user) {
 // Helper function to update back to main quest menu
 async function updateToQuestMenu(interaction, user) {
     try {
+        // Check if interaction is still valid
+        if (!interaction || !interaction.isRepliable()) {
+            console.log('Interaction is no longer valid');
+            return;
+        }
+
         const { embed, row } = await buildQuestMenuContent(user);
-        await interaction.update({ embeds: [embed], components: [row] });
+        
+        // Use editReply instead of update to avoid interaction conflicts
+        if (interaction.replied || interaction.deferred) {
+            await interaction.editReply({ embeds: [embed], components: [row] });
+        } else {
+            await interaction.update({ embeds: [embed], components: [row] });
+        }
     } catch (error) {
         console.error('Error updating to quest menu:', error);
-        await interaction.update({
-            embeds: [new EmbedBuilder()
-                .setColor(0x2b2d31)
-                .setTitle('Error')
-                .setDescription('An error occurred while loading quests. Please try again.')
-            ],
-            components: []
-        });
+        
+        // Try to send error message if interaction is still valid
+        try {
+            if (interaction.isRepliable()) {
+                const errorEmbed = new EmbedBuilder()
+                    .setColor(0x2b2d31)
+                    .setTitle('Error')
+                    .setDescription('An error occurred while loading quests. Please try again.');
+                
+                if (interaction.replied || interaction.deferred) {
+                    await interaction.editReply({ embeds: [errorEmbed], components: [] });
+                } else {
+                    await interaction.update({ embeds: [errorEmbed], components: [] });
+                }
+            }
+        } catch (secondError) {
+            console.error('Failed to send error message:', secondError);
+        }
     }
 }
 
@@ -109,37 +131,83 @@ async function showQuestMenu(interaction, user, userId = null) {
     
     const response = await interaction.reply({ embeds: [embed], components: [row] });
     
-    // Set up button collector
-    const collector = response.createMessageComponentCollector({ time: 300000 }); // 5 minutes
+    // Set up button collector with shorter timeout to prevent Discord API issues
+    const collector = response.createMessageComponentCollector({ time: 180000 }); // 3 minutes
     
     collector.on('collect', async (buttonInteraction) => {
+        // Check if user is authorized
         if (buttonInteraction.user.id !== userId) {
-            return buttonInteraction.reply({ content: 'This quest menu is not for you!', ephemeral: true });
+            try {
+                return await buttonInteraction.reply({ content: 'This quest menu is not for you!', ephemeral: true });
+            } catch (error) {
+                console.error('Error sending unauthorized message:', error);
+                return;
+            }
+        }
+        
+        // Check if interaction is still valid
+        if (!buttonInteraction.isRepliable()) {
+            console.log('Button interaction is no longer valid');
+            return;
         }
         
         try {
+            // Defer the update to prevent timeout issues
+            await buttonInteraction.deferUpdate();
+            
+            // Get fresh user data to ensure consistency
+            const freshUser = await User.findOne({ userId });
+            if (!freshUser) {
+                await buttonInteraction.editReply({
+                    embeds: [new EmbedBuilder()
+                        .setColor(0x2b2d31)
+                        .setTitle('Error')
+                        .setDescription('User data not found. Please try again.')
+                    ],
+                    components: []
+                });
+                return;
+            }
+            
             if (buttonInteraction.customId === 'quest_daily') {
-                await showQuestsByType(buttonInteraction, user, 'daily');
+                await showQuestsByType(buttonInteraction, freshUser, 'daily');
             } else if (buttonInteraction.customId === 'quest_weekly') {
-                await showQuestsByType(buttonInteraction, user, 'weekly');
+                await showQuestsByType(buttonInteraction, freshUser, 'weekly');
             } else if (buttonInteraction.customId === 'quest_story') {
-                await showQuestsByType(buttonInteraction, user, 'story');
+                await showQuestsByType(buttonInteraction, freshUser, 'story');
             } else if (buttonInteraction.customId === 'quest_claim_all') {
-                await claimAllQuests(buttonInteraction, user);
+                await claimAllQuests(buttonInteraction, freshUser);
             }
         } catch (error) {
             console.error('Error handling quest button:', error);
-            await buttonInteraction.reply({ content: 'An error occurred while processing your request.', ephemeral: true });
+            try {
+                if (buttonInteraction.isRepliable()) {
+                    await buttonInteraction.editReply({
+                        embeds: [new EmbedBuilder()
+                            .setColor(0x2b2d31)
+                            .setTitle('Error')
+                            .setDescription('An error occurred while processing your request.')
+                        ],
+                        components: []
+                    });
+                }
+            } catch (replyError) {
+                console.error('Failed to send error reply:', replyError);
+            }
         }
     });
     
     collector.on('end', () => {
         // Disable buttons when collector expires
-        const disabledRow = new ActionRowBuilder()
-            .addComponents(
-                row.components.map(button => ButtonBuilder.from(button).setDisabled(true))
-            );
-        interaction.editReply({ components: [disabledRow] }).catch(() => {});
+        try {
+            const disabledRow = new ActionRowBuilder()
+                .addComponents(
+                    row.components.map(button => ButtonBuilder.from(button).setDisabled(true))
+                );
+            interaction.editReply({ components: [disabledRow] }).catch(() => {});
+        } catch (error) {
+            console.error('Error disabling buttons on collector end:', error);
+        }
     });
     } catch (error) {
         console.error('Error in showQuestMenu:', error);
@@ -161,7 +229,7 @@ async function showQuestsByType(interaction, user, questType) {
     const filteredQuests = availableQuests.filter(q => q.type === questType);
     
     if (filteredQuests.length === 0) {
-        await interaction.update({
+        await interaction.editReply({
             embeds: [new EmbedBuilder()
                 .setColor(0x2b2d31)
                 .setTitle(`${questType.charAt(0).toUpperCase() + questType.slice(1)} Quests`)
@@ -176,11 +244,16 @@ async function showQuestsByType(interaction, user, questType) {
         });
         
         // Handle back button for empty quest screen
-        const collector = interaction.message.createMessageComponentCollector({ time: 300000 });
+        const collector = interaction.message.createMessageComponentCollector({ time: 180000 });
         
         collector.on('collect', async (buttonInteraction) => {
             if (buttonInteraction.customId === 'quest_back') {
-                await updateToQuestMenu(buttonInteraction, user);
+                try {
+                    await buttonInteraction.deferUpdate();
+                    await updateToQuestMenu(buttonInteraction, user);
+                } catch (error) {
+                    console.error('Error handling back button:', error);
+                }
             }
         });
         
@@ -270,14 +343,19 @@ async function showQuestsByType(interaction, user, questType) {
                 .setStyle(ButtonStyle.Secondary)
         );
     
-    await interaction.update({ embeds: [embed], components: [row] });
+    await interaction.editReply({ embeds: [embed], components: [row] });
     
     // Handle back button
-    const collector = interaction.message.createMessageComponentCollector({ time: 300000 });
+    const collector = interaction.message.createMessageComponentCollector({ time: 180000 });
     
     collector.on('collect', async (buttonInteraction) => {
         if (buttonInteraction.customId === 'quest_back') {
-            await updateToQuestMenu(buttonInteraction, user);
+            try {
+                await buttonInteraction.deferUpdate();
+                await updateToQuestMenu(buttonInteraction, user);
+            } catch (error) {
+                console.error('Error handling back button in quest type view:', error);
+            }
         }
     });
 }
@@ -327,7 +405,7 @@ async function claimAllQuests(interaction, user) {
     }
     
     if (claimedQuests.length === 0) {
-        await interaction.update({
+        await interaction.editReply({
             embeds: [new EmbedBuilder()
                 .setColor(0x2b2d31)
                 .setTitle('Claim Rewards')
@@ -342,11 +420,16 @@ async function claimAllQuests(interaction, user) {
         });
         
         // Handle back button for empty claim screen
-        const collector = interaction.message.createMessageComponentCollector({ time: 300000 });
+        const collector = interaction.message.createMessageComponentCollector({ time: 180000 });
         
         collector.on('collect', async (buttonInteraction) => {
             if (buttonInteraction.customId === 'quest_back') {
-                await updateToQuestMenu(buttonInteraction, user);
+                try {
+                    await buttonInteraction.deferUpdate();
+                    await updateToQuestMenu(buttonInteraction, user);
+                } catch (error) {
+                    console.error('Error handling back button in empty claim screen:', error);
+                }
             }
         });
         
@@ -376,16 +459,21 @@ async function claimAllQuests(interaction, user) {
                 .setStyle(ButtonStyle.Secondary)
         );
     
-    await interaction.update({ embeds: [embed], components: [row] });
+    await interaction.editReply({ embeds: [embed], components: [row] });
     
     // Handle back button
-    const collector = interaction.message.createMessageComponentCollector({ time: 300000 });
+    const collector = interaction.message.createMessageComponentCollector({ time: 180000 });
     
     collector.on('collect', async (buttonInteraction) => {
         if (buttonInteraction.customId === 'quest_back') {
-            // Refresh user data and update to menu
-            const refreshedUser = await User.findOne({ userId: user.userId });
-            await updateToQuestMenu(buttonInteraction, refreshedUser);
+            try {
+                await buttonInteraction.deferUpdate();
+                // Refresh user data and update to menu
+                const refreshedUser = await User.findOne({ userId: user.userId });
+                await updateToQuestMenu(buttonInteraction, refreshedUser);
+            } catch (error) {
+                console.error('Error handling back button in claim rewards:', error);
+            }
         }
     });
 }

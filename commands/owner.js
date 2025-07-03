@@ -3,6 +3,33 @@ const User = require('../db/models/User.js');
 const fs = require('fs');
 const path = require('path');
 
+// Safe save with retry mechanism for version conflicts (same as pull command)
+async function saveUserWithRetry(user, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await user.save();
+      return true;
+    } catch (error) {
+      if (error.name === 'VersionError' && attempt < maxRetries) {
+        // Refresh the user document and try again
+        const freshUser = await User.findById(user._id);
+        if (freshUser) {
+          // Copy our changes to the fresh document
+          freshUser.cards = user.cards;
+          freshUser.beli = user.beli;
+          freshUser.xp = user.xp;
+          freshUser.banned = user.banned;
+          freshUser.banReason = user.banReason;
+          user = freshUser;
+          continue;
+        }
+      }
+      throw error;
+    }
+  }
+  return false;
+}
+
 const OWNER_ID = '1257718161298690119';
 
 const data = new SlashCommandBuilder()
@@ -243,7 +270,10 @@ async function handleGiveCommand(message, args) {
   const rank = args[args.length - 1].toUpperCase(); // Last arg as rank
   
   if (cardName && rank && ['C', 'B', 'A', 'S', 'UR'].includes(rank)) {
+    // Initialize cards array if needed
     if (!user.cards) user.cards = [];
+    
+    // Add card using the same method as pull command
     user.cards.push({
       name: cardName,
       rank: rank,
@@ -253,11 +283,20 @@ async function handleGiveCommand(message, args) {
       locked: false
     });
     
-    // Mark arrays as modified for proper saving
-    user.markModified('cards');
-    
+    // Use the same save method as pull command for reliability
     try {
-      await user.save();
+      await saveUserWithRetry(user);
+      
+      // Update quest progress like pull command does (treat as a "pull")
+      try {
+        const { updateQuestProgress } = require('../utils/questSystem.js');
+        await updateQuestProgress(user, 'pull', 1);
+        await saveUserWithRetry(user); // Save quest progress
+      } catch (questError) {
+        console.log(`[OWNER] Quest progress update failed for ${targetUser.id}:`, questError);
+        // Don't fail the give command if quest update fails
+      }
+      
       console.log(`[OWNER] Successfully gave ${cardName} (${rank}) to ${targetUser.username} (${targetUser.id})`);
       return message.reply(`✅ Gave ${cardName} (${rank}) to ${targetUser.username}`);
     } catch (error) {
