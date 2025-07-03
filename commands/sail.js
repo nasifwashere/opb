@@ -159,6 +159,7 @@ console.log('[SAIL] sail.js loaded');
 async function execute(message, args, client) {
   console.log('[SAIL] execute called', { args, user: message.author?.id || message.user?.id });
   const userId = message.author.id;
+  // Always fetch the latest user from the DB
   let user = await User.findOne({ userId });
   if (!user) return message.reply('Start your journey with `op start` first!');
 
@@ -333,6 +334,8 @@ async function execute(message, args, client) {
           await updateBattleEmbed('All your crew are down!');
           user.sailsCompleted[arc]++;
           await saveUserWithRetry(user);
+          // Refetch user to ensure sailsCompleted is up to date for next run
+          user = await User.findOne({ userId });
           return collector.stop('defeat');
         }
         // Attack first alive enemy
@@ -343,6 +346,7 @@ async function execute(message, args, client) {
           await updateBattleEmbed('All enemies are down!');
           user.sailsCompleted[arc]++;
           await saveUserWithRetry(user);
+          user = await User.findOne({ userId });
           return collector.stop('victory');
         }
         // Calculate damage
@@ -380,6 +384,7 @@ async function execute(message, args, client) {
           }
           user.sailsCompleted[arc]++;
           await saveUserWithRetry(user);
+          user = await User.findOne({ userId });
           await updateBattleEmbed(`All enemies are defeated!\n**Reward:** ${rewardText}`);
           await battleMessage.edit({ components: [] });
           return collector.stop('victory');
@@ -410,6 +415,7 @@ async function execute(message, args, client) {
         battleOver = true;
         user.sailsCompleted[arc]++;
         await saveUserWithRetry(user);
+        user = await User.findOne({ userId });
         await updateBattleEmbed('You fled the battle!');
         await battleMessage.edit({ components: [] });
         return collector.stop('fled');
