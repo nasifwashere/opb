@@ -331,6 +331,8 @@ async function execute(message, args, client) {
           log.push('All your crew are down!');
           battleOver = true;
           await updateBattleEmbed('All your crew are down!');
+          user.sailsCompleted[arc]++;
+          await saveUserWithRetry(user);
           return collector.stop('defeat');
         }
         // Attack first alive enemy
@@ -339,6 +341,8 @@ async function execute(message, args, client) {
           log.push('All enemies are down!');
           battleOver = true;
           await updateBattleEmbed('All enemies are down!');
+          user.sailsCompleted[arc]++;
+          await saveUserWithRetry(user);
           return collector.stop('victory');
         }
         // Calculate damage
@@ -374,7 +378,6 @@ async function execute(message, args, client) {
               rewardText = `🎁 ${event.reward.name}`;
             }
           }
-          // INCREMENT sailsCompleted *after* successful event
           user.sailsCompleted[arc]++;
           await saveUserWithRetry(user);
           await updateBattleEmbed(`All enemies are defeated!\n**Reward:** ${rewardText}`);
@@ -405,8 +408,8 @@ async function execute(message, args, client) {
       } else if (interaction.customId === 'sail_flee') {
         log.push('You fled the battle!');
         battleOver = true;
-        // Only increment sailsCompleted if you want fleeing to count as a completed sail (optional)
-        // user.sailsCompleted[arc]++;
+        user.sailsCompleted[arc]++;
+        await saveUserWithRetry(user);
         await updateBattleEmbed('You fled the battle!');
         await battleMessage.edit({ components: [] });
         return collector.stop('fled');
