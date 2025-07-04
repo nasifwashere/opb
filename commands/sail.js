@@ -18,7 +18,7 @@ const SAGA_UNLOCK_REQUIREMENTS = {
 
 const data = {
     name: 'sail',
-    description: '🌊 Infinite grind mode: Sail an arc for endless rewards!'
+    description: 'Infinite grind mode: Sail an arc for endless rewards!'
 };
 
 function getRandomInt(min, max) {
@@ -72,143 +72,116 @@ function generateSailEvent(arcName, sailsCompleted) {
 }
 
 function generateEastBlueEvent(sailsCompleted) {
-    // More granular progression with scaling rewards and difficulty
-    const baseDifficulty = Math.min(sailsCompleted, 100); // Cap at sail 100 for balance
-    
-    if (sailsCompleted <= 3) {
-        // Sails 1-3: Tutorial level
+    if (sailsCompleted <= 5) {
+        // Sails 1-5: Basic Navy Soldier (30 HP)
         return {
             type: 'enemy',
-            title: `⚓ Navy Patrol (Sail ${sailsCompleted})`,
-            description: 'A lone Navy Soldier patrols the calm waters of East Blue.',
+            title: `Navy Patrol | Sail ${sailsCompleted}`,
+            description: 'A Navy Soldier patrols the waters of East Blue.',
             enemies: [{
-                name: 'Navy Recruit',
-                hp: 20 + (sailsCompleted * 5),
-                atk: [3 + sailsCompleted, 8 + sailsCompleted],
-                spd: 20 + (sailsCompleted * 2),
-                rank: 'D',
-                currentHp: 20 + (sailsCompleted * 5),
-                maxHp: 20 + (sailsCompleted * 5)
+                name: 'Navy Soldier',
+                hp: 30,
+                atk: [8, 12],
+                spd: 30,
+                rank: 'C',
+                currentHp: 30,
+                maxHp: 30
             }],
             rewards: {
-                beli: getRandomInt(5 + sailsCompleted, 10 + (sailsCompleted * 2)),
-                xp: getRandomInt(2 + sailsCompleted, 5 + sailsCompleted),
+                beli: getRandomInt(5, 10),
+                xp: getRandomInt(1, 5),
                 items: []
             }
         };
-    } else if (sailsCompleted <= 8) {
-        // Sails 4-8: Building up
+    } else if (sailsCompleted <= 10) {
+        // Sails 6-10: Stronger Navy (50 HP)
         return {
             type: 'enemy',
-            title: `⚔️ Navy Officer Patrol (Sail ${sailsCompleted})`,
-            description: 'A Navy Officer with combat experience challenges your crew!',
+            title: `Navy Officer Patrol | Sail ${sailsCompleted}`,
+            description: 'A stronger Navy Officer blocks your path.',
             enemies: [{
-                name: `Navy Officer Lv.${sailsCompleted}`,
-                hp: 35 + (sailsCompleted * 8),
-                atk: [6 + sailsCompleted, 12 + (sailsCompleted * 2)],
-                spd: 25 + (sailsCompleted * 3),
+                name: 'Navy Officer',
+                hp: 50,
+                atk: [10, 15],
+                spd: 35,
                 rank: 'C',
-                currentHp: 35 + (sailsCompleted * 8),
-                maxHp: 35 + (sailsCompleted * 8)
+                currentHp: 50,
+                maxHp: 50
             }],
             rewards: {
-                beli: getRandomInt(8 + (sailsCompleted * 2), 15 + (sailsCompleted * 4)),
-                xp: getRandomInt(4 + sailsCompleted, 8 + (sailsCompleted * 2)),
-                items: sailsCompleted >= 6 ? [getRandomItem('Common')] : []
+                beli: getRandomInt(10, 50),
+                xp: getRandomInt(5, 10),
+                items: []
             }
         };
-    } else if (sailsCompleted <= 15) {
-        // Sails 9-15: Squad encounters
-        const enemyCount = sailsCompleted <= 10 ? 1 : getRandomInt(1, 2);
-        return {
-            type: 'enemy',
-            title: `🚢 Navy Squad (Sail ${sailsCompleted})`,
-            description: `A squad of ${enemyCount} Navy Soldiers intercepts your ship!`,
-            enemies: Array.from({ length: enemyCount }, (_, i) => ({
-                name: `Navy Soldier Lv.${sailsCompleted}${enemyCount > 1 ? ` #${i + 1}` : ''}`,
-                hp: 50 + (sailsCompleted * 10),
-                atk: [8 + sailsCompleted, 16 + (sailsCompleted * 2)],
-                spd: 30 + (sailsCompleted * 3),
-                rank: 'C',
-                currentHp: 50 + (sailsCompleted * 10),
-                maxHp: 50 + (sailsCompleted * 10)
-            })),
-            rewards: {
-                beli: getRandomInt(15 + (sailsCompleted * 3), 30 + (sailsCompleted * 6)),
-                xp: getRandomInt(6 + sailsCompleted, 12 + (sailsCompleted * 2)),
-                items: [getRandomItem('Common')]
-            }
-        };
-    } else if (sailsCompleted <= 25) {
-        // Sails 16-25: Elite encounters
+    } else if (sailsCompleted <= 20) {
+        // Sails 11-20: Navy Squad (100 HP) + Common items
         const enemyCount = getRandomInt(1, 3);
         return {
             type: 'enemy',
-            title: `⚡ Elite Navy Squad (Sail ${sailsCompleted})`,
-            description: `${enemyCount} elite Navy Enforcers form a battle formation!`,
+            title: `Navy Squad | Sail ${sailsCompleted}`,
+            description: `${enemyCount} Navy Soldiers intercept your ship.`,
             enemies: Array.from({ length: enemyCount }, (_, i) => ({
-                name: `Navy Enforcer Lv.${sailsCompleted}${enemyCount > 1 ? ` #${i + 1}` : ''}`,
-                hp: 80 + (sailsCompleted * 12),
-                atk: [12 + sailsCompleted, 20 + (sailsCompleted * 2)],
-                spd: 35 + (sailsCompleted * 3),
+                name: enemyCount > 1 ? `Navy Soldier ${i + 1}` : 'Navy Soldier',
+                hp: 100,
+                atk: [12, 18],
+                spd: 40,
                 rank: 'B',
-                currentHp: 80 + (sailsCompleted * 12),
-                maxHp: 80 + (sailsCompleted * 12)
+                currentHp: 100,
+                maxHp: 100
             })),
             rewards: {
-                beli: getRandomInt(25 + (sailsCompleted * 4), 50 + (sailsCompleted * 8)),
-                xp: getRandomInt(8 + sailsCompleted, 16 + (sailsCompleted * 2)),
-                items: [getRandomItem(sailsCompleted >= 20 ? 'Uncommon' : 'Common')]
+                beli: getRandomInt(50, 100),
+                xp: getRandomInt(10, 15),
+                items: [getRandomItem('Common')]
             }
         };
     } else if (sailsCompleted <= 50) {
-        // Sails 26-50: Navy Blockades
-        const enemyCount = getRandomInt(2, 4);
-        const hp = 120 + (sailsCompleted * 15);
+        // Sails 21-50: Navy Forces (100-300 HP) + Uncommon items
+        const enemyCount = getRandomInt(1, 3);
+        const baseHp = Math.min(100 + (sailsCompleted - 20) * 7, 300); // Scale from 100 to 300 HP
         return {
             type: 'enemy',
-            title: `🛡️ Navy Blockade (Sail ${sailsCompleted})`,
-            description: `A massive Navy blockade of ${enemyCount} warships blocks your path!`,
+            title: `Navy Blockade | Sail ${sailsCompleted}`,
+            description: `${enemyCount} Navy ships form a blockade.`,
             enemies: Array.from({ length: enemyCount }, (_, i) => ({
-                name: `Navy Warship Lv.${sailsCompleted} #${i + 1}`,
-                hp: hp,
-                atk: [15 + sailsCompleted, 25 + (sailsCompleted * 2)],
-                spd: 40 + (sailsCompleted * 2),
+                name: enemyCount > 1 ? `Navy Enforcer ${i + 1}` : 'Navy Enforcer',
+                hp: getRandomInt(baseHp - 20, baseHp + 20),
+                atk: [15, 25],
+                spd: 50,
                 rank: 'A',
-                currentHp: hp,
-                maxHp: hp
+                currentHp: getRandomInt(baseHp - 20, baseHp + 20),
+                maxHp: getRandomInt(baseHp - 20, baseHp + 20)
             })),
             rewards: {
-                beli: getRandomInt(40 + (sailsCompleted * 5), 80 + (sailsCompleted * 10)),
-                xp: getRandomInt(12 + sailsCompleted, 20 + (sailsCompleted * 2)),
+                beli: getRandomInt(100, 250),
+                xp: getRandomInt(10, 20),
                 items: [getRandomItem('Uncommon')]
             }
         };
     } else {
-        // Sails 51+: Legendary encounters
-        const enemyCount = getRandomInt(3, 5);
-        const hp = 200 + (sailsCompleted * 20);
-        const rarities = ['Uncommon', 'Rare', 'Epic', 'Legendary'];
-        const rarityIndex = Math.min(Math.floor((sailsCompleted - 50) / 15), 3);
-        const selectedRarity = rarities[rarityIndex];
+        // Sails 51+: Elite Navy + Rare items
+        const enemyCount = getRandomInt(2, 4);
+        const baseHp = 300 + (sailsCompleted - 50) * 5; // Moderate scaling beyond 300
+        const itemRarity = sailsCompleted < 75 ? 'Rare' : (sailsCompleted < 100 ? 'Epic' : 'Legendary');
         
         return {
             type: 'enemy',
-            title: `👑 Admiral Fleet (Sail ${sailsCompleted})`,
-            description: `An Admiral leads ${enemyCount} elite Navy flagships in an all-out assault!`,
+            title: `Elite Navy Fleet | Sail ${sailsCompleted}`,
+            description: `${enemyCount} elite Navy warships engage in battle.`,
             enemies: Array.from({ length: enemyCount }, (_, i) => ({
-                name: i === 0 ? `Admiral's Flagship Lv.${sailsCompleted}` : `Elite Flagship Lv.${sailsCompleted} #${i}`,
-                hp: hp + (i === 0 ? hp * 0.5 : 0), // Admiral ship has more HP
-                atk: [20 + sailsCompleted, 35 + (sailsCompleted * 2)],
-                spd: 45 + (sailsCompleted * 2),
+                name: i === 0 ? 'Navy Captain' : `Elite Soldier ${i}`,
+                hp: i === 0 ? Math.floor(baseHp * 1.3) : baseHp, // Captain has more HP
+                atk: [20, 30],
+                spd: 60,
                 rank: i === 0 ? 'S' : 'A',
-                currentHp: hp + (i === 0 ? hp * 0.5 : 0),
-                maxHp: hp + (i === 0 ? hp * 0.5 : 0)
+                currentHp: i === 0 ? Math.floor(baseHp * 1.3) : baseHp,
+                maxHp: i === 0 ? Math.floor(baseHp * 1.3) : baseHp
             })),
             rewards: {
-                beli: getRandomInt(60 + (sailsCompleted * 8), 120 + (sailsCompleted * 15)),
-                xp: getRandomInt(15 + sailsCompleted, 30 + (sailsCompleted * 3)),
-                items: [getRandomItem(selectedRarity)]
+                beli: getRandomInt(250, 500),
+                xp: getRandomInt(15, 30),
+                items: [getRandomItem(itemRarity)]
             }
         };
     }
@@ -248,7 +221,7 @@ async function execute(message, args, client) {
     let user = await User.findOne({ userId });
     
     if (!user) {
-        return message.reply('🏴‍☠️ Start your pirate journey with `op start` first!');
+        return message.reply('Start your pirate journey with `op start` first!');
     }
     
     // Parse arc name from arguments
@@ -258,14 +231,14 @@ async function execute(message, args, client) {
         if (AVAILABLE_ARCS[inputArc]) {
             arcName = AVAILABLE_ARCS[inputArc];
         } else {
-            return message.reply(`❌ Unknown arc "${args.join(' ')}". Available arcs: ${Object.values(AVAILABLE_ARCS).join(', ')}`);
+            return message.reply(`Unknown arc "${args.join(' ')}". Available arcs: ${Object.values(AVAILABLE_ARCS).join(', ')}`);
         }
     }
     
     // Check unlock requirements
     const requiredStage = SAGA_UNLOCK_REQUIREMENTS[arcName];
     if (requiredStage && (!user.stage || user.stage < requiredStage)) {
-        return message.reply(`🔒 You must complete stage ${requiredStage} to unlock sailing in ${arcName}!`);
+        return message.reply(`You must complete stage ${requiredStage} to unlock sailing in ${arcName}!`);
     }
     
     // Check if user has completed the saga
@@ -277,23 +250,23 @@ async function execute(message, args, client) {
             user.markModified('completedSagas');
             await saveUserWithRetry(user);
         } else {
-            return message.reply(`🔒 You must complete the ${arcName} saga to unlock infinite sailing!`);
+            return message.reply(`You must complete the ${arcName} saga to unlock infinite sailing!`);
         }
     }
     
     // Validate team
     if (!user.team || user.team.length === 0) {
-        return message.reply('❌ You need to set up your team first! Use `op team add <card>` to add cards.');
+        return message.reply('You need to set up your team first! Use `op team add <card>` to add cards.');
     }
     
     if (!user.cards || user.cards.length === 0) {
-        return message.reply('❌ You don\'t have any cards! Pull some cards first with `op pull`.');
+        return message.reply('You don\'t have any cards! Pull some cards first with `op pull`.');
     }
     
     // Calculate battle stats
     const battleTeam = calculateBattleStats(user);
     if (!battleTeam || battleTeam.length === 0) {
-        return message.reply('❌ Your team is invalid. Please check your team with `op team` and fix any issues.');
+        return message.reply('Your team is invalid. Please check your team with `op team` and fix any issues.');
     }
     
     // Ensure all team members have proper HP
@@ -308,7 +281,7 @@ async function execute(message, args, client) {
     
     // Check if team has any health
     if (battleTeam.every(card => card.currentHp <= 0)) {
-        return message.reply('❌ Your team has no health! Rest or heal your cards before sailing.');
+        return message.reply('Your team has no health! Rest or heal your cards before sailing.');
     }
     
     // Initialize sailing progress
@@ -336,42 +309,42 @@ async function execute(message, args, client) {
 async function startSailBattle(message, user, battleTeam, event, arcName, client) {
     // Create battle embed
     const embed = new EmbedBuilder()
-        .setTitle(`⚔️ ${event.title}`)
+        .setTitle(event.title)
         .setDescription(event.description)
-        .setColor(0x3498db)
+        .setColor(0x1E40AF)
         .addFields(
             {
-                name: '🏴‍☠️ Your Crew',
+                name: 'Your Crew',
                 value: createProfessionalTeamDisplay(battleTeam, message.author.username),
                 inline: false
             },
             {
-                name: '⚔️ Enemies',
+                name: 'Enemies',
                 value: createEnemyDisplay(event.enemies),
                 inline: false
             },
             {
-                name: '📜 Battle Log',
-                value: '⚔️ Battle begins!',
+                name: 'Battle Log',
+                value: 'Battle begins!',
                 inline: false
             }
         )
-        .setFooter({ text: `Sailing in ${arcName} | Currently on Sail #${((user.sailsCompleted && user.sailsCompleted[arcName]) || 0) + 1}` });
+        .setFooter({ text: `Sailing in ${arcName} | Sail #${((user.sailsCompleted && user.sailsCompleted[arcName]) || 0) + 1}` });
     
     // Create action buttons
     const actionRow = new ActionRowBuilder()
         .addComponents(
             new ButtonBuilder()
                 .setCustomId('sail_attack')
-                .setLabel('⚔️ Attack')
+                .setLabel('Attack')
                 .setStyle(ButtonStyle.Danger),
             new ButtonBuilder()
                 .setCustomId('sail_items')
-                .setLabel('🎒 Items')
+                .setLabel('Items')
                 .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
                 .setCustomId('sail_flee')
-                .setLabel('🏃 Flee')
+                .setLabel('Flee')
                 .setStyle(ButtonStyle.Secondary)
         );
     
@@ -384,7 +357,7 @@ async function startSailBattle(message, user, battleTeam, event, arcName, client
     const battleState = {
         userTeam: battleTeam,
         enemies: event.enemies,
-        battleLog: ['⚔️ Battle begins!'],
+        battleLog: ['Battle begins!'],
         event: event,
         arcName: arcName,
         collector: null // Store collector reference for cleanup
@@ -406,7 +379,7 @@ async function startSailBattle(message, user, battleTeam, event, arcName, client
         if (reason === 'time') {
             const timeoutEmbed = EmbedBuilder.from(embed)
                 .setColor(0x95a5a6)
-                .setDescription('⏰ Battle timed out. You fled from the encounter.');
+                .setDescription('Battle timed out. You fled from the encounter.');
             
             await battleMessage.edit({
                 embeds: [timeoutEmbed],
@@ -454,13 +427,13 @@ async function handleBattleAction(interaction, battleMessage, user, battleState,
                 const actualHeal = Math.min(healAmount, injuredCard.maxHp - injuredCard.currentHp);
                 injuredCard.currentHp += actualHeal;
                 
-                battleState.battleLog.push(`💚 Used ${effect.name}! ${injuredCard.name} healed for ${actualHeal} HP!`);
+                battleState.battleLog.push(`Used ${effect.name}! ${injuredCard.name} healed for ${actualHeal} HP!`);
                 await saveUserWithRetry(freshUser);
             } else {
-                battleState.battleLog.push('❌ No injured crew members to heal!');
+                battleState.battleLog.push('No injured crew members to heal!');
             }
         } else {
-            battleState.battleLog.push('❌ Failed to use item!');
+            battleState.battleLog.push('Failed to use item!');
         }
         
         await updateBattleDisplay(battleMessage, battleState);
@@ -477,10 +450,10 @@ async function handleAttack(interaction, battleMessage, user, battleState) {
     const damage = calculateDamage(attacker, target);
     target.currentHp = Math.max(0, target.currentHp - damage);
     
-    battleState.battleLog.push(`💥 ${attacker.name} attacks ${target.name} for ${damage} damage!`);
+    battleState.battleLog.push(`${attacker.name} attacks ${target.name} for ${damage} damage!`);
     
     if (target.currentHp <= 0) {
-        battleState.battleLog.push(`💀 ${target.name} is defeated!`);
+        battleState.battleLog.push(`${target.name} is defeated!`);
     }
     
     // Check for victory
@@ -497,10 +470,10 @@ async function handleAttack(interaction, battleMessage, user, battleState) {
         const enemyDamage = calculateDamage(enemy, playerTarget);
         playerTarget.currentHp = Math.max(0, playerTarget.currentHp - enemyDamage);
         
-        battleState.battleLog.push(`💥 ${enemy.name} attacks ${playerTarget.name} for ${enemyDamage} damage!`);
+        battleState.battleLog.push(`${enemy.name} attacks ${playerTarget.name} for ${enemyDamage} damage!`);
         
         if (playerTarget.currentHp <= 0) {
-            battleState.battleLog.push(`💀 ${playerTarget.name} is knocked out!`);
+            battleState.battleLog.push(`${playerTarget.name} is knocked out!`);
         }
     }
     
@@ -519,7 +492,7 @@ async function handleItems(interaction, battleMessage, user, battleState) {
     const availableItems = usableItems.filter(item => canUseItem(user, item));
     
     if (availableItems.length === 0) {
-        battleState.battleLog.push('❌ No usable healing items available!');
+        battleState.battleLog.push('No usable healing items available!');
         await updateBattleDisplay(battleMessage, battleState);
         return;
     }
@@ -535,7 +508,7 @@ async function handleItems(interaction, battleMessage, user, battleState) {
     itemButtons.push(
         new ButtonBuilder()
             .setCustomId('sail_back_to_battle')
-            .setLabel('🔙 Back')
+            .setLabel('Back')
             .setStyle(ButtonStyle.Secondary)
     );
     
@@ -551,7 +524,7 @@ async function handleFlee(interaction, battleMessage, user, battleState) {
     }
     
     const fleeEmbed = new EmbedBuilder()
-        .setTitle('🏃‍♂️ Fled from Battle!')
+        .setTitle('Fled from Battle')
         .setDescription('You successfully escaped from the encounter.')
         .setColor(0x95a5a6)
         .setFooter({ text: `Sailing in ${battleState.arcName}` });
@@ -603,9 +576,9 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
     }
     
     // Create victory embed with progression indicators
-    let rewardText = `💰 **${rewards.beli} Beli**\n⭐ **${rewards.xp} XP**`;
+    let rewardText = `**${rewards.beli} Beli**\n**${rewards.xp} XP**`;
     if (rewards.items && rewards.items.length > 0) {
-        rewardText += `\n🎁 **${rewards.items.join(', ')}**`;
+        rewardText += `\n**${rewards.items.join(', ')}**`;
     }
     
     const currentSailCount = user.sailsCompleted[battleState.arcName] || 0;
@@ -613,31 +586,29 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
     
     // Generate preview of next encounter for progression teaser
     let progressionHint = '';
-    if (nextSailCount <= 3) {
-        progressionHint = '⚓ **Next**: Navy Patrol (Tutorial)';
-    } else if (nextSailCount <= 8) {
-        progressionHint = '⚔️ **Next**: Navy Officer Patrol (Building up)';
-    } else if (nextSailCount <= 15) {
-        progressionHint = '🚢 **Next**: Navy Squad (Multiple enemies)';
-    } else if (nextSailCount <= 25) {
-        progressionHint = '⚡ **Next**: Elite Navy Squad (Stronger enemies)';
+    if (nextSailCount <= 5) {
+        progressionHint = '**Next**: Navy Patrol (Tutorial)';
+    } else if (nextSailCount <= 10) {
+        progressionHint = '**Next**: Navy Officer Patrol';
+    } else if (nextSailCount <= 20) {
+        progressionHint = '**Next**: Navy Squad (Multiple enemies)';
     } else if (nextSailCount <= 50) {
-        progressionHint = '🛡️ **Next**: Navy Blockade (Warship fleets)';
+        progressionHint = '**Next**: Navy Blockade (Strong forces)';
     } else {
-        progressionHint = '👑 **Next**: Admiral Fleet (Legendary encounters)';
+        progressionHint = '**Next**: Elite Navy Fleet (Legendary encounters)';
     }
     
     const victoryEmbed = new EmbedBuilder()
-        .setTitle('🎉 Victory!')
+        .setTitle('Victory!')
         .setDescription('All enemies have been defeated!')
         .addFields(
             {
-                name: '🏆 Rewards',
+                name: 'Rewards',
                 value: rewardText,
                 inline: false
             },
             {
-                name: '📊 Sailing Progress',
+                name: 'Sailing Progress',
                 value: `**Completed**: Sail #${currentSailCount} in ${battleState.arcName}\n${progressionHint}`,
                 inline: false
             }
@@ -650,11 +621,11 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
         .addComponents(
             new ButtonBuilder()
                 .setCustomId('sail_continue')
-                .setLabel('⛵ Continue Sailing')
+                .setLabel('Continue Sailing')
                 .setStyle(ButtonStyle.Success),
             new ButtonBuilder()
                 .setCustomId('sail_stop')
-                .setLabel('🏃 Return to Port')
+                .setLabel('Return to Port')
                 .setStyle(ButtonStyle.Secondary)
         );
     
@@ -680,7 +651,7 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
                 // Refresh user data and start new sailing encounter
                 const freshUser = await User.findOne({ userId: user.userId });
                 if (!freshUser) {
-                    await continueInteraction.followUp({ content: '❌ User data not found!', ephemeral: true });
+                    await continueInteraction.followUp({ content: 'User data not found!', ephemeral: true });
                     return;
                 }
                 
@@ -707,7 +678,7 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
                 // Check if team is still viable
                 if (battleTeam.every(card => card.currentHp <= 0)) {
                     const healEmbed = new EmbedBuilder()
-                        .setTitle('💀 Team Defeated!')
+                        .setTitle('Team Defeated!')
                         .setDescription('Your crew has no health remaining! Rest and heal before continuing to sail.')
                         .setColor(0xe74c3c);
                     
@@ -739,7 +710,7 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
                 continueCollector.stop('stop');
                 
                 const stopEmbed = new EmbedBuilder()
-                    .setTitle('🏴‍☠️ Returned to Port')
+                    .setTitle('Returned to Port')
                     .setDescription('You return to port with your treasures. The seas await your next adventure!')
                     .setColor(0x95a5a6)
                     .setFooter({ text: `Use 'op sail ${battleState.arcName.toLowerCase()}' to sail again anytime!` });
@@ -761,7 +732,7 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
     continueCollector.on('end', async (collected, reason) => {
         if (reason === 'time') {
             const timeoutEmbed = new EmbedBuilder()
-                .setTitle('⏰ Sailing Session Ended')
+                .setTitle('Sailing Session Ended')
                 .setDescription('Your sailing session has timed out. You return to port with your rewards.')
                 .setColor(0x95a5a6);
             
@@ -784,7 +755,7 @@ async function handleDefeat(interaction, battleMessage, user, battleState) {
     }
     
     const defeatEmbed = new EmbedBuilder()
-        .setTitle('💀 Defeat!')
+        .setTitle('Defeat!')
         .setDescription('Your crew has been defeated! Rest and try again.')
         .setColor(0xe74c3c)
         .setFooter({ text: `Sailing in ${battleState.arcName}` });
@@ -798,42 +769,42 @@ async function handleDefeat(interaction, battleMessage, user, battleState) {
 async function startNewSailBattle(battleMessage, user, battleTeam, event, arcName, userId) {
     // Create battle embed
     const embed = new EmbedBuilder()
-        .setTitle(`⚔️ ${event.title}`)
+        .setTitle(event.title)
         .setDescription(event.description)
-        .setColor(0x3498db)
+        .setColor(0x1E40AF)
         .addFields(
             {
-                name: '🏴‍☠️ Your Crew',
+                name: 'Your Crew',
                 value: createProfessionalTeamDisplay(battleTeam, user.username || 'Captain'),
                 inline: false
             },
             {
-                name: '⚔️ Enemies',
+                name: 'Enemies',
                 value: createEnemyDisplay(event.enemies),
                 inline: false
             },
             {
-                name: '📜 Battle Log',
-                value: '⚔️ A new encounter begins!',
+                name: 'Battle Log',
+                value: 'A new encounter begins!',
                 inline: false
             }
         )
-        .setFooter({ text: `Sailing in ${arcName} | Currently on Sail #${((user.sailsCompleted && user.sailsCompleted[arcName]) || 0) + 1}` });
+        .setFooter({ text: `Sailing in ${arcName} | Sail #${((user.sailsCompleted && user.sailsCompleted[arcName]) || 0) + 1}` });
     
     // Create action buttons
     const actionRow = new ActionRowBuilder()
         .addComponents(
             new ButtonBuilder()
                 .setCustomId('sail_attack')
-                .setLabel('⚔️ Attack')
+                .setLabel('Attack')
                 .setStyle(ButtonStyle.Danger),
             new ButtonBuilder()
                 .setCustomId('sail_items')
-                .setLabel('🎒 Items')
+                .setLabel('Items')
                 .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
                 .setCustomId('sail_flee')
-                .setLabel('🏃 Flee')
+                .setLabel('Flee')
                 .setStyle(ButtonStyle.Secondary)
         );
     
@@ -846,7 +817,7 @@ async function startNewSailBattle(battleMessage, user, battleTeam, event, arcNam
     const battleState = {
         userTeam: battleTeam,
         enemies: event.enemies,
-        battleLog: ['⚔️ A new encounter begins!'],
+        battleLog: ['A new encounter begins!'],
         event: event,
         arcName: arcName,
         collector: null // Store collector reference for cleanup
@@ -872,7 +843,7 @@ async function startNewSailBattle(battleMessage, user, battleTeam, event, arcNam
         if (reason === 'time') {
             const timeoutEmbed = EmbedBuilder.from(embed)
                 .setColor(0x95a5a6)
-                .setDescription('⏰ Battle timed out. You fled from the encounter.');
+                .setDescription('Battle timed out. You fled from the encounter.');
             
             try {
                 await battleMessage.edit({
@@ -888,22 +859,22 @@ async function startNewSailBattle(battleMessage, user, battleTeam, event, arcNam
 
 async function updateBattleDisplay(battleMessage, battleState) {
     const embed = new EmbedBuilder()
-        .setTitle(`⚔️ ${battleState.event.title}`)
+        .setTitle(battleState.event.title)
         .setDescription(battleState.event.description)
-        .setColor(0x3498db)
+        .setColor(0x1E40AF)
         .addFields(
             {
-                name: '🏴‍☠️ Your Crew',
+                name: 'Your Crew',
                 value: createProfessionalTeamDisplay(battleState.userTeam, 'Captain'),
                 inline: false
             },
             {
-                name: '⚔️ Enemies',
+                name: 'Enemies',
                 value: createEnemyDisplay(battleState.enemies),
                 inline: false
             },
             {
-                name: '📜 Battle Log',
+                name: 'Battle Log',
                 value: createBattleLogDisplay(battleState.battleLog.slice(-3)),
                 inline: false
             }
@@ -914,15 +885,15 @@ async function updateBattleDisplay(battleMessage, battleState) {
         .addComponents(
             new ButtonBuilder()
                 .setCustomId('sail_attack')
-                .setLabel('⚔️ Attack')
+                .setLabel('Attack')
                 .setStyle(ButtonStyle.Danger),
             new ButtonBuilder()
                 .setCustomId('sail_items')
-                .setLabel('🎒 Items')
+                .setLabel('Items')
                 .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
                 .setCustomId('sail_flee')
-                .setLabel('🏃 Flee')
+                .setLabel('Flee')
                 .setStyle(ButtonStyle.Secondary)
         );
     
