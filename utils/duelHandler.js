@@ -199,64 +199,99 @@ async function endDuel(messageId, client, reason, winner = null) {
         const user1 = await User.findOne({ userId: player1.data.id });
         const user2 = await User.findOne({ userId: player2.data.id });
 
-        if (user1) {
-            user1.battleState = { inBattle: false };
-            // Initialize bounty if missing
+        if (user1 && user2) {
+            // Initialize bounty and victory tracking if missing
             if (typeof user1.bounty !== 'number') user1.bounty = 0;
-            
-            if (winner && winner.id === user1.userId) {
-                user1.wins = (user1.wins || 0) + 1;
-                user1.beli = (user1.beli || 0) + 100;
-                // Add bounty for winning (50,000 for East Blue Saga)
-                user1.bounty += 50000;
-            } else if (reason !== 'timeout') {
-                user1.losses = (user1.losses || 0) + 1;
-                // Lose bounty for losing (10,000 penalty)
-                user1.bounty = Math.max(0, user1.bounty - 10000);
-            }
-            user1.duelCooldown = Date.now() + (10 * 60 * 1000);
-            await user1.save();
-        }
-
-        if (user2) {
-            user2.battleState = { inBattle: false };
-            // Initialize bounty if missing
             if (typeof user2.bounty !== 'number') user2.bounty = 0;
-            
-            if (winner && winner.id === user2.userId) {
-                user2.wins = (user2.wins || 0) + 1;
-                user2.beli = (user2.beli || 0) + 100;
-                // Add bounty for winning (50,000 for East Blue Saga)
-                user2.bounty += 50000;
-            } else if (reason !== 'timeout') {
-                user2.losses = (user2.losses || 0) + 1;
-                // Lose bounty for losing (10,000 penalty)
-                user2.bounty = Math.max(0, user2.bounty - 10000);
+            if (!user1.bountyVictories) user1.bountyVictories = {};
+            if (!user2.bountyVictories) user2.bountyVictories = {};
+
+            // Update battle states
+            user1.battleState = { inBattle: false };
+            user2.battleState = { inBattle: false };
+
+            let bountyMessage = '';
+            let isBountyTarget = false;
+
+            if (winner && reason !== 'timeout') {
+                const winnerUser = winner.id === user1.userId ? user1 : user2;
+                const loserUser = winner.id === user1.userId ? user2 : user1;
+
+                // Update win/loss records
+                winnerUser.wins = (winnerUser.wins || 0) + 1;
+                loserUser.losses = (loserUser.losses || 0) + 1;
+
+                // Check if this is a bounty target victory
+                if (winnerUser.bountyTarget?.isActive && winnerUser.bountyTarget.userId === loserUser.userId) {
+                    isBountyTarget = true;
+                    // Reset bounty target cooldown when target is defeated
+                    winnerUser.bountyTarget.isActive = false;
+                    winnerUser.bountyTarget.cooldownUntil = Date.now(); // Reset cooldown
+                }
+
+                // Calculate bounty exchange based on percentage system
+                const loserBounty = Math.max(loserUser.bounty, 0);
+                const winnerKey = `${loserUser.userId}`;
+                const loserKey = `${winnerUser.userId}`;
+
+                // Check how many times winner has beaten loser
+                const victoriesAgainstLoser = winnerUser.bountyVictories[winnerKey] || 0;
+
+                if (victoriesAgainstLoser < 3) {
+                    // Calculate bounty transfer (10% of loser's bounty)
+                    const bountyTransfer = Math.floor(loserBounty * 0.1);
+                    const multiplier = isBountyTarget ? 5 : 1;
+                    const actualBountyGain = bountyTransfer * multiplier;
+
+                    if (bountyTransfer > 0) {
+                        // Winner gains bounty, loser loses bounty
+                        winnerUser.bounty += actualBountyGain;
+                        loserUser.bounty = Math.max(0, loserUser.bounty - bountyTransfer);
+
+                        // Update victory count
+                        winnerUser.bountyVictories[winnerKey] = victoriesAgainstLoser + 1;
+
+                        bountyMessage = `\n\n💰 **Bounty Exchange:**\n` +
+                                      `${winner.username} gained ${actualBountyGain.toLocaleString()} bounty${isBountyTarget ? ' (5x Bounty Target bonus!)' : ''}\n` +
+                                      `${loserUser.username} lost ${bountyTransfer.toLocaleString()} bounty\n` +
+                                      `Victories against ${loserUser.username}: ${victoriesAgainstLoser + 1}/3`;
+                    }
+                } else {
+                    bountyMessage = `\n\n💰 **Bounty Exchange:**\nNo bounty exchanged (3 victory limit reached against ${loserUser.username})`;
+                }
+
+                // Base rewards
+                winnerUser.beli = (winnerUser.beli || 0) + 100;
             }
+
+            // Set cooldowns
+            user1.duelCooldown = Date.now() + (10 * 60 * 1000);
             user2.duelCooldown = Date.now() + (10 * 60 * 1000);
+
+            await user1.save();
             await user2.save();
-        }
 
-        // Create final embed
-        const finalEmbed = new EmbedBuilder()
-            .setTitle('⚔️ Duel Complete!')
-            .setColor(winner ? 0x2ecc71 : 0x2b2d31);
+            // Create final embed with bounty information
+            const finalEmbed = new EmbedBuilder()
+                .setTitle('⚔️ Duel Complete!')
+                .setColor(winner ? 0x2ecc71 : 0x2b2d31);
 
-        if (winner) {
-            finalEmbed.setDescription(`🏆 **${winner.username}** wins the duel!`);
-        } else {
-            finalEmbed.setDescription('The duel has ended.');
-        }
+            if (winner) {
+                finalEmbed.setDescription(`🏆 **${winner.username}** wins the duel!${bountyMessage}`);
+            } else {
+                finalEmbed.setDescription('The duel has ended.');
+            }
 
-        // Clean up battle data
-        client.battles.delete(messageId);
+            // Clean up battle data
+            client.battles.delete(messageId);
 
-        // Update final message
-        const channel = client.channels.cache.get(battleData.channelId);
-        if (channel) {
-            const message = await channel.messages.fetch(messageId).catch(() => null);
-            if (message) {
-                await message.edit({ embeds: [finalEmbed], components: [] }).catch(() => {});
+            // Update final message
+            const channel = client.channels.cache.get(battleData.channelId);
+            if (channel) {
+                const message = await channel.messages.fetch(messageId).catch(() => null);
+                if (message) {
+                    await message.edit({ embeds: [finalEmbed], components: [] }).catch(() => {});
+                }
             }
         }
 

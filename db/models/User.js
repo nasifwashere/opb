@@ -97,6 +97,15 @@ const userSchema = new mongoose.Schema({
 
   // Bounty system
   bounty: { type: Number, default: 0 },
+  bountyVictories: { type: mongoose.Schema.Types.Mixed, default: {} }, // Track victories against specific players
+  bountyTarget: {
+    userId: { type: String },
+    username: { type: String },
+    targetBounty: { type: Number },
+    assignedAt: { type: Number }, // Unix timestamp
+    cooldownUntil: { type: Number }, // Unix timestamp
+    isActive: { type: Boolean, default: false }
+  },
 
   // Gambling system
   gamblingData: {

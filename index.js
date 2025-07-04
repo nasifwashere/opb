@@ -229,11 +229,10 @@ client.on('messageCreate', async message => {
     const args = message.content.slice(usedPrefix.length).trim().split(/ +/);
     const commandName = args.shift().toLowerCase();
     
-    // Create unique message ID for deduplication
-    const messageId = `${message.id}-${message.channelId}-${commandName}`;
+    // Create unique message ID for deduplication - enhanced with user ID
+    const messageId = `${message.id}-${message.channelId}-${message.author.id}-${commandName}`;
     if (processedMessages.has(messageId)) {
-        // Reduce excessive duplicate detection logging
-        // console.log('🔄 Duplicate message detected, skipping...');
+        console.log(`🔄 Duplicate message detected for ${commandName} by ${message.author.tag}, skipping...`);
         return;
     }
     processedMessages.set(messageId, Date.now());
@@ -271,14 +270,19 @@ client.on('messageCreate', async message => {
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand() && !interaction.isButton() && !interaction.isSelectMenu()) return;
     
-    // Create unique interaction ID for deduplication
+    // Create unique interaction ID for deduplication - enhanced with timestamp check
     const interactionId = `${interaction.id}-${interaction.user.id}-${interaction.customId || interaction.commandName}`;
+    const now = Date.now();
+    
+    // Check for duplicates with timing verification
     if (processedInteractions.has(interactionId)) {
-        // Reduce excessive duplicate detection logging
-        // console.log('🔄 Duplicate interaction detected, skipping...');
-        return;
+        const processedTime = processedInteractions.get(interactionId);
+        if (now - processedTime < 5000) { // 5 second window
+            console.log(`🔄 Duplicate interaction detected for ${interaction.customId || interaction.commandName} by ${interaction.user.tag}, skipping...`);
+            return;
+        }
     }
-    processedInteractions.set(interactionId, Date.now());
+    processedInteractions.set(interactionId, now);
     
     // Handle different interaction types
     if (interaction.isChatInputCommand()) {

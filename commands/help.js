@@ -73,6 +73,7 @@ async function execute(message, args) {
             { name: 'op leaderboard', value: 'View top player rankings', inline: true },
             { name: 'op progress', value: 'View your overall progress', inline: true },
             { name: 'op timers', value: 'Check all active cooldowns', inline: true },
+            { name: 'op bounty', value: 'Get random bounty target (24h cooldown)', inline: true },
             { name: 'op help', value: 'Show this help menu', inline: true }
           )
           .setColor(0x2b2d31)
@@ -103,11 +104,13 @@ async function execute(message, args) {
           .setDescription('Explore the world and battle enemies')
           .addFields(
             { name: 'op explore', value: 'Continue your story adventure', inline: true },
+            { name: 'op sail', value: 'Travel between different arcs/sagas', inline: true },
             { name: 'op battle @user', value: 'Challenge another player', inline: true },
-            { name: 'op duel @user', value: 'Quick 1v1 card battle', inline: true },
+            { name: 'op duel @user', value: 'Quick 1v1 card battle with bounty', inline: true },
             { name: 'op map', value: 'View current location', inline: true },
             { name: 'op quest', value: 'View and track your quests', inline: true },
-            { name: 'op level <n>', value: 'Level up your cards', inline: true }
+            { name: 'op level <n>', value: 'Level up your cards', inline: true },
+            { name: 'op chest', value: 'Open treasure chests you find', inline: true }
           )
           .setColor(0x2b2d31)
           .setFooter({ text: 'Explore the Grand Line and grow stronger' });
@@ -119,11 +122,13 @@ async function execute(message, args) {
           .setDescription('Manage your wealth and trade with others')
           .addFields(
             { name: 'op shop', value: 'Buy items and card packs', inline: true },
+            { name: 'op buy <item>', value: 'Purchase items from shop', inline: true },
             { name: 'op gamble', value: 'Test your luck with Nami (3h cooldown)', inline: true },
             { name: 'op sell <n>', value: 'Sell cards for Beli', inline: true },
             { name: 'op trade @user', value: 'Trade cards with players', inline: true },
             { name: 'op market', value: 'Browse player market', inline: true },
-            { name: 'op buy <listing>', value: 'Purchase from market', inline: true },
+            { name: 'op market list <type> <item> <price>', value: 'List items for sale (use _worst/_best)', inline: false },
+            { name: 'op market buy <listing>', value: 'Purchase from market', inline: true },
             { name: 'op inventory', value: 'View your items', inline: true }
           )
           .setColor(0x2b2d31)
@@ -138,11 +143,15 @@ async function execute(message, args) {
             { name: 'op team', value: 'View and manage battle team', inline: true },
             { name: 'op team add <n>', value: 'Add card to your team', inline: true },
             { name: 'op team remove <n>', value: 'Remove card from team', inline: true },
+            { name: 'op autoteam', value: 'Auto-organize team by power/rarity', inline: true },
             { name: 'op equip <item> <card>', value: 'Equip items to cards', inline: true },
             { name: 'op unequip <card>', value: 'Remove equipped items', inline: true },
             { name: 'op train <card>', value: 'Train cards to gain XP (1/min)', inline: true },
             { name: 'op untrain <card>', value: 'Stop training and get card back', inline: true },
-            { name: 'op use <item>', value: 'Use consumable items', inline: true }
+            { name: 'op use <item>', value: 'Use consumable items', inline: true },
+            { name: 'op set <setting>', value: 'Configure bot settings/preferences', inline: true },
+            { name: 'op clearstuck', value: 'Clear stuck battle states', inline: true },
+            { name: 'op clearbattle', value: 'Force end current battle', inline: true }
           )
           .setColor(0x2b2d31)
           .setFooter({ text: 'Build your team and optimize your setup' });
@@ -160,6 +169,7 @@ async function execute(message, args) {
             { name: 'op crew decline', value: 'Decline a crew invitation', inline: true },
             { name: 'op crew leave', value: 'Leave your current crew', inline: true },
             { name: 'op crew kick @user', value: 'Kick member from crew (captain only)', inline: true },
+            { name: 'op raid', value: 'View available raids and raid status', inline: true },
             { name: 'op raid <boss>', value: 'Start raid vs boss (captain only, needs ticket)', inline: true },
             { name: 'op raid add @user', value: 'Add crew member to active raid', inline: true },
             { name: 'op raid leave', value: 'Leave current raid', inline: true },
