@@ -28,27 +28,22 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// Bulletproof deduplication system to prevent message duplication
+// Bulletproof deduplication system - single message ID tracking
 const processedInteractions = new Map(); // Store with timestamps
-const processedMessages = new Map(); // Store with timestamps
-const executingCommands = new Set(); // Track currently executing commands
-const MESSAGE_TIMEOUT = 30 * 1000; // 30 seconds for messages
+const processedMessages = new Map(); // Store message IDs with timestamps
+const MESSAGE_TIMEOUT = 5 * 60 * 1000; // 5 minutes for messages (longer since they're just message IDs)
 const INTERACTION_TIMEOUT = 60 * 1000; // 1 minute for interactions
 
-// Clean up old IDs every 30 seconds to prevent memory leaks
+// Clean up old IDs every 60 seconds to prevent memory leaks
 setInterval(() => {
     const now = Date.now();
     let cleanedMessages = 0;
     let cleanedInteractions = 0;
     
-    // Remove old messages (handles both message IDs and user+command combos)
-    for (const [key, timestamp] of processedMessages.entries()) {
-        // Different timeout for message IDs vs user+command combos
-        // Message IDs are pure numbers (Discord snowflakes), user+command combos contain letters
-        const isMessageId = /^\d+$/.test(key);
-        const timeout = isMessageId ? 5000 : MESSAGE_TIMEOUT; // 5s for message IDs, 30s for user+command
-        if (now - timestamp > timeout) {
-            processedMessages.delete(key);
+    // Remove old message IDs (Discord snowflakes)
+    for (const [messageId, timestamp] of processedMessages.entries()) {
+        if (now - timestamp > MESSAGE_TIMEOUT) {
+            processedMessages.delete(messageId);
             cleanedMessages++;
         }
     }
@@ -62,15 +57,15 @@ setInterval(() => {
     }
     
     // Log cleanup if significant
-    if (cleanedMessages > 10 || cleanedInteractions > 10) {
+    if (cleanedMessages > 20 || cleanedInteractions > 20) {
         console.log(`🧹 Cleaned up ${cleanedMessages} messages, ${cleanedInteractions} interactions`);
     }
     
     // Force garbage collection if available (helps on Render free tier)
-    if (global.gc && (cleanedMessages > 50 || cleanedInteractions > 50)) {
+    if (global.gc && (cleanedMessages > 100 || cleanedInteractions > 100)) {
         global.gc();
     }
-}, 30 * 1000);
+}, 60 * 1000);
 
 // Improved command loading with memory optimization
 function loadCommands(dir) {
@@ -231,26 +226,20 @@ client.once('ready', async () => {
     }
 });
 
-// Robust message handler with enhanced deduplication
+// Bulletproof message handler with single-point deduplication
 client.on('messageCreate', async message => {
     // Prevent bot responses and duplicate processing
     if (message.author.bot) return;
     
-    // FIRST: Check if this exact message has already been processed to prevent any duplicates
+    // BULLETPROOF: Single check - if this exact message ID has been processed, block immediately
     const messageId = message.id;
-    const now = Date.now();
-    
-    // Primary deduplication: Block if this exact message ID was processed recently
     if (processedMessages.has(messageId)) {
-        const processedTime = processedMessages.get(messageId);
-        if (now - processedTime < 5000) { // 5 second window for same message ID
-            console.log(`🔄 [BLOCKED] Duplicate message ID: ${messageId} by ${message.author.tag} (${now - processedTime}ms ago)`);
-            return;
-        }
+        // Don't even log this - it's a duplicate at the Discord level
+        return;
     }
     
-    // Add message ID to processed list immediately to prevent race conditions
-    processedMessages.set(messageId, now);
+    // Add message ID to processed list IMMEDIATELY to prevent ANY duplicates
+    processedMessages.set(messageId, Date.now());
     
     // Case-insensitive prefix check (normalize to lowercase)
     const messageContent = message.content.trim();
@@ -258,8 +247,6 @@ client.on('messageCreate', async message => {
     
     // Check for prefix (case-insensitive)
     if (!lowerContent.startsWith('op ')) {
-        // Clean up the message ID from processed messages since it's not a command
-        processedMessages.delete(messageId);
         return;
     }
     
@@ -267,30 +254,8 @@ client.on('messageCreate', async message => {
     const args = messageContent.slice(3).trim().split(/ +/); // Remove "op " (3 characters)
     const commandName = args.shift().toLowerCase();
     
-    // Secondary deduplication: Check for same user + command combination
-    const userCommandKey = `${message.author.id}-${commandName}`;
-    if (processedMessages.has(userCommandKey)) {
-        const processedTime = processedMessages.get(userCommandKey);
-        if (now - processedTime < 3000) { // 3 second window for same user+command
-            console.log(`🔄 [BLOCKED] Duplicate command: ${commandName} by ${message.author.tag} (${now - processedTime}ms ago)`);
-            return;
-        }
-    }
-    
-    // Add user+command combo to processed list
-    processedMessages.set(userCommandKey, now);
-    
     const command = client.commands.get(commandName);
     if (!command) return;
-    
-    // Create execution lock to prevent race conditions
-    const executionKey = `${message.author.id}-${commandName}`;
-    if (executingCommands.has(executionKey)) {
-        console.log(`🔐 [BLOCKED] Command already executing: ${commandName} by ${message.author.tag}`);
-        return;
-    }
-    
-    executingCommands.add(executionKey);
     
     try {
         // Check database connection before executing commands that need it
@@ -301,11 +266,10 @@ client.on('messageCreate', async message => {
             });
         }
         
-        console.log(`📝 [EXECUTING] ${commandName} by ${message.author.tag}`);
+        // Execute command ONCE - no logging to prevent confusion
         await command.execute(message, args, client);
-        console.log(`✅ [COMPLETED] ${commandName} by ${message.author.tag}`);
     } catch (error) {
-        console.error(`❌ [ERROR] ${commandName} by ${message.author.tag}:`, error);
+        console.error(`❌ Error executing ${commandName}:`, error);
         
         // Enhanced error response - only send if not already replied
         try {
@@ -316,9 +280,6 @@ client.on('messageCreate', async message => {
         } catch (replyError) {
             console.error('❌ Failed to send error message:', replyError);
         }
-    } finally {
-        // Always remove the execution lock
-        executingCommands.delete(executionKey);
     }
 });
 
