@@ -151,10 +151,10 @@ function generateEastBlueEvent(sailsCompleted) {
         const baseAtk = 10 + baseAtkScale; // Start at ~13, grow to ~16
         const baseSpd = 35 + baseSpdScale; // Start at ~37, grow to ~39
         
-        // Adjust for multiple enemies but with better scaling
-        const adjustedHp = enemyCount > 1 ? Math.floor(baseHp / Math.sqrt(enemyCount)) : baseHp;
-        const adjustedAtk = enemyCount > 1 ? Math.floor(baseAtk / Math.sqrt(enemyCount)) : baseAtk;
-        const adjustedSpd = enemyCount > 1 ? Math.floor(baseSpd / Math.sqrt(enemyCount)) : baseSpd;
+                 // Adjust for multiple enemies to equal single enemy total power
+         const adjustedHp = enemyCount > 1 ? Math.floor(baseHp / enemyCount) : baseHp;
+         const adjustedAtk = enemyCount > 1 ? Math.floor(baseAtk / enemyCount) : baseAtk;
+         const adjustedSpd = enemyCount > 1 ? Math.floor(baseSpd / enemyCount) : baseSpd;
         
         const enemyTypes = ['Navy Soldier', 'Navy Gunner', 'Navy Swordsman'];
         const enemies = Array.from({ length: enemyCount }, (_, i) => {
@@ -191,10 +191,10 @@ function generateEastBlueEvent(sailsCompleted) {
         const baseAtk = 12 + Math.floor(sailsCompleted * 0.4); // 20 ATK at sail 21, 32 ATK at sail 50
         const baseSpd = 40 + Math.floor(sailsCompleted * 0.3); // 46 SPD at sail 21, 55 SPD at sail 50
         
-        // Better balance for multiple enemies
-        const adjustedHp = Math.floor(baseHp / Math.sqrt(enemyCount));
-        const adjustedAtk = Math.floor(baseAtk / Math.sqrt(enemyCount));
-        const adjustedSpd = Math.floor(baseSpd / Math.sqrt(enemyCount));
+        // Balance multiple enemies to equal single enemy total power
+        const adjustedHp = Math.floor(baseHp / enemyCount);
+        const adjustedAtk = Math.floor(baseAtk / enemyCount);
+        const adjustedSpd = Math.floor(baseSpd / enemyCount);
         
         const enemyTypes = ['Navy Enforcer', 'Navy Captain', 'Navy Elite', 'Navy Specialist'];
         const enemies = Array.from({ length: enemyCount }, (_, i) => {
@@ -232,10 +232,10 @@ function generateEastBlueEvent(sailsCompleted) {
         const baseSpd = 55 + Math.floor((sailsCompleted - 50) * 0.2);
         const itemRarity = sailsCompleted < 75 ? 'Rare' : (sailsCompleted < 100 ? 'Epic' : 'Legendary');
         
-        // Better balance for multiple enemies
-        const adjustedHp = Math.floor(baseHp / Math.sqrt(enemyCount));
-        const adjustedAtk = Math.floor(baseAtk / Math.sqrt(enemyCount));
-        const adjustedSpd = Math.floor(baseSpd / Math.sqrt(enemyCount));
+        // Balance multiple enemies to equal single enemy total power
+        const adjustedHp = Math.floor(baseHp / enemyCount);
+        const adjustedAtk = Math.floor(baseAtk / enemyCount);
+        const adjustedSpd = Math.floor(baseSpd / enemyCount);
         
         const eliteTypes = ['Navy Admiral', 'Navy Vice Admiral', 'Navy Commodore', 'Elite Marine'];
         const enemies = Array.from({ length: enemyCount }, (_, i) => {
