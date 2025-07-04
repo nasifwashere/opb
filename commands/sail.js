@@ -117,18 +117,24 @@ function generateEastBlueEvent(sailsCompleted) {
     } else if (sailsCompleted <= 20) {
         // Sails 11-20: Navy Squad (100 HP) + Common items
         const enemyCount = getRandomInt(1, 3);
+        // Divide stats by enemy count for balance when multiple enemies attack same target
+        const baseHp = Math.max(Math.floor(100 / enemyCount), 15); // Min 15 HP
+        const baseAtkMin = Math.max(Math.floor(12 / enemyCount), 2); // Min 2 ATK
+        const baseAtkMax = Math.max(Math.floor(18 / enemyCount), 4); // Min 4 ATK
+        const baseSpd = Math.max(Math.floor(40 / enemyCount), 10); // Min 10 SPD
+        
         return {
             type: 'enemy',
             title: `Navy Squad | Sail ${sailsCompleted}`,
             description: `${enemyCount} Navy Soldiers intercept your ship.`,
             enemies: Array.from({ length: enemyCount }, (_, i) => ({
                 name: enemyCount > 1 ? `Navy Soldier ${i + 1}` : 'Navy Soldier',
-                hp: 100,
-                atk: [12, 18],
-                spd: 40,
+                hp: baseHp,
+                atk: [baseAtkMin, baseAtkMax],
+                spd: baseSpd,
                 rank: 'B',
-                currentHp: 100,
-                maxHp: 100
+                currentHp: baseHp,
+                maxHp: baseHp
             })),
             rewards: {
                 beli: getRandomInt(50, 100),
@@ -140,19 +146,28 @@ function generateEastBlueEvent(sailsCompleted) {
         // Sails 21-50: Navy Forces (100-300 HP) + Uncommon items
         const enemyCount = getRandomInt(1, 3);
         const baseHp = Math.min(100 + (sailsCompleted - 20) * 7, 300); // Scale from 100 to 300 HP
+        // Divide stats by enemy count for balance when multiple enemies attack same target
+        const adjustedBaseHp = Math.max(Math.floor(baseHp / enemyCount), 20); // Min 20 HP
+        const baseAtkMin = Math.max(Math.floor(15 / enemyCount), 3); // Min 3 ATK
+        const baseAtkMax = Math.max(Math.floor(25 / enemyCount), 6); // Min 6 ATK
+        const baseSpd = Math.max(Math.floor(50 / enemyCount), 12); // Min 12 SPD
+        
         return {
             type: 'enemy',
             title: `Navy Blockade | Sail ${sailsCompleted}`,
             description: `${enemyCount} Navy ships form a blockade.`,
-            enemies: Array.from({ length: enemyCount }, (_, i) => ({
-                name: enemyCount > 1 ? `Navy Enforcer ${i + 1}` : 'Navy Enforcer',
-                hp: getRandomInt(baseHp - 20, baseHp + 20),
-                atk: [15, 25],
-                spd: 50,
-                rank: 'A',
-                currentHp: getRandomInt(baseHp - 20, baseHp + 20),
-                maxHp: getRandomInt(baseHp - 20, baseHp + 20)
-            })),
+            enemies: Array.from({ length: enemyCount }, (_, i) => {
+                const enemyHp = getRandomInt(adjustedBaseHp - Math.floor(20/enemyCount), adjustedBaseHp + Math.floor(20/enemyCount));
+                return {
+                    name: enemyCount > 1 ? `Navy Enforcer ${i + 1}` : 'Navy Enforcer',
+                    hp: enemyHp,
+                    atk: [baseAtkMin, baseAtkMax],
+                    spd: baseSpd,
+                    rank: 'A',
+                    currentHp: enemyHp,
+                    maxHp: enemyHp
+                };
+            }),
             rewards: {
                 beli: getRandomInt(100, 250),
                 xp: getRandomInt(10, 20),
@@ -165,18 +180,24 @@ function generateEastBlueEvent(sailsCompleted) {
         const baseHp = 300 + (sailsCompleted - 50) * 5; // Moderate scaling beyond 300
         const itemRarity = sailsCompleted < 75 ? 'Rare' : (sailsCompleted < 100 ? 'Epic' : 'Legendary');
         
+        // Divide stats by enemy count for balance when multiple enemies attack same target
+        const adjustedBaseHp = Math.max(Math.floor(baseHp / enemyCount), 50); // Min 50 HP
+        const baseAtkMin = Math.max(Math.floor(20 / enemyCount), 5); // Min 5 ATK
+        const baseAtkMax = Math.max(Math.floor(30 / enemyCount), 8); // Min 8 ATK
+        const baseSpd = Math.max(Math.floor(60 / enemyCount), 15); // Min 15 SPD
+        
         return {
             type: 'enemy',
             title: `Elite Navy Fleet | Sail ${sailsCompleted}`,
             description: `${enemyCount} elite Navy warships engage in battle.`,
             enemies: Array.from({ length: enemyCount }, (_, i) => ({
                 name: i === 0 ? 'Navy Captain' : `Elite Soldier ${i}`,
-                hp: i === 0 ? Math.floor(baseHp * 1.3) : baseHp, // Captain has more HP
-                atk: [20, 30],
-                spd: 60,
+                hp: i === 0 ? Math.floor(adjustedBaseHp * 1.3) : adjustedBaseHp, // Captain has more HP
+                atk: [baseAtkMin, baseAtkMax],
+                spd: baseSpd,
                 rank: i === 0 ? 'S' : 'A',
-                currentHp: i === 0 ? Math.floor(baseHp * 1.3) : baseHp,
-                maxHp: i === 0 ? Math.floor(baseHp * 1.3) : baseHp
+                currentHp: i === 0 ? Math.floor(adjustedBaseHp * 1.3) : adjustedBaseHp,
+                maxHp: i === 0 ? Math.floor(adjustedBaseHp * 1.3) : adjustedBaseHp
             })),
             rewards: {
                 beli: getRandomInt(250, 500),
