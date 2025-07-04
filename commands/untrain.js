@@ -39,7 +39,7 @@ async function execute(message, args) {
                 ? `${card.trainingTime.hours}h ${card.trainingTime.minutes}m`
                 : `${card.trainingTime.minutes}m`;
             
-            trainingText += `• **${card.cardName}** - ${timeText} (${card.currentAccumulatedXP} XP gained)\n`;
+            trainingText += `• **${card.name || card.cardName}** - ${timeText} (${card.currentAccumulatedXP} XP gained)\n`;
         }
 
         const embed = new EmbedBuilder()

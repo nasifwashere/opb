@@ -100,8 +100,20 @@ async function execute(message, args) {
       });
   }
 
-  // Build team with top 3 cards (max team size)
-  const newTeam = sortedCards.slice(0, 3).map(card => card.def.name);
+  // Build team with top cards, avoiding duplicates
+  const newTeam = [];
+  const seenCards = new Set();
+  
+  for (const card of sortedCards) {
+    // Skip if we already have this card or we've reached team limit
+    if (seenCards.has(card.def.name) || newTeam.length >= 3) {
+      continue;
+    }
+    
+    newTeam.push(card.def.name);
+    seenCards.add(card.def.name);
+  }
+  
   user.team = newTeam;
   await user.save();
 

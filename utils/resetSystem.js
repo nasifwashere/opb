@@ -4,7 +4,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const { autoUntrainExpiredCards } = require('./trainingSystem.js');
 
-const CONFIG_PATH = path.join(__dirname, '..', 'resetConfig.json');
+const CONFIG_PATH = path.join(__dirname, '..', 'config.json');
 
 // Global reset intervals (in milliseconds)
 const PULL_RESET_INTERVAL = 5 * 60 * 60 * 1000; // 5 hours
