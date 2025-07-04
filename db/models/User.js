@@ -74,6 +74,7 @@ const userSchema = new mongoose.Schema({
 
   // Game progression
   location: { type: String, default: "Foosha Village" },
+  saga: { type: String, default: "East Blue" }, // Current saga
   unlockedSagas: [{ type: String, default: ["East Blue"] }],
   completedSagas: [{ type: String }], // Completed sagas for sailing unlock
   sailsCompleted: { type: mongoose.Schema.Types.Mixed, default: {} }, // Track sails completed per arc
@@ -192,6 +193,11 @@ userSchema.pre('save', function(next) {
   // Ensure completedSagas array exists
   if (!this.completedSagas) {
     this.completedSagas = [];
+  }
+  
+  // Ensure saga is set for existing users
+  if (!this.saga) {
+    this.saga = "East Blue";
   }
   
   // Clean up activeQuests - ensure progress is always an object

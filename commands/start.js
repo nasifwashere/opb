@@ -55,6 +55,7 @@ async function execute(message, args, client) {
         def: 10,
         wins: 0,
         losses: 0,
+        saga: config.defaultSaga || "East Blue",
         cards: [{
             name: "Monkey D. Luffy",
             rank: "B",

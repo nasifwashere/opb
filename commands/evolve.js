@@ -1,4 +1,3 @@
-
 const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
 const fs = require('fs');
@@ -24,8 +23,24 @@ function findCard(cardName) {
   return allCards.find(c => normalize(c.name) === normalize(cardName));
 }
 
+// Fuzzy find a card from user's card list
+function fuzzyFindCard(cards, input) {
+  const normInput = normalize(input);
+  
+  // First try exact match
+  let match = cards.find(card => normalize(card.name) === normInput);
+  if (match) return match;
+  
+  // Then try partial match
+  const normName = normalize(card.name);
+  return cards.find(card => {
+    const normName = normalize(card.name);
+    return normName.includes(normInput) || normInput.includes(normName);
+  });
+}
+
 function findUserCard(user, cardName) {
-  return user.cards.find(c => normalize(c.name) === normalize(cardName));
+  return fuzzyFindCard(user.cards, cardName);
 }
 
 function getEvolutionCost(fromRank, toRank) {
@@ -43,7 +58,7 @@ async function execute(message, args) {
   const cardName = args.join(' ').trim();
 
   if (!cardName) {
-    return message.reply('Usage: `op evolve <card name>`');
+    return message.reply('Usage: `op evolve <card name>` (supports partial name matching)');
   }
 
   let user = await User.findOne({ userId });
@@ -55,10 +70,16 @@ async function execute(message, args) {
     await user.save();
   }
 
+  // Ensure saga is set if missing (for existing users)
+  if (!user.saga) {
+    user.saga = "East Blue";
+    await user.save();
+  }
+
   // Find the card in user's collection
   const userCard = findUserCard(user, cardName);
   if (!userCard) {
-    return message.reply(`<:arrow:1375872983029256303> You don't own "${cardName}".`);
+    return message.reply(`<:arrow:1375872983029256303> You don't own "${cardName}". Try using partial names like "luffy" or "gear"!`);
   }
 
   // Find the card definition
@@ -80,9 +101,10 @@ async function execute(message, args) {
     return message.reply(`<:arrow:1375872983029256303> "${cardDef.name}" needs to be level ${evolution.requiredLevel} to evolve. Current level: ${currentLevel}`);
   }
 
-  // Check saga requirement
-  if (evolution.requiredSaga && user.saga !== evolution.requiredSaga) {
-    return message.reply(`<:arrow:1375872983029256303> You need to reach the "${evolution.requiredSaga}" saga to evolve this card. Current saga: ${user.saga}`);
+  // Check saga requirement - default to East Blue if no saga set
+  const currentSaga = user.saga || "East Blue";
+  if (evolution.requiredSaga && currentSaga !== evolution.requiredSaga) {
+    return message.reply(`<:arrow:1375872983029256303> You need to reach the "${evolution.requiredSaga}" saga to evolve this card. Current saga: ${currentSaga}`);
   }
 
   // Find the evolved form
