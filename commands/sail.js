@@ -257,12 +257,6 @@ async function displaySailBattle(message, user, client) {
       const itemRow = new ActionRowBuilder().addComponents(itemButtons.slice(0, 5));
       await battleMessage.edit({ components: [itemRow] });
       try {
-      const itemButtons = availableItems.map(item =>
-        new ButtonBuilder().setCustomId(`use_${item}`).setLabel(itemLabels[item] || item).setStyle(ButtonStyle.Primary)
-      );
-      const itemRow = new ActionRowBuilder().addComponents(itemButtons.slice(0, 5));
-      await battleMessage.edit({ components: [itemRow] });
-      try {
         const itemFilter = i => i.user.id === message.author.id && i.customId.startsWith('use_');
         const itemInteraction = await battleMessage.awaitMessageComponent({ filter: itemFilter, time: 15000 });
         const itemName = itemInteraction.customId.replace('use_', '');
