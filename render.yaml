@@ -3,13 +3,11 @@ services:
     name: one-piece-bot
     env: node
     plan: free
-    buildCommand: npm install --production
-    startCommand: node --expose-gc index.js
+    buildCommand: npm ci --production
+    startCommand: npm run start:render
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        generateValue: true
     scaling:
       minInstances: 1
       maxInstances: 1
