@@ -28,34 +28,45 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// Enhanced deduplication system to prevent message duplication
+// Bulletproof deduplication system to prevent message duplication
 const processedInteractions = new Map(); // Store with timestamps
 const processedMessages = new Map(); // Store with timestamps
-const DEDUPLICATION_TIMEOUT = 10 * 60 * 1000; // 10 minutes
+const executingCommands = new Set(); // Track currently executing commands
+const MESSAGE_TIMEOUT = 30 * 1000; // 30 seconds for messages
+const INTERACTION_TIMEOUT = 60 * 1000; // 1 minute for interactions
 
-// Clean up old interaction IDs every 2 minutes to prevent memory leaks
+// Clean up old IDs every 30 seconds to prevent memory leaks
 setInterval(() => {
     const now = Date.now();
+    let cleanedMessages = 0;
+    let cleanedInteractions = 0;
     
-    // Remove interactions older than timeout
-    for (const [key, timestamp] of processedInteractions.entries()) {
-        if (now - timestamp > DEDUPLICATION_TIMEOUT) {
-            processedInteractions.delete(key);
+    // Remove old messages
+    for (const [key, timestamp] of processedMessages.entries()) {
+        if (now - timestamp > MESSAGE_TIMEOUT) {
+            processedMessages.delete(key);
+            cleanedMessages++;
         }
     }
     
-    // Remove messages older than timeout
-    for (const [key, timestamp] of processedMessages.entries()) {
-        if (now - timestamp > DEDUPLICATION_TIMEOUT) {
-            processedMessages.delete(key);
+    // Remove old interactions
+    for (const [key, timestamp] of processedInteractions.entries()) {
+        if (now - timestamp > INTERACTION_TIMEOUT) {
+            processedInteractions.delete(key);
+            cleanedInteractions++;
         }
+    }
+    
+    // Log cleanup if significant
+    if (cleanedMessages > 10 || cleanedInteractions > 10) {
+        console.log(`🧹 Cleaned up ${cleanedMessages} messages, ${cleanedInteractions} interactions`);
     }
     
     // Force garbage collection if available (helps on Render free tier)
-    if (global.gc) {
+    if (global.gc && (cleanedMessages > 50 || cleanedInteractions > 50)) {
         global.gc();
     }
-}, 2 * 60 * 1000);
+}, 30 * 1000);
 
 // Improved command loading with memory optimization
 function loadCommands(dir) {
@@ -216,7 +227,7 @@ client.once('ready', async () => {
     }
 });
 
-// Optimized message handler with deduplication
+// Robust message handler with enhanced deduplication
 client.on('messageCreate', async message => {
     // Prevent bot responses and duplicate processing
     if (message.author.bot) return;
@@ -229,16 +240,34 @@ client.on('messageCreate', async message => {
     const args = message.content.slice(usedPrefix.length).trim().split(/ +/);
     const commandName = args.shift().toLowerCase();
     
-    // Create unique message ID for deduplication - enhanced with user ID
-    const messageId = `${message.id}-${message.channelId}-${message.author.id}-${commandName}`;
-    if (processedMessages.has(messageId)) {
-        console.log(`🔄 Duplicate message detected for ${commandName} by ${message.author.tag}, skipping...`);
-        return;
+    // Enhanced deduplication with timing window and content hash
+    const now = Date.now();
+    const contentHash = message.content.trim().toLowerCase();
+    const uniqueId = `${message.id}-${message.author.id}-${commandName}-${contentHash}`;
+    
+    // Check for duplicates with timing verification (3 second window)
+    if (processedMessages.has(uniqueId)) {
+        const processedTime = processedMessages.get(uniqueId);
+        if (now - processedTime < 3000) { // 3 second window
+            console.log(`🔄 [BLOCKED] Duplicate message: ${commandName} by ${message.author.tag} (${now - processedTime}ms ago)`);
+            return;
+        }
     }
-    processedMessages.set(messageId, Date.now());
+    
+    // Add to processed messages with current timestamp
+    processedMessages.set(uniqueId, now);
     
     const command = client.commands.get(commandName);
     if (!command) return;
+    
+    // Create execution lock to prevent race conditions
+    const executionKey = `${message.author.id}-${commandName}`;
+    if (executingCommands.has(executionKey)) {
+        console.log(`🔐 [BLOCKED] Command already executing: ${commandName} by ${message.author.tag}`);
+        return;
+    }
+    
+    executingCommands.add(executionKey);
     
     try {
         // Check database connection before executing commands that need it
@@ -249,10 +278,11 @@ client.on('messageCreate', async message => {
             });
         }
         
-        console.log(`📝 Executing command: ${commandName} by ${message.author.tag}`);
+        console.log(`📝 [EXECUTING] ${commandName} by ${message.author.tag}`);
         await command.execute(message, args, client);
+        console.log(`✅ [COMPLETED] ${commandName} by ${message.author.tag}`);
     } catch (error) {
-        console.error(`❌ Error executing command ${commandName}:`, error);
+        console.error(`❌ [ERROR] ${commandName} by ${message.author.tag}:`, error);
         
         // Enhanced error response - only send if not already replied
         try {
@@ -263,6 +293,9 @@ client.on('messageCreate', async message => {
         } catch (replyError) {
             console.error('❌ Failed to send error message:', replyError);
         }
+    } finally {
+        // Always remove the execution lock
+        executingCommands.delete(executionKey);
     }
 });
 
@@ -270,19 +303,22 @@ client.on('messageCreate', async message => {
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand() && !interaction.isButton() && !interaction.isSelectMenu()) return;
     
-    // Create unique interaction ID for deduplication - enhanced with timestamp check
-    const interactionId = `${interaction.id}-${interaction.user.id}-${interaction.customId || interaction.commandName}`;
+    // Enhanced deduplication for interactions with shorter timing window
     const now = Date.now();
+    const actionName = interaction.customId || interaction.commandName;
+    const uniqueId = `${interaction.id}-${interaction.user.id}-${actionName}`;
     
-    // Check for duplicates with timing verification
-    if (processedInteractions.has(interactionId)) {
-        const processedTime = processedInteractions.get(interactionId);
-        if (now - processedTime < 5000) { // 5 second window
-            console.log(`🔄 Duplicate interaction detected for ${interaction.customId || interaction.commandName} by ${interaction.user.tag}, skipping...`);
+    // Check for duplicates with timing verification (2 second window for interactions)
+    if (processedInteractions.has(uniqueId)) {
+        const processedTime = processedInteractions.get(uniqueId);
+        if (now - processedTime < 2000) { // 2 second window for interactions
+            console.log(`🔄 [BLOCKED] Duplicate interaction: ${actionName} by ${interaction.user.tag} (${now - processedTime}ms ago)`);
             return;
         }
     }
-    processedInteractions.set(interactionId, now);
+    
+    // Add to processed interactions with current timestamp
+    processedInteractions.set(uniqueId, now);
     
     // Handle different interaction types
     if (interaction.isChatInputCommand()) {
