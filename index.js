@@ -482,4 +482,7 @@ const loginWithRetry = async (retries = 3) => {
     }
 };
 
-loginWithRetry();
+// Only start the bot after MongoDB is connected
+connectDB().then(() => {
+    client.login(process.env.DISCORD_TOKEN);
+});

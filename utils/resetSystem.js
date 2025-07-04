@@ -217,6 +217,11 @@ class ResetSystem {
     }
 
     async checkExpiredTraining() {
+        const mongoose = require('mongoose');
+        if (mongoose.connection.readyState !== 1) {
+            console.warn('[TRAINING] Skipping auto-untrain: MongoDB not connected');
+            return;
+        }
         try {
             const autoUntrainedCount = await autoUntrainExpiredCards();
             if (autoUntrainedCount > 0) {

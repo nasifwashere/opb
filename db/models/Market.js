@@ -23,6 +23,5 @@ marketListingSchema.index({ active: 1, expiresAt: 1 });
 marketListingSchema.index({ sellerId: 1 });
 marketListingSchema.index({ type: 1 });
 marketListingSchema.index({ createdAt: -1 });
-marketListingSchema.index({ listingId: 1 });
 
 module.exports = mongoose.model('MarketListing', marketListingSchema);
