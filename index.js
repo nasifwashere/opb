@@ -41,9 +41,13 @@ setInterval(() => {
     let cleanedMessages = 0;
     let cleanedInteractions = 0;
     
-    // Remove old messages
+    // Remove old messages (handles both message IDs and user+command combos)
     for (const [key, timestamp] of processedMessages.entries()) {
-        if (now - timestamp > MESSAGE_TIMEOUT) {
+        // Different timeout for message IDs vs user+command combos
+        // Message IDs are pure numbers (Discord snowflakes), user+command combos contain letters
+        const isMessageId = /^\d+$/.test(key);
+        const timeout = isMessageId ? 5000 : MESSAGE_TIMEOUT; // 5s for message IDs, 30s for user+command
+        if (now - timestamp > timeout) {
             processedMessages.delete(key);
             cleanedMessages++;
         }
@@ -232,30 +236,49 @@ client.on('messageCreate', async message => {
     // Prevent bot responses and duplicate processing
     if (message.author.bot) return;
     
-    // Support both "op " and "Op " prefixes
-    const prefixes = ['op ', 'Op '];
-    const usedPrefix = prefixes.find(prefix => message.content.startsWith(prefix));
-    if (!usedPrefix) return;
-    
-    const args = message.content.slice(usedPrefix.length).trim().split(/ +/);
-    const commandName = args.shift().toLowerCase();
-    
-    // Enhanced deduplication with timing window and content hash
+    // FIRST: Check if this exact message has already been processed to prevent any duplicates
+    const messageId = message.id;
     const now = Date.now();
-    const contentHash = message.content.trim().toLowerCase();
-    const uniqueId = `${message.id}-${message.author.id}-${commandName}-${contentHash}`;
     
-    // Check for duplicates with timing verification (3 second window)
-    if (processedMessages.has(uniqueId)) {
-        const processedTime = processedMessages.get(uniqueId);
-        if (now - processedTime < 3000) { // 3 second window
-            console.log(`🔄 [BLOCKED] Duplicate message: ${commandName} by ${message.author.tag} (${now - processedTime}ms ago)`);
+    // Primary deduplication: Block if this exact message ID was processed recently
+    if (processedMessages.has(messageId)) {
+        const processedTime = processedMessages.get(messageId);
+        if (now - processedTime < 5000) { // 5 second window for same message ID
+            console.log(`🔄 [BLOCKED] Duplicate message ID: ${messageId} by ${message.author.tag} (${now - processedTime}ms ago)`);
             return;
         }
     }
     
-    // Add to processed messages with current timestamp
-    processedMessages.set(uniqueId, now);
+    // Add message ID to processed list immediately to prevent race conditions
+    processedMessages.set(messageId, now);
+    
+    // Case-insensitive prefix check (normalize to lowercase)
+    const messageContent = message.content.trim();
+    const lowerContent = messageContent.toLowerCase();
+    
+    // Check for prefix (case-insensitive)
+    if (!lowerContent.startsWith('op ')) {
+        // Clean up the message ID from processed messages since it's not a command
+        processedMessages.delete(messageId);
+        return;
+    }
+    
+    // Parse command (always use lowercase for consistency)
+    const args = messageContent.slice(3).trim().split(/ +/); // Remove "op " (3 characters)
+    const commandName = args.shift().toLowerCase();
+    
+    // Secondary deduplication: Check for same user + command combination
+    const userCommandKey = `${message.author.id}-${commandName}`;
+    if (processedMessages.has(userCommandKey)) {
+        const processedTime = processedMessages.get(userCommandKey);
+        if (now - processedTime < 3000) { // 3 second window for same user+command
+            console.log(`🔄 [BLOCKED] Duplicate command: ${commandName} by ${message.author.tag} (${now - processedTime}ms ago)`);
+            return;
+        }
+    }
+    
+    // Add user+command combo to processed list
+    processedMessages.set(userCommandKey, now);
     
     const command = client.commands.get(commandName);
     if (!command) return;
