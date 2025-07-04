@@ -70,114 +70,142 @@ function generateSailEvent(arcName, sailsCompleted) {
 }
 
 function generateEastBlueEvent(sailsCompleted) {
-    if (sailsCompleted <= 5) {
-        // 1-5 sails: Basic Navy Soldier
+    // More granular progression with scaling rewards and difficulty
+    const baseDifficulty = Math.min(sailsCompleted, 100); // Cap at sail 100 for balance
+    
+    if (sailsCompleted <= 3) {
+        // Sails 1-3: Tutorial level
         return {
             type: 'enemy',
-            title: 'Navy Patrol',
-            description: 'A lone Navy Soldier blocks your way on the seas of East Blue!',
+            title: `⚓ Navy Patrol (Sail ${sailsCompleted})`,
+            description: 'A lone Navy Soldier patrols the calm waters of East Blue.',
             enemies: [{
-                name: 'Navy Soldier',
-                hp: 30,
-                atk: [5, 10],
-                spd: 25,
-                rank: 'C',
-                currentHp: 30,
-                maxHp: 30
+                name: 'Navy Recruit',
+                hp: 20 + (sailsCompleted * 5),
+                atk: [3 + sailsCompleted, 8 + sailsCompleted],
+                spd: 20 + (sailsCompleted * 2),
+                rank: 'D',
+                currentHp: 20 + (sailsCompleted * 5),
+                maxHp: 20 + (sailsCompleted * 5)
             }],
             rewards: {
-                beli: getRandomInt(5, 10),
-                xp: getRandomInt(1, 5),
+                beli: getRandomInt(5 + sailsCompleted, 10 + (sailsCompleted * 2)),
+                xp: getRandomInt(2 + sailsCompleted, 5 + sailsCompleted),
                 items: []
             }
         };
-    } else if (sailsCompleted <= 10) {
-        // 6-10 sails: Stronger Navy
+    } else if (sailsCompleted <= 8) {
+        // Sails 4-8: Building up
         return {
             type: 'enemy',
-            title: 'Navy Officer Patrol',
-            description: 'A stronger Navy Officer appears to challenge you!',
+            title: `⚔️ Navy Officer Patrol (Sail ${sailsCompleted})`,
+            description: 'A Navy Officer with combat experience challenges your crew!',
             enemies: [{
-                name: 'Navy Officer',
-                hp: 50,
-                atk: [8, 15],
-                spd: 35,
+                name: `Navy Officer Lv.${sailsCompleted}`,
+                hp: 35 + (sailsCompleted * 8),
+                atk: [6 + sailsCompleted, 12 + (sailsCompleted * 2)],
+                spd: 25 + (sailsCompleted * 3),
                 rank: 'C',
-                currentHp: 50,
-                maxHp: 50
+                currentHp: 35 + (sailsCompleted * 8),
+                maxHp: 35 + (sailsCompleted * 8)
             }],
             rewards: {
-                beli: getRandomInt(10, 50),
-                xp: getRandomInt(5, 10),
-                items: []
+                beli: getRandomInt(8 + (sailsCompleted * 2), 15 + (sailsCompleted * 4)),
+                xp: getRandomInt(4 + sailsCompleted, 8 + (sailsCompleted * 2)),
+                items: sailsCompleted >= 6 ? [getRandomItem('Common')] : []
             }
         };
-    } else if (sailsCompleted <= 20) {
-        // 11-20 sails: Multiple Navy Soldiers + Common items
-        const enemyCount = getRandomInt(1, 3);
+    } else if (sailsCompleted <= 15) {
+        // Sails 9-15: Squad encounters
+        const enemyCount = sailsCompleted <= 10 ? 1 : getRandomInt(1, 2);
         return {
             type: 'enemy',
-            title: 'Navy Squad',
-            description: `A squad of ${enemyCount} Navy Soldiers surrounds your ship!`,
-            enemies: Array.from({ length: enemyCount }, () => ({
-                name: 'Navy Soldier',
-                hp: 100,
-                atk: [12, 20],
-                spd: 40,
-                rank: 'B',
-                currentHp: 100,
-                maxHp: 100
+            title: `🚢 Navy Squad (Sail ${sailsCompleted})`,
+            description: `A squad of ${enemyCount} Navy Soldiers intercepts your ship!`,
+            enemies: Array.from({ length: enemyCount }, (_, i) => ({
+                name: `Navy Soldier Lv.${sailsCompleted}${enemyCount > 1 ? ` #${i + 1}` : ''}`,
+                hp: 50 + (sailsCompleted * 10),
+                atk: [8 + sailsCompleted, 16 + (sailsCompleted * 2)],
+                spd: 30 + (sailsCompleted * 3),
+                rank: 'C',
+                currentHp: 50 + (sailsCompleted * 10),
+                maxHp: 50 + (sailsCompleted * 10)
             })),
             rewards: {
-                beli: getRandomInt(50, 100),
-                xp: getRandomInt(10, 15),
+                beli: getRandomInt(15 + (sailsCompleted * 3), 30 + (sailsCompleted * 6)),
+                xp: getRandomInt(6 + sailsCompleted, 12 + (sailsCompleted * 2)),
                 items: [getRandomItem('Common')]
             }
         };
-    } else if (sailsCompleted <= 50) {
-        // 21-50 sails: Stronger Navy + Uncommon items
+    } else if (sailsCompleted <= 25) {
+        // Sails 16-25: Elite encounters
         const enemyCount = getRandomInt(1, 3);
         return {
             type: 'enemy',
-            title: 'Navy Blockade',
-            description: `A Navy blockade of ${enemyCount} ships tries to stop you!`,
-            enemies: Array.from({ length: enemyCount }, () => ({
-                name: 'Navy Enforcer',
-                hp: getRandomInt(100, 300),
-                atk: [15, 25],
-                spd: 50,
-                rank: 'A',
-                currentHp: getRandomInt(100, 300),
-                maxHp: getRandomInt(100, 300)
+            title: `⚡ Elite Navy Squad (Sail ${sailsCompleted})`,
+            description: `${enemyCount} elite Navy Enforcers form a battle formation!`,
+            enemies: Array.from({ length: enemyCount }, (_, i) => ({
+                name: `Navy Enforcer Lv.${sailsCompleted}${enemyCount > 1 ? ` #${i + 1}` : ''}`,
+                hp: 80 + (sailsCompleted * 12),
+                atk: [12 + sailsCompleted, 20 + (sailsCompleted * 2)],
+                spd: 35 + (sailsCompleted * 3),
+                rank: 'B',
+                currentHp: 80 + (sailsCompleted * 12),
+                maxHp: 80 + (sailsCompleted * 12)
             })),
             rewards: {
-                beli: getRandomInt(100, 250),
-                xp: getRandomInt(10, 20),
+                beli: getRandomInt(25 + (sailsCompleted * 4), 50 + (sailsCompleted * 8)),
+                xp: getRandomInt(8 + sailsCompleted, 16 + (sailsCompleted * 2)),
+                items: [getRandomItem(sailsCompleted >= 20 ? 'Uncommon' : 'Common')]
+            }
+        };
+    } else if (sailsCompleted <= 50) {
+        // Sails 26-50: Navy Blockades
+        const enemyCount = getRandomInt(2, 4);
+        const hp = 120 + (sailsCompleted * 15);
+        return {
+            type: 'enemy',
+            title: `🛡️ Navy Blockade (Sail ${sailsCompleted})`,
+            description: `A massive Navy blockade of ${enemyCount} warships blocks your path!`,
+            enemies: Array.from({ length: enemyCount }, (_, i) => ({
+                name: `Navy Warship Lv.${sailsCompleted} #${i + 1}`,
+                hp: hp,
+                atk: [15 + sailsCompleted, 25 + (sailsCompleted * 2)],
+                spd: 40 + (sailsCompleted * 2),
+                rank: 'A',
+                currentHp: hp,
+                maxHp: hp
+            })),
+            rewards: {
+                beli: getRandomInt(40 + (sailsCompleted * 5), 80 + (sailsCompleted * 10)),
+                xp: getRandomInt(12 + sailsCompleted, 20 + (sailsCompleted * 2)),
                 items: [getRandomItem('Uncommon')]
             }
         };
     } else {
-        // 51+ sails: Elite Navy + Rare+ items
-        const enemyCount = getRandomInt(2, 4);
-        const rarities = ['Rare', 'Epic', 'Legendary'];
-        const selectedRarity = rarities[getRandomInt(0, rarities.length - 1)];
+        // Sails 51+: Legendary encounters
+        const enemyCount = getRandomInt(3, 5);
+        const hp = 200 + (sailsCompleted * 20);
+        const rarities = ['Uncommon', 'Rare', 'Epic', 'Legendary'];
+        const rarityIndex = Math.min(Math.floor((sailsCompleted - 50) / 15), 3);
+        const selectedRarity = rarities[rarityIndex];
         
         return {
             type: 'enemy',
-            title: 'Elite Navy Assault',
-            description: `An elite Navy force of ${enemyCount} ships launches a full assault!`,
-            enemies: Array.from({ length: enemyCount }, () => ({
-                name: 'Elite Navy Officer',
-                hp: getRandomInt(200, 500),
-                atk: [25, 40],
-                spd: 60,
-                rank: 'S',
-                currentHp: getRandomInt(200, 500),
-                maxHp: getRandomInt(200, 500)
+            title: `👑 Admiral Fleet (Sail ${sailsCompleted})`,
+            description: `An Admiral leads ${enemyCount} elite Navy flagships in an all-out assault!`,
+            enemies: Array.from({ length: enemyCount }, (_, i) => ({
+                name: i === 0 ? `Admiral's Flagship Lv.${sailsCompleted}` : `Elite Flagship Lv.${sailsCompleted} #${i}`,
+                hp: hp + (i === 0 ? hp * 0.5 : 0), // Admiral ship has more HP
+                atk: [20 + sailsCompleted, 35 + (sailsCompleted * 2)],
+                spd: 45 + (sailsCompleted * 2),
+                rank: i === 0 ? 'S' : 'A',
+                currentHp: hp + (i === 0 ? hp * 0.5 : 0),
+                maxHp: hp + (i === 0 ? hp * 0.5 : 0)
             })),
             rewards: {
-                beli: getRandomInt(250, 500),
-                xp: getRandomInt(15, 30),
+                beli: getRandomInt(60 + (sailsCompleted * 8), 120 + (sailsCompleted * 15)),
+                xp: getRandomInt(15 + sailsCompleted, 30 + (sailsCompleted * 3)),
                 items: [getRandomItem(selectedRarity)]
             }
         };
@@ -316,7 +344,7 @@ async function startSailBattle(message, user, battleTeam, event, arcName, client
                 inline: false
             }
         )
-        .setFooter({ text: `Sailing in ${arcName} | Sail #${((user.sailsCompleted && user.sailsCompleted[arcName]) || 0) + 1}` });
+        .setFooter({ text: `Sailing in ${arcName} | Currently on Sail #${((user.sailsCompleted && user.sailsCompleted[arcName]) || 0) + 1}` });
     
     // Create action buttons
     const actionRow = new ActionRowBuilder()
@@ -547,14 +575,36 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
     if (!user.sailsCompleted[battleState.arcName]) user.sailsCompleted[battleState.arcName] = 0;
     
     // Increment sail count
+    const oldCount = user.sailsCompleted[battleState.arcName];
     user.sailsCompleted[battleState.arcName] = user.sailsCompleted[battleState.arcName] + 1;
+    const newCount = user.sailsCompleted[battleState.arcName];
+    console.log(`⚔️ Sail completed! ${battleState.arcName}: ${oldCount} → ${newCount}`);
     
     await saveUserWithRetry(user);
     
-    // Create victory embed
+    // Create victory embed with progression indicators
     let rewardText = `💰 **${rewards.beli} Beli**\n⭐ **${rewards.xp} XP**`;
     if (rewards.items && rewards.items.length > 0) {
         rewardText += `\n🎁 **${rewards.items.join(', ')}**`;
+    }
+    
+    const currentSailCount = user.sailsCompleted[battleState.arcName] || 0;
+    const nextSailCount = currentSailCount + 1;
+    
+    // Generate preview of next encounter for progression teaser
+    let progressionHint = '';
+    if (nextSailCount <= 3) {
+        progressionHint = '⚓ **Next**: Navy Patrol (Tutorial)';
+    } else if (nextSailCount <= 8) {
+        progressionHint = '⚔️ **Next**: Navy Officer Patrol (Building up)';
+    } else if (nextSailCount <= 15) {
+        progressionHint = '🚢 **Next**: Navy Squad (Multiple enemies)';
+    } else if (nextSailCount <= 25) {
+        progressionHint = '⚡ **Next**: Elite Navy Squad (Stronger enemies)';
+    } else if (nextSailCount <= 50) {
+        progressionHint = '🛡️ **Next**: Navy Blockade (Warship fleets)';
+    } else {
+        progressionHint = '👑 **Next**: Admiral Fleet (Legendary encounters)';
     }
     
     const victoryEmbed = new EmbedBuilder()
@@ -567,13 +617,13 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
                 inline: false
             },
             {
-                name: '📊 Progress',
-                value: `Sails completed in ${battleState.arcName}: **${user.sailsCompleted[battleState.arcName] || 0}**`,
+                name: '📊 Sailing Progress',
+                value: `**Completed**: Sail #${currentSailCount} in ${battleState.arcName}\n${progressionHint}`,
                 inline: false
             }
         )
         .setColor(0x2ecc71)
-        .setFooter({ text: `Continue sailing for more adventures!` });
+        .setFooter({ text: `Each sail gets progressively harder with better rewards!` });
     
     // Create continue sailing buttons
     const continueRow = new ActionRowBuilder()
@@ -650,7 +700,9 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
                 
                 // Generate new sailing event
                 const newSailCount = freshUser.sailsCompleted[battleState.arcName];
-                const newEvent = generateSailEvent(battleState.arcName, newSailCount + 1);
+                const nextSailNumber = newSailCount + 1;
+                console.log(`🌊 Generating sail #${nextSailNumber} for ${battleState.arcName} (completed: ${newSailCount})`);
+                const newEvent = generateSailEvent(battleState.arcName, nextSailNumber);
                 
                 // Start new battle
                 await startNewSailBattle(battleMessage, freshUser, battleTeam, newEvent, battleState.arcName, interaction.user.id);
@@ -741,7 +793,7 @@ async function startNewSailBattle(battleMessage, user, battleTeam, event, arcNam
                 inline: false
             }
         )
-        .setFooter({ text: `Sailing in ${arcName} | Sail #${((user.sailsCompleted && user.sailsCompleted[arcName]) || 0) + 1}` });
+        .setFooter({ text: `Sailing in ${arcName} | Currently on Sail #${((user.sailsCompleted && user.sailsCompleted[arcName]) || 0) + 1}` });
     
     // Create action buttons
     const actionRow = new ActionRowBuilder()
