@@ -14,11 +14,32 @@ function loadShopData() {
 }
 
 function findShopItem(itemName, shopData) {
+  const normalizedTarget = itemName.toLowerCase();
   const allItems = [...shopData.items, ...shopData.cards, ...shopData.boosts, ...(shopData.devilFruits || [])];
-  return allItems.find(item =>
-    item.name.toLowerCase() === itemName.toLowerCase() ||
-    item.name.toLowerCase().includes(itemName.toLowerCase())
+  
+  // First try exact match
+  let exactMatch = allItems.find(item =>
+    item.name.toLowerCase() === normalizedTarget
   );
+  if (exactMatch) return exactMatch;
+  
+  // Then try fuzzy matching - contains search
+  let fuzzyMatch = allItems.find(item =>
+    item.name.toLowerCase().includes(normalizedTarget) ||
+    normalizedTarget.includes(item.name.toLowerCase())
+  );
+  if (fuzzyMatch) return fuzzyMatch;
+  
+  // Finally try partial word matching
+  const targetWords = normalizedTarget.split(' ');
+  return allItems.find(item => {
+    const itemWords = item.name.toLowerCase().split(' ');
+    return targetWords.some(targetWord => 
+      itemWords.some(itemWord => 
+        itemWord.includes(targetWord) || targetWord.includes(itemWord)
+      )
+    );
+  });
 }
 
 function normalize(str) {
@@ -49,7 +70,7 @@ async function execute(message, args) {
   const item = findShopItem(itemName, shopData);
 
   if (!item) {
-    return message.reply(`Item "${itemName}" not found in shop. Use \`op shop\` to see available items.`);
+    return message.reply(`Item "${itemName}" not found in shop. Try using partial names like "potion" or "devil". Use \`op shop\` to see available items.`);
   }
 
   if (!item.available) {

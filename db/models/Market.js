@@ -11,6 +11,7 @@ const marketListingSchema = new mongoose.Schema({
     price: { type: Number, required: true, min: 1 },
     description: { type: String, maxlength: 200 },
     active: { type: Boolean, default: true },
+    announcementMessageId: { type: String }, // Store message ID for deletion
     expiresAt: { 
         type: Date, 
         default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now

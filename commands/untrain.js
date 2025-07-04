@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
-const { stopTraining, getTrainingStatus } = require('../utils/trainingSystem.js');
+const { stopTraining, getTrainingStatus, fuzzyFindCard } = require('../utils/trainingSystem.js');
 
 const data = new SlashCommandBuilder()
   .setName('untrain')
@@ -53,11 +53,11 @@ async function execute(message, args) {
 
     const cardName = args.join(' ');
     
-    // Stop training the specified card
+    // Stop training the specified card (now with fuzzy matching built into the training system)
     const result = await stopTraining(userId, cardName);
     
     if (!result.success) {
-        return message.reply(result.message);
+        return message.reply(result.message.replace('You do not have that card in training.', 'You do not have that card in training. Try using partial names like "luffy" or "gear"!'));
     }
 
     const timeText = result.trainingTime.hours > 0 

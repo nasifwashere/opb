@@ -221,10 +221,12 @@ client.on('messageCreate', async message => {
     // Prevent bot responses and duplicate processing
     if (message.author.bot) return;
     
-    const prefix = 'op ';
-    if (!message.content.startsWith(prefix)) return;
+    // Support both "op " and "Op " prefixes
+    const prefixes = ['op ', 'Op '];
+    const usedPrefix = prefixes.find(prefix => message.content.startsWith(prefix));
+    if (!usedPrefix) return;
     
-    const args = message.content.slice(prefix.length).trim().split(/ +/);
+    const args = message.content.slice(usedPrefix.length).trim().split(/ +/);
     const commandName = args.shift().toLowerCase();
     
     // Create unique message ID for deduplication

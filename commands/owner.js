@@ -230,7 +230,7 @@ async function handleOwnerCommand(message, args, client) {
 
 async function handleGiveCommand(message, args) {
   if (args.length < 3) {
-    return message.reply('❌ Usage: `op owner give @user <amount> <beli/xp>` or `op owner give @user <card_name> <rank>`');
+    return message.reply('❌ Usage: `op owner give @user <amount> <beli/xp>` or `op owner give @user <card_name> <rank>`\n\nExamples:\n• `op owner give @user 1000 beli`\n• `op owner give @user 500 xp`\n• `op owner give @user Monkey D. Luffy B`');
   }
 
   const targetUser = message.mentions.users.first();

@@ -196,7 +196,7 @@ async function execute(message, args) {
             return;
         } else if (interaction.customId === 'market_list') {
             await interaction.followUp({
-                content: 'To list an item for sale, use: `op market list <type> <item name> <price> [description]`\n\nExamples:\n• `op market list card Luffy 1000 Great starter card!`\n• `op market list item Basic Potion 25`\n\n**To remove a listing:**\n1. Use `op market` and click "My Listings" to see your listing IDs\n2. Use `op market unlist <listing ID>` to remove it\n\nExample: `op market unlist MKT12345` removes your listing with ID MKT12345',
+                content: 'To list an item for sale, use: `op market list <type> <item name> <price> [description]`\n\nExamples:\n• `op market list card Luffy 1000 Great starter card!`\n• `op market list card Garp_worst 500 Selling worst copy`\n• `op market list card Garp_best 2000 Selling best copy`\n• `op market list item Basic Potion 25`\n\n**Card Modifiers:**\n• Add `_worst` to sell your lowest level copy\n• Add `_best` to sell your highest level copy\n\n**To remove a listing:**\n1. Use `op market` and click "My Listings" to see your listing IDs\n2. Use `op market unlist <listing ID>` to remove it\n\nExample: `op market unlist MKT12345` removes your listing with ID MKT12345',
                 ephemeral: true
             });
             return;
@@ -291,6 +291,27 @@ async function handleMarketBuy(message, user, args) {
         user.inventory.push(normalize(listing.itemName));
     }
 
+    // Delete announcement message if it exists
+    if (listing.announcementMessageId) {
+        try {
+            const configPath = path.resolve('config.json');
+            const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            
+            if (config.marketChannelId) {
+                const marketChannel = message.client.channels.cache.get(config.marketChannelId);
+                if (marketChannel) {
+                    const announcementMessage = await marketChannel.messages.fetch(listing.announcementMessageId);
+                    if (announcementMessage) {
+                        await announcementMessage.delete();
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error deleting announcement message:', error);
+            // Don't fail the purchase if message deletion fails
+        }
+    }
+
     // Remove listing
     await MarketListing.findByIdAndUpdate(listing._id, { active: false });
     
@@ -341,14 +362,73 @@ async function handleMarketList(message, user, args) {
     let itemLevel = null;
 
     if (type === 'card') {
-        const userCard = user.cards?.find(c => normalize(c.name) === normalize(itemName));
-        if (userCard) {
+        // Check for _worst or _best modifiers
+        let actualCardName = itemName;
+        let selectWorst = false;
+        let selectBest = false;
+        
+        if (itemName.toLowerCase().endsWith('_worst')) {
+            actualCardName = itemName.slice(0, -6); // Remove '_worst'
+            selectWorst = true;
+        } else if (itemName.toLowerCase().endsWith('_best')) {
+            actualCardName = itemName.slice(0, -5); // Remove '_best'
+            selectBest = true;
+        }
+        
+        // Find all matching cards
+        const matchingCards = user.cards?.filter(c => normalize(c.name) === normalize(actualCardName)) || [];
+        
+        if (matchingCards.length > 0) {
+            let selectedCard;
+            let selectedIndex;
+            
+            if (selectWorst) {
+                // Find worst card (lowest level, then lowest experience)
+                selectedCard = matchingCards.reduce((worst, current, index) => {
+                    const currentLevel = current.level || 1;
+                    const currentExp = current.experience || 0;
+                    const worstLevel = worst.card.level || 1;
+                    const worstExp = worst.card.experience || 0;
+                    
+                    if (currentLevel < worstLevel || (currentLevel === worstLevel && currentExp < worstExp)) {
+                        return { card: current, index: user.cards.findIndex(c => c === current) };
+                    }
+                    return worst;
+                }, { card: matchingCards[0], index: user.cards.findIndex(c => c === matchingCards[0]) });
+                
+                selectedIndex = selectedCard.index;
+                selectedCard = selectedCard.card;
+            } else if (selectBest) {
+                // Find best card (highest level, then highest experience)
+                selectedCard = matchingCards.reduce((best, current, index) => {
+                    const currentLevel = current.level || 1;
+                    const currentExp = current.experience || 0;
+                    const bestLevel = best.card.level || 1;
+                    const bestExp = best.card.experience || 0;
+                    
+                    if (currentLevel > bestLevel || (currentLevel === bestLevel && currentExp > bestExp)) {
+                        return { card: current, index: user.cards.findIndex(c => c === current) };
+                    }
+                    return best;
+                }, { card: matchingCards[0], index: user.cards.findIndex(c => c === matchingCards[0]) });
+                
+                selectedIndex = selectedCard.index;
+                selectedCard = selectedCard.card;
+            } else {
+                // Default behavior - first match
+                selectedCard = matchingCards[0];
+                selectedIndex = user.cards.findIndex(c => normalize(c.name) === normalize(actualCardName));
+            }
+            
             hasItem = true;
-            itemRank = userCard.rank;
-            itemLevel = userCard.level || 1;
-            // Remove from user's collection
-            const cardIndex = user.cards.findIndex(c => normalize(c.name) === normalize(itemName));
-            user.cards.splice(cardIndex, 1);
+            itemRank = selectedCard.rank;
+            itemLevel = selectedCard.level || 1;
+            
+            // Remove the selected card from user's collection
+            user.cards.splice(selectedIndex, 1);
+            
+            // Update the item name to the actual card name for the listing
+            itemName = selectedCard.name;
         }
     } else {
         const itemIndex = user.inventory?.findIndex(i => normalize(i) === normalize(itemName));
@@ -403,7 +483,11 @@ async function handleMarketList(message, user, args) {
                     marketEmbed.addFields({ name: 'Description', value: description, inline: false });
                 }
 
-                await marketChannel.send({ embeds: [marketEmbed] });
+                const announcementMessage = await marketChannel.send({ embeds: [marketEmbed] });
+                
+                // Store the message ID in the listing for later deletion
+                listing.announcementMessageId = announcementMessage.id;
+                await listing.save();
             }
         }
     } catch (error) {
@@ -455,6 +539,27 @@ async function handleMarketUnlist(message, user, args) {
     } else {
         if (!user.inventory) user.inventory = [];
         user.inventory.push(normalize(listing.itemName));
+    }
+
+    // Delete announcement message if it exists
+    if (listing.announcementMessageId) {
+        try {
+            const configPath = path.resolve('config.json');
+            const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            
+            if (config.marketChannelId) {
+                const marketChannel = message.client.channels.cache.get(config.marketChannelId);
+                if (marketChannel) {
+                    const announcementMessage = await marketChannel.messages.fetch(listing.announcementMessageId);
+                    if (announcementMessage) {
+                        await announcementMessage.delete();
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error deleting announcement message:', error);
+            // Don't fail the unlisting if message deletion fails
+        }
     }
 
     // Remove listing

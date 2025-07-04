@@ -123,12 +123,25 @@ async function execute(message, args) {
     const itemName = args[0];
     const cardName = args.slice(1).join(' ');
 
-    // Check if user owns the item
+    // Check if user owns the item - try fuzzy matching
     const normalizedItemName = normalize(itemName);
-    const hasItem = user.inventory?.includes(normalizedItemName);
+    let hasItem = user.inventory?.includes(normalizedItemName);
+    let actualItemName = normalizedItemName;
+    
+    // If exact match not found, try fuzzy matching
+    if (!hasItem && user.inventory) {
+        const fuzzyMatch = user.inventory.find(invItem => {
+            const normInvItem = normalize(invItem);
+            return normInvItem.includes(normalizedItemName) || normalizedItemName.includes(normInvItem);
+        });
+        if (fuzzyMatch) {
+            hasItem = true;
+            actualItemName = fuzzyMatch;
+        }
+    }
 
     if (!hasItem) {
-        return message.reply(`You don't own **${itemName}**.`);
+        return message.reply(`You don't own **${itemName}**. Try using partial names like "potion" or "saber"!`);
     }
 
     // Check if item is equipment (including legacy items)
@@ -162,7 +175,7 @@ async function execute(message, args) {
     }
 
     // Remove item from inventory
-    const itemIndex = user.inventory.indexOf(normalizedItemName);
+    const itemIndex = user.inventory.indexOf(actualItemName);
     user.inventory.splice(itemIndex, 1);
 
     // Equip the new item (use mapped name if it's a legacy item)
