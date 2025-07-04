@@ -424,8 +424,13 @@ async function execute(message, args, client) {
       }
     });
 
-    collector.on('end', async () => {
+    collector.on('end', async (reason) => {
       await battleMessage.edit({ components: [] });
+      // If battle not over (timeout, no interaction), increment sailsCompleted so user can move on
+      if (!battleOver) {
+        user.sailsCompleted[arc]++;
+        await saveUserWithRetry(user);
+      }
     });
     return;
   } else if (event.type === 'narrative') {
@@ -502,7 +507,9 @@ async function execute(message, args, client) {
           .setFooter({ text: `Sails completed: ${eventNumber}` });
         return collected.update({ embeds: [resultEmbed], components: [] });
       } catch (e) {
-        // Timeout or error
+        // Timeout or error: increment sailsCompleted so user can move on
+        user.sailsCompleted[arc]++;
+        await saveUserWithRetry(user);
         return sent.edit({ content: 'No choice made. The opportunity passes.', components: [], embeds: [embed] });
       }
     } else {
