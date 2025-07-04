@@ -1,6 +1,7 @@
 {
   "prefix": "op ",
   "defaultSaga": "East Blue",
+  "sagaRequirementsEnabled": false,
   "maxTeamSize": 3,
   "maxStorageSize": 250,
   "pullCooldown": 28800000,

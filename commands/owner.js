@@ -142,7 +142,8 @@ async function execute(message, args, client) {
           .addFields(
             { name: 'op owner spawn <card_name> <rank>', value: 'Spawn a card for yourself', inline: false },
             { name: 'op owner item <item_name>', value: 'Give yourself an item from the shop', inline: false },
-            { name: 'op owner testpull [amount]', value: 'Test pull mechanics with specified amount', inline: false }
+            { name: 'op owner testpull [amount]', value: 'Test pull mechanics with specified amount', inline: false },
+            { name: 'op owner toggle-saga on/off', value: 'Toggle saga requirements for card evolution', inline: false }
           )
           .setColor(0xffd700)
           .setFooter({ text: 'Testing and game management commands' });
@@ -213,6 +214,9 @@ async function handleOwnerCommand(message, args, client) {
       
       case 'count':
         return await handleCountCommand(message);
+      
+      case 'toggle-saga':
+        return await handleToggleSagaCommand(message, args);
       
       default:
         return message.reply('❌ Unknown owner command. Use `op owner` to see available commands.');
@@ -558,21 +562,52 @@ async function handleBackupCommand(message) {
 
 async function handleCountCommand(message) {
   const totalUsers = await User.countDocuments();
-  const usersWithCards = await User.countDocuments({ cards: { $exists: true, $not: { $size: 0 } } });
-  const totalCardsResult = await User.aggregate([
-    { $unwind: '$cards' },
-    { $count: 'total' }
-  ]);
-  const totalCards = totalCardsResult.length > 0 ? totalCardsResult[0].total : 0;
-
+  const totalCards = await User.countDocuments({ cards: { $exists: true, $ne: [] } });
+  const bannedUsers = await User.countDocuments({ banned: true });
+  
   const embed = new EmbedBuilder()
     .setTitle('📊 Database Counts')
     .setColor(0x3498db)
     .addFields(
       { name: 'Total Users', value: totalUsers.toString(), inline: true },
-      { name: 'Users with Cards', value: usersWithCards.toString(), inline: true },
-      { name: 'Total Cards', value: totalCards.toString(), inline: true }
+      { name: 'Users with Cards', value: totalCards.toString(), inline: true },
+      { name: 'Banned Users', value: bannedUsers.toString(), inline: true }
     );
+
+  return message.reply({ embeds: [embed] });
+}
+
+async function handleToggleSagaCommand(message, args) {
+  if (args.length < 2) {
+    const config = require('../config.json');
+    const currentStatus = config.sagaRequirementsEnabled ? 'ON' : 'OFF';
+    return message.reply(`❓ Current saga requirements status: **${currentStatus}**\n\nUsage: \`op owner toggle-saga on/off\`\n\n**ON**: Players must reach certain sagas to evolve cards\n**OFF**: All cards can evolve immediately regardless of saga`);
+  }
+
+  const toggle = args[1].toLowerCase();
+  if (toggle !== 'on' && toggle !== 'off') {
+    return message.reply('❌ Invalid option. Use `on` or `off`.');
+  }
+
+  const newValue = toggle === 'on';
+  
+  // Update config.json file
+  const configPath = path.resolve('config.json');
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  config.sagaRequirementsEnabled = newValue;
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+  const status = newValue ? 'ON' : 'OFF';
+  const emoji = newValue ? '🔒' : '🔓';
+  const description = newValue 
+    ? 'Players now **must reach certain sagas** to evolve cards' 
+    : 'Players can now **evolve cards immediately** regardless of saga';
+
+  const embed = new EmbedBuilder()
+    .setTitle(`${emoji} Saga Requirements ${status}`)
+    .setDescription(description)
+    .setColor(newValue ? 0xe74c3c : 0x2ecc71)
+    .setFooter({ text: `Changed by ${message.author.username}` });
 
   return message.reply({ embeds: [embed] });
 }

@@ -3,6 +3,7 @@ const User = require('../db/models/User.js');
 const fs = require('fs');
 const path = require('path');
 const { getEvolution } = require('../utils/evolutionSystem.js');
+const config = require('../config.json');
 
 const cardsPath = path.resolve('data', 'cards.json');
 const allCards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
@@ -101,10 +102,12 @@ async function execute(message, args) {
     return message.reply(`<:arrow:1375872983029256303> "${cardDef.name}" needs to be level ${evolution.requiredLevel} to evolve. Current level: ${currentLevel}`);
   }
 
-  // Check saga requirement - default to East Blue if no saga set
-  const currentSaga = user.saga || "East Blue";
-  if (evolution.requiredSaga && currentSaga !== evolution.requiredSaga) {
-    return message.reply(`<:arrow:1375872983029256303> You need to reach the "${evolution.requiredSaga}" saga to evolve this card. Current saga: ${currentSaga}`);
+  // Check saga requirement - only if globally enabled
+  if (config.sagaRequirementsEnabled && evolution.requiredSaga) {
+    const currentSaga = user.saga || "East Blue";
+    if (currentSaga !== evolution.requiredSaga) {
+      return message.reply(`<:arrow:1375872983029256303> You need to reach the "${evolution.requiredSaga}" saga to evolve this card. Current saga: ${currentSaga}`);
+    }
   }
 
   // Find the evolved form

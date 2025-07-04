@@ -42,6 +42,17 @@
   - Gear Second → Snakeman (Level 30, East Blue, 2500 Beli)
   - Snakeman → Sun God Nika (Level 90, East Blue, 30000 Beli)
 
+### 4. **Owner Saga Requirements Toggle** ✅ NEW!
+**Problem**: Need flexible control over when saga requirements are enforced for evolution.
+
+**Solution**: 
+- Added `sagaRequirementsEnabled` setting to `config.json` (defaults to `false`)
+- Created owner command `op owner toggle-saga on/off` to control this globally
+- Modified evolution logic to only check saga requirements when globally enabled
+- Two modes:
+  - **OFF (default)**: All cards can evolve immediately regardless of saga
+  - **ON**: Cards must meet saga requirements to evolve
+
 ## Files Modified
 
 1. **`commands/start.js`**
@@ -56,6 +67,15 @@
    - Improved saga handling with fallback to "East Blue"
    - Enhanced error messages
    - Added saga initialization for existing users
+   - **NEW**: Added global saga requirements check using config setting
+
+4. **`commands/owner.js`** **NEW**
+   - Added `toggle-saga` command to owner commands
+   - Added command to game management category in owner menu
+   - Command updates `config.json` file dynamically
+
+5. **`config.json`** **NEW**
+   - Added `sagaRequirementsEnabled: false` setting
 
 ## Testing Results
 
@@ -63,6 +83,7 @@
 ✅ Fuzzy matching working for partial names  
 ✅ Saga initialization working for new and existing users  
 ✅ Evolution system accessible from the start of the game  
+✅ **NEW**: Saga toggle system working correctly for both modes
 
 ## User Experience Improvements
 
@@ -70,6 +91,14 @@
 - **Tutorial-friendly**: Luffy can be evolved immediately upon starting the game
 - **No more "undefined" saga errors**: All users automatically get East Blue saga
 - **Better error messages**: Helpful suggestions when card names aren't found
+- **Flexible progression**: Owner can control when saga requirements are enforced
+
+## Owner Commands Enhanced
+
+- **NEW**: `op owner toggle-saga on/off` - Toggle global saga requirements
+  - `off`: All cards can evolve immediately (default, tutorial-friendly)
+  - `on`: Cards must meet saga requirements (progression-gated)
+  - Shows current status when run without parameters
 
 ## Commands Enhanced
 
@@ -79,3 +108,13 @@
   - `op evolve gear second`
   - `op evolve snakeman`
   - `op evolve nika`
+
+## Game Balance Control
+
+The saga toggle feature allows perfect control over game progression:
+
+- **Early Game/Testing**: Keep saga requirements OFF for immediate access to all evolutions
+- **Mature Game**: Turn saga requirements ON to create proper progression gates
+- **Events/Special Periods**: Toggle as needed for special gameplay experiences
+
+This gives maximum flexibility for managing the game's evolution system!
