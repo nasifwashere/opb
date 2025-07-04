@@ -4,7 +4,6 @@ const { calculateBattleStats, calculateDamage } = require('../utils/battleSystem
 const { distributeXPToTeam } = require('../utils/levelSystem.js');
 const { saveUserWithRetry } = require('../utils/saveWithRetry.js');
 const { createProfessionalTeamDisplay, createEnemyDisplay, createBattleLogDisplay } = require('../utils/uiHelpers.js');
-const itemsData = require('../data/shop.json');
 
 // Available arcs for sailing
 const AVAILABLE_ARCS = {
@@ -27,19 +26,22 @@ function getRandomInt(min, max) {
 }
 
 function getRandomItem(rarity) {
-    const items = itemsData.filter(item => item.rarity === rarity);
-    if (!items.length) {
-        // Fallback items if shop.json doesn't have items of this rarity
-        const fallbacks = {
-            'Common': 'Basic Potion',
-            'Uncommon': 'Normal Potion',
-            'Rare': 'Max Potion',
-            'Epic': 'Epic Potion',
-            'Legendary': 'Legendary Potion'
-        };
-        return fallbacks[rarity] || 'Basic Potion';
+    // Map rarity levels to shop items based on category/price
+    const rarityMapping = {
+        'Common': ['Basic Potion', 'Leather Vest'],
+        'Uncommon': ['Normal Potion', 'Rusty Cutlass', 'Flintlock Pistol'],
+        'Rare': ['Max Potion', 'Marine Saber', 'Marine Rifle', 'Marine Coat'],
+        'Epic': ['Wado Ichimonji', 'Clima-Tact'],
+        'Legendary': ['Pirate King\'s Coat', 'Raid Ticket']
+    };
+    
+    const items = rarityMapping[rarity];
+    if (!items || items.length === 0) {
+        // Fallback to basic items
+        return 'Basic Potion';
     }
-    return items[getRandomInt(0, items.length - 1)].name;
+    
+    return items[getRandomInt(0, items.length - 1)];
 }
 
 function generateSailEvent(arcName, sailsCompleted) {
