@@ -307,7 +307,8 @@ async function execute(message, args) {
       // Find card definition
       const cardDef = allCards.find(c => normalize(c.name) === normalize(userCard.name));
       if (cardDef) {
-        const level = userCard.level || 1;
+        // Prioritize level field, fallback to timesUpgraded + 1 for legacy cards, minimum level 1
+        const level = userCard.level >= 1 ? userCard.level : (userCard.timesUpgraded ? userCard.timesUpgraded + 1 : 1);
         const stats = calculateCardStats(cardDef, level);
 
         // Apply equipment bonuses using new system

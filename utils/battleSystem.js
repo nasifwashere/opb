@@ -70,7 +70,8 @@ function calculateBattleStats(user, cardDatabase = allCards) {
     // Skip disallowed cards
     if (user.disallowedCards?.includes(cardDef.name)) continue;
 
-    const level = userCard.level || (userCard.timesUpgraded ? userCard.timesUpgraded + 1 : 1);
+    // Prioritize level field, fallback to timesUpgraded + 1 for legacy cards, minimum level 1
+    const level = userCard.level >= 1 ? userCard.level : (userCard.timesUpgraded ? userCard.timesUpgraded + 1 : 1);
 
     // Use the SAME calculation as mycard, info, and collection commands
     const { calculateCardStats } = require('./levelSystem.js');

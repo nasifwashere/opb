@@ -211,12 +211,16 @@ async function stopTraining(userId, cardName) {
           fixedName = def.name;
           fixedRank = def.rank;
         }
+        
+        // Update timesUpgraded to be consistent with new level for legacy compatibility
+        const newTimesUpgraded = Math.max(0, newLevel - 1);
+        
         const returnedCard = {
           name: fixedName,
           rank: fixedRank,
           level: newLevel,
           experience: totalXP,
-          timesUpgraded: trainingCard.timesUpgraded,
+          timesUpgraded: newTimesUpgraded, // Keep this consistent with level
           locked: trainingCard.locked
         };
         user.cards.push(returnedCard);
@@ -348,6 +352,10 @@ async function autoUntrainExpiredCards() {
                     // Calculate final XP
                     const accumulatedXP = calculateTrainingXP(trainingCard.startTime);
                     const totalXP = trainingCard.experience + accumulatedXP;
+                    
+                    // Calculate final level
+                    const XP_PER_LEVEL = 100;
+                    const finalLevel = Math.floor(totalXP / XP_PER_LEVEL) + 1;
 
                     // Return card to collection
                     if (!user.cards) user.cards = [];
@@ -363,12 +371,16 @@ async function autoUntrainExpiredCards() {
                     }
                     if (!fixedName) fixedName = '[Unknown Card]';
                     if (!fixedRank) fixedRank = '[Unknown Rank]';
+                    
+                    // Update timesUpgraded to be consistent with level for legacy compatibility
+                    const finalTimesUpgraded = Math.max(0, finalLevel - 1);
+                    
                     user.cards.push({
                         name: fixedName,
                         rank: fixedRank,
-                        level: trainingCard.level,
+                        level: finalLevel,
                         experience: totalXP,
-                        timesUpgraded: trainingCard.timesUpgraded,
+                        timesUpgraded: finalTimesUpgraded, // Keep this consistent with level
                         locked: trainingCard.locked
                     });
 
