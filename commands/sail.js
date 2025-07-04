@@ -272,6 +272,7 @@ async function execute(message, args, client) {
             // Auto-complete the saga if they've reached the required stage
             if (!user.completedSagas) user.completedSagas = [];
             user.completedSagas.push(arcName);
+            user.markModified('completedSagas');
             await saveUserWithRetry(user);
         } else {
             return message.reply(`🔒 You must complete the ${arcName} saga to unlock infinite sailing!`);
@@ -309,13 +310,22 @@ async function execute(message, args, client) {
     }
     
     // Initialize sailing progress
-    if (!user.sailsCompleted) user.sailsCompleted = {};
-    if (!user.sailsCompleted[arcName]) user.sailsCompleted[arcName] = 0;
+    if (!user.sailsCompleted) {
+        user.sailsCompleted = {};
+        user.markModified('sailsCompleted');
+    }
+    if (!user.sailsCompleted[arcName]) {
+        user.sailsCompleted[arcName] = 0;
+        user.markModified('sailsCompleted');
+    }
     
     const currentSails = user.sailsCompleted[arcName];
     
     // Generate sailing event
-    const event = generateSailEvent(arcName, currentSails + 1);
+    const nextSailNumber = currentSails + 1;
+    console.log(`🚀 Starting sail #${nextSailNumber} for ${arcName} (completed: ${currentSails})`);
+    const event = generateSailEvent(arcName, nextSailNumber);
+    console.log(`📋 Generated event: ${event.title} with enemy: ${event.enemies[0].name}`);
     
     // Start battle
     await startSailBattle(message, user, battleTeam, event, arcName, client);
@@ -580,7 +590,15 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
     const newCount = user.sailsCompleted[battleState.arcName];
     console.log(`⚔️ Sail completed! ${battleState.arcName}: ${oldCount} → ${newCount}`);
     
-    await saveUserWithRetry(user);
+    // Mark the field as modified so Mongoose saves it
+    user.markModified('sailsCompleted');
+    
+    try {
+        await saveUserWithRetry(user);
+        console.log(`💾 Successfully saved sail count ${newCount} for ${battleState.arcName}`);
+    } catch (error) {
+        console.error(`❌ Failed to save sail count:`, error);
+    }
     
     // Create victory embed with progression indicators
     let rewardText = `💰 **${rewards.beli} Beli**\n⭐ **${rewards.xp} XP**`;
@@ -664,6 +682,10 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
                     return;
                 }
                 
+                // Debug fresh user sail count
+                const freshSailCount = (freshUser.sailsCompleted && freshUser.sailsCompleted[battleState.arcName]) || 0;
+                console.log(`🔄 Refreshed user data: ${battleState.arcName} sail count = ${freshSailCount}`);
+                
                 // Heal team slightly between battles (like explore does)
                 const battleTeam = calculateBattleStats(freshUser);
                 battleTeam.forEach(card => {
@@ -701,8 +723,9 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
                 // Generate new sailing event
                 const newSailCount = freshUser.sailsCompleted[battleState.arcName];
                 const nextSailNumber = newSailCount + 1;
-                console.log(`🌊 Generating sail #${nextSailNumber} for ${battleState.arcName} (completed: ${newSailCount})`);
+                console.log(`🌊 Continue Sailing: Generating sail #${nextSailNumber} for ${battleState.arcName} (completed: ${newSailCount})`);
                 const newEvent = generateSailEvent(battleState.arcName, nextSailNumber);
+                console.log(`📋 Continue event: ${newEvent.title} with enemy: ${newEvent.enemies[0].name}`);
                 
                 // Start new battle
                 await startNewSailBattle(battleMessage, freshUser, battleTeam, newEvent, battleState.arcName, interaction.user.id);
