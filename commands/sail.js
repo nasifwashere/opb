@@ -346,14 +346,17 @@ async function startSailBattle(message, user, battleTeam, event, arcName, client
         enemies: event.enemies,
         battleLog: ['⚔️ Battle begins!'],
         event: event,
-        arcName: arcName
+        arcName: arcName,
+        collector: null // Store collector reference for cleanup
     };
     
     // Create collector for button interactions
     const collector = battleMessage.createMessageComponentCollector({
-        filter: i => i.user.id === message.author.id,
+        filter: i => i.user.id === message.author.id && (i.customId.startsWith('sail_') && !i.customId.startsWith('sail_continue') && !i.customId.startsWith('sail_stop')),
         time: 300000 // 5 minutes
     });
+    
+    battleState.collector = collector; // Store reference
     
     collector.on('collect', async (interaction) => {
         await handleBattleAction(interaction, battleMessage, user, battleState, client);
@@ -502,6 +505,11 @@ async function handleItems(interaction, battleMessage, user, battleState) {
 }
 
 async function handleFlee(interaction, battleMessage, user, battleState) {
+    // Stop the battle collector
+    if (battleState.collector && !battleState.collector.ended) {
+        battleState.collector.stop('flee');
+    }
+    
     const fleeEmbed = new EmbedBuilder()
         .setTitle('🏃‍♂️ Fled from Battle!')
         .setDescription('You successfully escaped from the encounter.')
@@ -516,6 +524,11 @@ async function handleFlee(interaction, battleMessage, user, battleState) {
 
 async function handleVictory(interaction, battleMessage, user, battleState) {
     const rewards = battleState.event.rewards;
+    
+    // Stop the old battle collector to prevent conflicts
+    if (battleState.collector && !battleState.collector.ended) {
+        battleState.collector.stop('victory');
+    }
     
     // Award rewards
     user.beli = (user.beli || 0) + rewards.beli;
@@ -580,77 +593,91 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
         components: [continueRow]
     });
     
-    // Set up collector for continue/stop buttons
+    // Set up collector for continue/stop buttons only
     const continueCollector = battleMessage.createMessageComponentCollector({
         filter: i => i.user.id === interaction.user.id && (i.customId === 'sail_continue' || i.customId === 'sail_stop'),
         time: 300000 // 5 minutes
     });
     
     continueCollector.on('collect', async (continueInteraction) => {
-        if (continueInteraction.customId === 'sail_continue') {
-            await continueInteraction.deferUpdate();
-            
-            // Refresh user data and start new sailing encounter
-            const freshUser = await User.findOne({ userId: user.userId });
-            if (!freshUser) {
-                await continueInteraction.followUp({ content: '❌ User data not found!', ephemeral: true });
-                return;
-            }
-            
-            // Heal team slightly between battles (like explore does)
-            const battleTeam = calculateBattleStats(freshUser);
-            battleTeam.forEach(card => {
-                // Ensure maxHp is set
-                if (!card.maxHp) {
-                    card.maxHp = card.hp || 100;
-                }
-                // Ensure currentHp is set
-                if (!card.currentHp) {
-                    card.currentHp = card.maxHp;
+        try {
+            if (continueInteraction.customId === 'sail_continue') {
+                await continueInteraction.deferUpdate();
+                
+                // Stop this collector before starting new battle
+                continueCollector.stop('continue');
+                
+                // Refresh user data and start new sailing encounter
+                const freshUser = await User.findOne({ userId: user.userId });
+                if (!freshUser) {
+                    await continueInteraction.followUp({ content: '❌ User data not found!', ephemeral: true });
+                    return;
                 }
                 
-                const healAmount = Math.floor(card.maxHp * 0.1); // Heal 10% between battles
-                card.currentHp = Math.min(card.maxHp, card.currentHp + healAmount);
-            });
-            
-            // Check if team is still viable
-            if (battleTeam.every(card => card.currentHp <= 0)) {
-                const healEmbed = new EmbedBuilder()
-                    .setTitle('💀 Team Defeated!')
-                    .setDescription('Your crew has no health remaining! Rest and heal before continuing to sail.')
-                    .setColor(0xe74c3c);
+                // Heal team slightly between battles (like explore does)
+                const battleTeam = calculateBattleStats(freshUser);
+                battleTeam.forEach(card => {
+                    // Ensure maxHp is set
+                    if (!card.maxHp) {
+                        card.maxHp = card.hp || 100;
+                    }
+                    // Ensure currentHp is set
+                    if (!card.currentHp) {
+                        card.currentHp = card.maxHp;
+                    }
+                    
+                    const healAmount = Math.floor(card.maxHp * 0.1); // Heal 10% between battles
+                    card.currentHp = Math.min(card.maxHp, card.currentHp + healAmount);
+                });
+                
+                // Check if team is still viable
+                if (battleTeam.every(card => card.currentHp <= 0)) {
+                    const healEmbed = new EmbedBuilder()
+                        .setTitle('💀 Team Defeated!')
+                        .setDescription('Your crew has no health remaining! Rest and heal before continuing to sail.')
+                        .setColor(0xe74c3c);
+                    
+                    await battleMessage.edit({
+                        embeds: [healEmbed],
+                        components: []
+                    });
+                    return;
+                }
+                
+                // Initialize sailing progress if needed
+                if (!freshUser.sailsCompleted) freshUser.sailsCompleted = {};
+                if (!freshUser.sailsCompleted[battleState.arcName]) freshUser.sailsCompleted[battleState.arcName] = 0;
+                
+                // Generate new sailing event
+                const newSailCount = freshUser.sailsCompleted[battleState.arcName];
+                const newEvent = generateSailEvent(battleState.arcName, newSailCount + 1);
+                
+                // Start new battle
+                await startNewSailBattle(battleMessage, freshUser, battleTeam, newEvent, battleState.arcName, interaction.user.id);
+                
+            } else if (continueInteraction.customId === 'sail_stop') {
+                await continueInteraction.deferUpdate();
+                
+                // Stop this collector
+                continueCollector.stop('stop');
+                
+                const stopEmbed = new EmbedBuilder()
+                    .setTitle('🏴‍☠️ Returned to Port')
+                    .setDescription('You return to port with your treasures. The seas await your next adventure!')
+                    .setColor(0x95a5a6)
+                    .setFooter({ text: `Use 'op sail ${battleState.arcName.toLowerCase()}' to sail again anytime!` });
                 
                 await battleMessage.edit({
-                    embeds: [healEmbed],
+                    embeds: [stopEmbed],
                     components: []
                 });
-                return;
             }
-            
-            // Initialize sailing progress if needed
-            if (!freshUser.sailsCompleted) freshUser.sailsCompleted = {};
-            if (!freshUser.sailsCompleted[battleState.arcName]) freshUser.sailsCompleted[battleState.arcName] = 0;
-            
-            // Generate new sailing event
-            const newSailCount = freshUser.sailsCompleted[battleState.arcName];
-            const newEvent = generateSailEvent(battleState.arcName, newSailCount + 1);
-            
-            // Start new battle
-            await startNewSailBattle(battleMessage, freshUser, battleTeam, newEvent, battleState.arcName, interaction.user.id);
-            
-        } else if (continueInteraction.customId === 'sail_stop') {
-            await continueInteraction.deferUpdate();
-            
-            const stopEmbed = new EmbedBuilder()
-                .setTitle('🏴‍☠️ Returned to Port')
-                .setDescription('You return to port with your treasures. The seas await your next adventure!')
-                .setColor(0x95a5a6)
-                .setFooter({ text: `Use 'op sail ${battleState.arcName.toLowerCase()}' to sail again anytime!` });
-            
-            await battleMessage.edit({
-                embeds: [stopEmbed],
-                components: []
-            });
+        } catch (error) {
+            console.error('Error in continue collector:', error);
+            // If there's an error, stop the collector to prevent further issues
+            if (!continueCollector.ended) {
+                continueCollector.stop('error');
+            }
         }
     });
     
@@ -661,15 +688,24 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
                 .setDescription('Your sailing session has timed out. You return to port with your rewards.')
                 .setColor(0x95a5a6);
             
-            await battleMessage.edit({
-                embeds: [timeoutEmbed],
-                components: []
-            });
+            try {
+                await battleMessage.edit({
+                    embeds: [timeoutEmbed],
+                    components: []
+                });
+            } catch (error) {
+                console.error('Error updating message on timeout:', error);
+            }
         }
     });
 }
 
 async function handleDefeat(interaction, battleMessage, user, battleState) {
+    // Stop the battle collector
+    if (battleState.collector && !battleState.collector.ended) {
+        battleState.collector.stop('defeat');
+    }
+    
     const defeatEmbed = new EmbedBuilder()
         .setTitle('💀 Defeat!')
         .setDescription('Your crew has been defeated! Rest and try again.')
@@ -735,17 +771,24 @@ async function startNewSailBattle(battleMessage, user, battleTeam, event, arcNam
         enemies: event.enemies,
         battleLog: ['⚔️ A new encounter begins!'],
         event: event,
-        arcName: arcName
+        arcName: arcName,
+        collector: null // Store collector reference for cleanup
     };
     
-    // Create collector for button interactions
+    // Create collector for button interactions with proper filter
     const collector = battleMessage.createMessageComponentCollector({
-        filter: i => i.user.id === userId,
+        filter: i => i.user.id === userId && (i.customId.startsWith('sail_') && !i.customId.startsWith('sail_continue') && !i.customId.startsWith('sail_stop')),
         time: 300000 // 5 minutes
     });
     
+    battleState.collector = collector; // Store reference
+    
     collector.on('collect', async (interaction) => {
-        await handleBattleAction(interaction, battleMessage, user, battleState, null);
+        try {
+            await handleBattleAction(interaction, battleMessage, user, battleState, null);
+        } catch (error) {
+            console.error('Error in battle action:', error);
+        }
     });
     
     collector.on('end', async (collected, reason) => {
@@ -754,10 +797,14 @@ async function startNewSailBattle(battleMessage, user, battleTeam, event, arcNam
                 .setColor(0x95a5a6)
                 .setDescription('⏰ Battle timed out. You fled from the encounter.');
             
-            await battleMessage.edit({
-                embeds: [timeoutEmbed],
-                components: []
-            });
+            try {
+                await battleMessage.edit({
+                    embeds: [timeoutEmbed],
+                    components: []
+                });
+            } catch (error) {
+                console.error('Error updating message on timeout:', error);
+            }
         }
     });
 }
