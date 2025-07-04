@@ -316,7 +316,7 @@ async function startSailBattle(message, user, battleTeam, event, arcName, client
                 inline: false
             }
         )
-        .setFooter({ text: `Sailing in ${arcName} | Sail #${user.sailsCompleted[arcName] + 1}` });
+        .setFooter({ text: `Sailing in ${arcName} | Sail #${((user.sailsCompleted && user.sailsCompleted[arcName]) || 0) + 1}` });
     
     // Create action buttons
     const actionRow = new ActionRowBuilder()
@@ -529,8 +529,12 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
         rewards.items.forEach(item => user.inventory.push(item));
     }
     
+    // Initialize sailing progress if needed
+    if (!user.sailsCompleted) user.sailsCompleted = {};
+    if (!user.sailsCompleted[battleState.arcName]) user.sailsCompleted[battleState.arcName] = 0;
+    
     // Increment sail count
-    user.sailsCompleted[battleState.arcName] = (user.sailsCompleted[battleState.arcName] || 0) + 1;
+    user.sailsCompleted[battleState.arcName] = user.sailsCompleted[battleState.arcName] + 1;
     
     await saveUserWithRetry(user);
     
@@ -551,7 +555,7 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
             },
             {
                 name: '📊 Progress',
-                value: `Sails completed in ${battleState.arcName}: **${user.sailsCompleted[battleState.arcName]}**`,
+                value: `Sails completed in ${battleState.arcName}: **${user.sailsCompleted[battleState.arcName] || 0}**`,
                 inline: false
             }
         )
@@ -623,8 +627,12 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
                 return;
             }
             
+            // Initialize sailing progress if needed
+            if (!freshUser.sailsCompleted) freshUser.sailsCompleted = {};
+            if (!freshUser.sailsCompleted[battleState.arcName]) freshUser.sailsCompleted[battleState.arcName] = 0;
+            
             // Generate new sailing event
-            const newSailCount = freshUser.sailsCompleted[battleState.arcName] || 0;
+            const newSailCount = freshUser.sailsCompleted[battleState.arcName];
             const newEvent = generateSailEvent(battleState.arcName, newSailCount + 1);
             
             // Start new battle
@@ -697,7 +705,7 @@ async function startNewSailBattle(battleMessage, user, battleTeam, event, arcNam
                 inline: false
             }
         )
-        .setFooter({ text: `Sailing in ${arcName} | Sail #${(user.sailsCompleted[arcName] || 0) + 1}` });
+        .setFooter({ text: `Sailing in ${arcName} | Sail #${((user.sailsCompleted && user.sailsCompleted[arcName]) || 0) + 1}` });
     
     // Create action buttons
     const actionRow = new ActionRowBuilder()
