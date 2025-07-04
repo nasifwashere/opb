@@ -72,136 +72,196 @@ function generateSailEvent(arcName, sailsCompleted) {
 }
 
 function generateEastBlueEvent(sailsCompleted) {
+    // Base scaling: Each sail adds a small amount to enemy stats
+    const baseHpScale = Math.floor(sailsCompleted * 1.5); // +1.5 HP per sail on average
+    const baseAtkScale = Math.floor(sailsCompleted * 0.3); // +0.3 ATK per sail on average
+    const baseSpdScale = Math.floor(sailsCompleted * 0.2); // +0.2 SPD per sail on average
+    
     if (sailsCompleted <= 5) {
-        // Sails 1-5: Basic Navy Soldier (30 HP)
+        // Sails 1-5: Basic Navy Soldier with progressive scaling
+        const baseHp = 25 + baseHpScale; // Start at 25, grow to ~32
+        const baseAtk = 6 + baseAtkScale; // Start at 6, grow to ~7
+        const baseSpd = 25 + baseSpdScale; // Start at 25, grow to ~26
+        
         return {
             type: 'enemy',
             title: `Navy Patrol | Sail ${sailsCompleted}`,
-            description: 'A Navy Soldier patrols the waters of East Blue.',
+            description: sailsCompleted <= 2 ? 'A rookie Navy Soldier patrols the calm waters.' : 'An experienced Navy Soldier guards these waters.',
             enemies: [{
-                name: 'Navy Soldier',
-                hp: 30,
-                atk: [8, 12],
-                spd: 30,
+                name: sailsCompleted <= 2 ? 'Rookie Navy Soldier' : 'Navy Soldier',
+                hp: baseHp,
+                atk: [baseAtk, baseAtk + 4],
+                spd: baseSpd,
                 rank: 'C',
-                currentHp: 30,
-                maxHp: 30
+                currentHp: baseHp,
+                maxHp: baseHp
             }],
             rewards: {
-                beli: getRandomInt(5, 10),
-                xp: getRandomInt(1, 5),
+                beli: getRandomInt(3 + sailsCompleted, 8 + sailsCompleted),
+                xp: getRandomInt(1 + Math.floor(sailsCompleted/2), 3 + Math.floor(sailsCompleted/2)),
                 items: []
             }
         };
     } else if (sailsCompleted <= 10) {
-        // Sails 6-10: Stronger Navy (50 HP)
+        // Sails 6-10: Navy Officers with progressive scaling
+        const baseHp = 40 + baseHpScale; // Start at ~48, grow to ~55
+        const baseAtk = 8 + baseAtkScale; // Start at ~9, grow to ~11
+        const baseSpd = 30 + baseSpdScale; // Start at ~31, grow to ~32
+        
+        // Occasionally add a second weaker enemy for variety
+        const hasSecondEnemy = sailsCompleted >= 8 && Math.random() < 0.3;
+        const enemies = [{
+            name: sailsCompleted <= 7 ? 'Navy Officer' : 'Navy Lieutenant',
+            hp: baseHp,
+            atk: [baseAtk, baseAtk + 6],
+            spd: baseSpd,
+            rank: 'C',
+            currentHp: baseHp,
+            maxHp: baseHp
+        }];
+        
+        if (hasSecondEnemy) {
+            const secondEnemyHp = Math.floor(baseHp * 0.6);
+            enemies.push({
+                name: 'Navy Recruit',
+                hp: secondEnemyHp,
+                atk: [Math.floor(baseAtk * 0.7), Math.floor(baseAtk * 0.7) + 3],
+                spd: Math.floor(baseSpd * 0.8),
+                rank: 'C',
+                currentHp: secondEnemyHp,
+                maxHp: secondEnemyHp
+            });
+        }
+        
         return {
             type: 'enemy',
             title: `Navy Officer Patrol | Sail ${sailsCompleted}`,
-            description: 'A stronger Navy Officer blocks your path.',
-            enemies: [{
-                name: 'Navy Officer',
-                hp: 50,
-                atk: [10, 15],
-                spd: 35,
-                rank: 'C',
-                currentHp: 50,
-                maxHp: 50
-            }],
+            description: hasSecondEnemy ? 'A Navy Officer leads a small patrol squad.' : 'A stronger Navy Officer blocks your path.',
+            enemies: enemies,
             rewards: {
-                beli: getRandomInt(10, 50),
-                xp: getRandomInt(5, 10),
-                items: []
+                beli: getRandomInt(8 + sailsCompleted * 2, 15 + sailsCompleted * 3),
+                xp: getRandomInt(4 + Math.floor(sailsCompleted/2), 8 + Math.floor(sailsCompleted/2)),
+                items: sailsCompleted >= 9 ? [getRandomItem('Common')] : []
             }
         };
     } else if (sailsCompleted <= 20) {
-        // Sails 11-20: Navy Squad (100 HP) + Common items
-        const enemyCount = getRandomInt(1, 3);
-        // Divide stats by enemy count for balance when multiple enemies attack same target
-        const baseHp = Math.max(Math.floor(100 / enemyCount), 15); // Min 15 HP
-        const baseAtkMin = Math.max(Math.floor(12 / enemyCount), 2); // Min 2 ATK
-        const baseAtkMax = Math.max(Math.floor(18 / enemyCount), 4); // Min 4 ATK
-        const baseSpd = Math.max(Math.floor(40 / enemyCount), 10); // Min 10 SPD
+        // Sails 11-20: Navy Squad with progressive scaling and variety
+        const enemyCount = sailsCompleted <= 12 ? 1 : (sailsCompleted <= 16 ? getRandomInt(1, 2) : getRandomInt(2, 3));
+        const baseHp = 60 + baseHpScale; // Start at ~75, grow to ~90
+        const baseAtk = 10 + baseAtkScale; // Start at ~13, grow to ~16
+        const baseSpd = 35 + baseSpdScale; // Start at ~37, grow to ~39
+        
+        // Adjust for multiple enemies but with better scaling
+        const adjustedHp = enemyCount > 1 ? Math.floor(baseHp / Math.sqrt(enemyCount)) : baseHp;
+        const adjustedAtk = enemyCount > 1 ? Math.floor(baseAtk / Math.sqrt(enemyCount)) : baseAtk;
+        const adjustedSpd = enemyCount > 1 ? Math.floor(baseSpd / Math.sqrt(enemyCount)) : baseSpd;
+        
+        const enemyTypes = ['Navy Soldier', 'Navy Gunner', 'Navy Swordsman'];
+        const enemies = Array.from({ length: enemyCount }, (_, i) => {
+            const enemyType = enemyTypes[i % enemyTypes.length];
+            const isLeader = i === 0 && enemyCount > 1;
+            const hp = isLeader ? Math.floor(adjustedHp * 1.2) : adjustedHp + getRandomInt(-3, 3);
+            
+            return {
+                name: isLeader ? 'Navy Squad Leader' : (enemyCount > 1 ? `${enemyType} ${i + 1}` : enemyType),
+                hp: hp,
+                atk: [adjustedAtk, adjustedAtk + 6],
+                spd: adjustedSpd,
+                rank: isLeader ? 'B' : 'C',
+                currentHp: hp,
+                maxHp: hp
+            };
+        });
         
         return {
             type: 'enemy',
             title: `Navy Squad | Sail ${sailsCompleted}`,
-            description: `${enemyCount} Navy Soldiers intercept your ship.`,
-            enemies: Array.from({ length: enemyCount }, (_, i) => ({
-                name: enemyCount > 1 ? `Navy Soldier ${i + 1}` : 'Navy Soldier',
-                hp: baseHp,
-                atk: [baseAtkMin, baseAtkMax],
-                spd: baseSpd,
-                rank: 'B',
-                currentHp: baseHp,
-                maxHp: baseHp
-            })),
+            description: enemyCount === 1 ? 'A seasoned Navy soldier stands guard.' : `${enemyCount} Navy soldiers intercept your ship.`,
+            enemies: enemies,
             rewards: {
-                beli: getRandomInt(50, 100),
-                xp: getRandomInt(10, 15),
-                items: [getRandomItem('Common')]
+                beli: getRandomInt(25 + sailsCompleted * 3, 50 + sailsCompleted * 4),
+                xp: getRandomInt(8 + Math.floor(sailsCompleted/2), 12 + Math.floor(sailsCompleted/2)),
+                items: sailsCompleted >= 15 ? [getRandomItem('Common')] : []
             }
         };
     } else if (sailsCompleted <= 50) {
-        // Sails 21-50: Navy Forces (100-300 HP) + Uncommon items
-        const enemyCount = getRandomInt(1, 3);
-        const baseHp = Math.min(100 + (sailsCompleted - 20) * 7, 300); // Scale from 100 to 300 HP
-        // Divide stats by enemy count for balance when multiple enemies attack same target
-        const adjustedBaseHp = Math.max(Math.floor(baseHp / enemyCount), 20); // Min 20 HP
-        const baseAtkMin = Math.max(Math.floor(15 / enemyCount), 3); // Min 3 ATK
-        const baseAtkMax = Math.max(Math.floor(25 / enemyCount), 6); // Min 6 ATK
-        const baseSpd = Math.max(Math.floor(50 / enemyCount), 12); // Min 12 SPD
+        // Sails 21-50: Navy Forces with consistent progressive scaling
+        const enemyCount = getRandomInt(2, 3);
+        const baseHp = 80 + sailsCompleted * 2; // Linear scaling: 122 HP at sail 21, 180 HP at sail 50
+        const baseAtk = 12 + Math.floor(sailsCompleted * 0.4); // 20 ATK at sail 21, 32 ATK at sail 50
+        const baseSpd = 40 + Math.floor(sailsCompleted * 0.3); // 46 SPD at sail 21, 55 SPD at sail 50
+        
+        // Better balance for multiple enemies
+        const adjustedHp = Math.floor(baseHp / Math.sqrt(enemyCount));
+        const adjustedAtk = Math.floor(baseAtk / Math.sqrt(enemyCount));
+        const adjustedSpd = Math.floor(baseSpd / Math.sqrt(enemyCount));
+        
+        const enemyTypes = ['Navy Enforcer', 'Navy Captain', 'Navy Elite', 'Navy Specialist'];
+        const enemies = Array.from({ length: enemyCount }, (_, i) => {
+            const enemyType = enemyTypes[i % enemyTypes.length];
+            const isCommander = i === 0;
+            const hp = isCommander ? Math.floor(adjustedHp * 1.3) : adjustedHp + getRandomInt(-5, 5);
+            
+            return {
+                name: isCommander ? 'Navy Commander' : `${enemyType} ${i + 1}`,
+                hp: hp,
+                atk: [adjustedAtk, adjustedAtk + 8],
+                spd: adjustedSpd + (isCommander ? 5 : 0),
+                rank: isCommander ? 'A' : 'B',
+                currentHp: hp,
+                maxHp: hp
+            };
+        });
         
         return {
             type: 'enemy',
             title: `Navy Blockade | Sail ${sailsCompleted}`,
-            description: `${enemyCount} Navy ships form a blockade.`,
-            enemies: Array.from({ length: enemyCount }, (_, i) => {
-                const enemyHp = getRandomInt(adjustedBaseHp - Math.floor(20/enemyCount), adjustedBaseHp + Math.floor(20/enemyCount));
-                return {
-                    name: enemyCount > 1 ? `Navy Enforcer ${i + 1}` : 'Navy Enforcer',
-                    hp: enemyHp,
-                    atk: [baseAtkMin, baseAtkMax],
-                    spd: baseSpd,
-                    rank: 'A',
-                    currentHp: enemyHp,
-                    maxHp: enemyHp
-                };
-            }),
+            description: `${enemyCount} Navy ships form a formidable blockade.`,
+            enemies: enemies,
             rewards: {
-                beli: getRandomInt(100, 250),
-                xp: getRandomInt(10, 20),
-                items: [getRandomItem('Uncommon')]
+                beli: getRandomInt(60 + sailsCompleted * 4, 120 + sailsCompleted * 6),
+                xp: getRandomInt(12 + Math.floor(sailsCompleted/3), 18 + Math.floor(sailsCompleted/3)),
+                items: [getRandomItem(sailsCompleted < 35 ? 'Uncommon' : 'Rare')]
             }
         };
     } else {
-        // Sails 51+: Elite Navy + Rare items
-        const enemyCount = getRandomInt(2, 4);
-        const baseHp = 300 + (sailsCompleted - 50) * 5; // Moderate scaling beyond 300
+        // Sails 51+: Elite Navy with continuous scaling
+        const enemyCount = getRandomInt(3, 4);
+        const baseHp = 200 + (sailsCompleted - 50) * 3; // Continues scaling beyond sail 50
+        const baseAtk = 25 + Math.floor((sailsCompleted - 50) * 0.5);
+        const baseSpd = 55 + Math.floor((sailsCompleted - 50) * 0.2);
         const itemRarity = sailsCompleted < 75 ? 'Rare' : (sailsCompleted < 100 ? 'Epic' : 'Legendary');
         
-        // Divide stats by enemy count for balance when multiple enemies attack same target
-        const adjustedBaseHp = Math.max(Math.floor(baseHp / enemyCount), 50); // Min 50 HP
-        const baseAtkMin = Math.max(Math.floor(20 / enemyCount), 5); // Min 5 ATK
-        const baseAtkMax = Math.max(Math.floor(30 / enemyCount), 8); // Min 8 ATK
-        const baseSpd = Math.max(Math.floor(60 / enemyCount), 15); // Min 15 SPD
+        // Better balance for multiple enemies
+        const adjustedHp = Math.floor(baseHp / Math.sqrt(enemyCount));
+        const adjustedAtk = Math.floor(baseAtk / Math.sqrt(enemyCount));
+        const adjustedSpd = Math.floor(baseSpd / Math.sqrt(enemyCount));
+        
+        const eliteTypes = ['Navy Admiral', 'Navy Vice Admiral', 'Navy Commodore', 'Elite Marine'];
+        const enemies = Array.from({ length: enemyCount }, (_, i) => {
+            const enemyType = eliteTypes[i % eliteTypes.length];
+            const isAdmiral = i === 0;
+            const hp = isAdmiral ? Math.floor(adjustedHp * 1.4) : adjustedHp + getRandomInt(-8, 8);
+            
+            return {
+                name: isAdmiral ? 'Fleet Admiral' : `${enemyType} ${i}`,
+                hp: hp,
+                atk: [adjustedAtk, adjustedAtk + 10],
+                spd: adjustedSpd + (isAdmiral ? 8 : 0),
+                rank: isAdmiral ? 'S' : 'A',
+                currentHp: hp,
+                maxHp: hp
+            };
+        });
         
         return {
             type: 'enemy',
             title: `Elite Navy Fleet | Sail ${sailsCompleted}`,
-            description: `${enemyCount} elite Navy warships engage in battle.`,
-            enemies: Array.from({ length: enemyCount }, (_, i) => ({
-                name: i === 0 ? 'Navy Captain' : `Elite Soldier ${i}`,
-                hp: i === 0 ? Math.floor(adjustedBaseHp * 1.3) : adjustedBaseHp, // Captain has more HP
-                atk: [baseAtkMin, baseAtkMax],
-                spd: baseSpd,
-                rank: i === 0 ? 'S' : 'A',
-                currentHp: i === 0 ? Math.floor(adjustedBaseHp * 1.3) : adjustedBaseHp,
-                maxHp: i === 0 ? Math.floor(adjustedBaseHp * 1.3) : adjustedBaseHp
-            })),
+            description: `${enemyCount} elite Navy warships engage in an epic battle.`,
+            enemies: enemies,
             rewards: {
-                beli: getRandomInt(250, 500),
-                xp: getRandomInt(15, 30),
+                beli: getRandomInt(150 + sailsCompleted * 6, 300 + sailsCompleted * 8),
+                xp: getRandomInt(20 + Math.floor(sailsCompleted/4), 35 + Math.floor(sailsCompleted/4)),
                 items: [getRandomItem(itemRarity)]
             }
         };
