@@ -2,6 +2,7 @@ const Quest = require('../db/models/Quest.js');
 const User = require('../db/models/User.js');
 const { saveUserWithRetry } = require('./saveWithRetry.js');
 const { distributeXPToTeam } = require('./levelSystem.js');
+const { addCardWithTransformation } = require('./cardTransformationSystem.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -307,15 +308,15 @@ async function claimQuestReward(user, questId) {
                     break;
                     
                 case 'card':
-                    if (!user.cards) user.cards = [];
-                    user.cards.push({
+                    const cardToAdd = {
                         name: reward.itemName,
                         rank: reward.rank || 'C',
                         level: 1,
                         experience: 0,
                         timesUpgraded: 0,
                         locked: false
-                    });
+                    };
+                    addCardWithTransformation(user, cardToAdd);
                     rewardText += `+${reward.itemName} card `;
                     break;
             }

@@ -1,5 +1,6 @@
 const User = require('../db/models/User.js');
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { addCardWithTransformation } = require('../utils/cardTransformationSystem.js');
 const path = require('path');
 const fs = require('fs');
 
@@ -235,16 +236,16 @@ async function execute(message) {
         user.pulls = user.pulls.slice(-DAILY_PULL_LIMIT);
     }
     
-    // Add card to user's collection
-    if (!user.cards) user.cards = [];
-    user.cards.push({
+    // Add card to user's collection with evolution transformation
+    const cardToAdd = {
         name: card.name,
         rank: card.rank,
         level: 1,
         experience: 0,
         timesUpgraded: 0,
         locked: false
-    });
+    };
+    addCardWithTransformation(user, cardToAdd);
     
     // Save user data with retry mechanism
     try {

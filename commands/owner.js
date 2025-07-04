@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const User = require('../db/models/User.js');
+const { addCardWithTransformation } = require('../utils/cardTransformationSystem.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -307,15 +308,15 @@ async function handleGiveCommand(message, args) {
   const cardDef = allCards.find(c => c && c.name && c.rank && normalize(c.name) === normalize(cardName) && c.rank.toUpperCase() === rank);
 
   if (cardDef && ['C', 'B', 'A', 'S', 'UR'].includes(rank)) {
-    if (!user.cards) user.cards = [];
-    user.cards.push({
+    const cardToAdd = {
       name: cardDef.name,
       rank: cardDef.rank,
       level: 1,
       experience: 0,
       timesUpgraded: 0,
       locked: false
-    });
+    };
+    addCardWithTransformation(user, cardToAdd);
     user.markModified('cards');
     try {
       await saveUserWithRetry(user);
@@ -501,15 +502,15 @@ async function handleSpawnCommand(message, args) {
     return message.reply('❌ You need to be registered first.');
   }
 
-  if (!user.cards) user.cards = [];
-  user.cards.push({
+  const cardToAdd = {
     name: cardDef.name,
     rank: cardDef.rank,
     level: 1,
     experience: 0,
     timesUpgraded: 0,
     locked: false
-  });
+  };
+  addCardWithTransformation(user, cardToAdd);
 
   await user.save();
   return message.reply(`✅ Spawned ${cardDef.name} (${cardDef.rank}) for yourself`);

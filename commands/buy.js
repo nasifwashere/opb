@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
+const { addCardWithTransformation } = require('../utils/cardTransformationSystem.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -72,14 +73,15 @@ async function execute(message, args) {
     if (!user.inventory) user.inventory = [];
     user.inventory.push(normalizedItemName);
   } else if (item.type === 'card') {
-    if (!user.cards) user.cards = [];
-    user.cards.push({
+    const cardToAdd = {
       name: item.name,
       rank: item.rank || 'C',
       level: 1,
       experience: 0,
-      timesUpgraded: 0
-    });
+      timesUpgraded: 0,
+      locked: false
+    };
+    addCardWithTransformation(user, cardToAdd);
   } else {
     // Default to inventory for any other items
     if (!user.inventory) user.inventory = [];

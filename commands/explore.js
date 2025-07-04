@@ -1,5 +1,6 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const User = require('../db/models/User.js');
+const { addCardWithTransformation } = require('../utils/cardTransformationSystem.js');
 const { calculateBattleStats, calculateDamage, resetTeamHP } = require('../utils/battleSystem.js');
 const { distributeXPToTeam, XP_PER_LEVEL } = require('../utils/levelSystem.js');
 const { saveUserWithRetry } = require('../utils/saveWithRetry.js');
@@ -1475,13 +1476,15 @@ async function applyReward(user, reward) {
             }
         }
     } else if (reward.type === 'card') {
-        if (!user.cards) user.cards = [];
-        user.cards.push({
+        const cardToAdd = {
             name: reward.name,
             rank: reward.rank,
             level: 1,
-            timesUpgraded: 0
-        });
+            experience: 0,
+            timesUpgraded: 0,
+            locked: false
+        };
+        addCardWithTransformation(user, cardToAdd);
     } else if (reward.type === 'multiple') {
         for (const subReward of reward.rewards) {
             await applyReward(user, subReward);

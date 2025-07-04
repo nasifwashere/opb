@@ -3,6 +3,7 @@ const User = require('../db/models/User.js');
 const fs = require('fs');
 const path = require('path');
 const { getEvolution } = require('../utils/evolutionSystem.js');
+const { transformAllDuplicatesToEvolution } = require('../utils/cardTransformationSystem.js');
 const config = require('../config.json');
 
 const cardsPath = path.resolve('data', 'cards.json');
@@ -80,7 +81,7 @@ async function execute(message, args) {
   // Find the card in user's collection
   const userCard = findUserCard(user, cardName);
   if (!userCard) {
-    return message.reply(`<:arrow:1375872983029256303> You don't own "${cardName}". Try using partial names like "luffy" or "gear"!`);
+    return message.reply(`<:arrow:1375872983029256303> You do not own that card. Try using partial names like "luffy" or "gear"!`);
   }
 
   // Find the card definition
@@ -125,31 +126,25 @@ async function execute(message, args) {
     return message.reply(`<:arrow:1375872983029256303> You need ${evolutionCost} Beli to evolve this card. You have ${user.beli} Beli.`);
   }
 
-  // Check for duplicates requirement (some evolutions might need this)
-  const duplicates = user.cards.filter(c => normalize(c.name) === normalize(userCard.name)).length - 1;
-  if (duplicates < 0) { // This shouldn't happen, but just in case
-    return message.reply(`<:arrow:1375872983029256303> Evolution failed: insufficient duplicates.`);
-  }
-
   // Perform evolution
   user.beli -= evolutionCost;
 
-  // Update the card
+  // Count duplicates for success message
+  const duplicateCount = user.cards.filter(c => normalize(c.name) === normalize(userCard.name)).length;
+
+  // Update the first card to evolved form, preserving level and experience
   const cardIndex = user.cards.findIndex(c => normalize(c.name) === normalize(userCard.name));
   user.cards[cardIndex] = {
     name: evolvedCard.name,
     rank: evolvedCard.rank,
-    level: Math.max(1, currentLevel - 5), // Slight level reduction on evolution
+    level: currentLevel, // Preserve current level
     timesUpgraded: userCard.timesUpgraded || 0,
     locked: userCard.locked || false,
     experience: userCard.experience || 0
   };
 
-  // Update team if the card was in team
-  const teamIndex = user.team.findIndex(teamCardName => normalize(teamCardName) === normalize(userCard.name));
-  if (teamIndex !== -1) {
-    user.team[teamIndex] = evolvedCard.name;
-  }
+  // Transform all duplicates of the original card to the evolved form
+  transformAllDuplicatesToEvolution(user, evolvedCard.name, evolvedCard);
 
   await user.save();
 
@@ -162,15 +157,17 @@ async function execute(message, args) {
   }
 
   // Create success embed
+  const transformMessage = duplicateCount > 1 ? `All ${duplicateCount} copies transformed!` : 'Card evolved!';
   const embed = new EmbedBuilder()
     .setTitle('<:sucess:1375872950321811547> Evolution Success!')
-    .setDescription(`**${cardDef.name}** has evolved into **${evolvedCard.name}**!`)
+    .setDescription(`**${cardDef.name}** has evolved into **${evolvedCard.name}**!\n${transformMessage}`)
     .addFields(
       { name: 'Previous Form', value: `[${cardDef.rank}] ${cardDef.name}`, inline: true },
       { name: 'New Form', value: `[${evolvedCard.rank}] ${evolvedCard.name}`, inline: true },
       { name: 'Cost', value: `${evolutionCost} Beli`, inline: true },
-      { name: 'New Level', value: `${user.cards[cardIndex].level}`, inline: true },
-      { name: 'Remaining Beli', value: `${user.beli}`, inline: true }
+      { name: 'Level Preserved', value: `${user.cards[cardIndex].level}`, inline: true },
+      { name: 'Remaining Beli', value: `${user.beli}`, inline: true },
+      { name: 'Cards Transformed', value: `${duplicateCount}`, inline: true }
     )
     .setColor(0x9b59b6);
 

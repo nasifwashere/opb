@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle  } = require('discord.js');
 const User = require('../db/models/User.js');
 const MarketListing = require('../db/models/Market.js');
+const { addCardWithTransformation } = require('../utils/cardTransformationSystem.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -274,17 +275,17 @@ async function handleMarketBuy(message, user, args) {
     user.beli -= listing.price;
     seller.beli += sellerAmount;
 
-    // Transfer item - Fixed to include all required properties
+    // Transfer item with evolution transformation
     if (listing.type === 'card') {
-        if (!user.cards) user.cards = [];
-        user.cards.push({
+        const cardToAdd = {
             name: listing.itemName,
             rank: listing.itemRank,
             level: listing.itemLevel || 1,
             experience: 0,
             timesUpgraded: 0,
             locked: false
-        });
+        };
+        addCardWithTransformation(user, cardToAdd);
     } else {
         if (!user.inventory) user.inventory = [];
         user.inventory.push(normalize(listing.itemName));
@@ -440,17 +441,17 @@ async function handleMarketUnlist(message, user, args) {
         return message.reply('Invalid listing ID or you don\'t own this listing. Use `op market` and check "My Listings" to see your listing IDs.');
     }
 
-    // Return item to user
+    // Return item to user with evolution transformation
     if (listing.type === 'card') {
-        if (!user.cards) user.cards = [];
-        user.cards.push({
+        const cardToAdd = {
             name: listing.itemName,
             rank: listing.itemRank,
             level: listing.itemLevel || 1,
             experience: 0,
             timesUpgraded: 0,
             locked: false
-        });
+        };
+        addCardWithTransformation(user, cardToAdd);
     } else {
         if (!user.inventory) user.inventory = [];
         user.inventory.push(normalize(listing.itemName));
