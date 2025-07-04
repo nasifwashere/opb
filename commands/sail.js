@@ -386,6 +386,41 @@ async function handleBattleAction(interaction, battleMessage, user, battleState,
         await handleItems(interaction, battleMessage, freshUser, battleState);
     } else if (interaction.customId === 'sail_flee') {
         await handleFlee(interaction, battleMessage, freshUser, battleState);
+    } else if (interaction.customId === 'sail_back_to_battle') {
+        await updateBattleDisplay(battleMessage, battleState);
+    } else if (interaction.customId.startsWith('sail_use_')) {
+        const itemName = interaction.customId.replace('sail_use_', '');
+        
+        // Convert item name back to readable format
+        const itemMap = {
+            'basicpotion': 'Basic Potion',
+            'normalpotion': 'Normal Potion',
+            'maxpotion': 'Max Potion'
+        };
+        
+        const fullItemName = itemMap[itemName] || itemName;
+        const effect = useItem(freshUser, fullItemName);
+        
+        if (effect && effect.type === 'heal') {
+            const injuredCard = battleState.userTeam.find(card => 
+                card.currentHp > 0 && card.currentHp < card.maxHp
+            );
+            
+            if (injuredCard) {
+                const healAmount = Math.floor(injuredCard.maxHp * (effect.percent / 100));
+                const actualHeal = Math.min(healAmount, injuredCard.maxHp - injuredCard.currentHp);
+                injuredCard.currentHp += actualHeal;
+                
+                battleState.battleLog.push(`💚 Used ${effect.name}! ${injuredCard.name} healed for ${actualHeal} HP!`);
+                await saveUserWithRetry(freshUser);
+            } else {
+                battleState.battleLog.push('❌ No injured crew members to heal!');
+            }
+        } else {
+            battleState.battleLog.push('❌ Failed to use item!');
+        }
+        
+        await updateBattleDisplay(battleMessage, battleState);
     }
 }
 
@@ -449,14 +484,14 @@ async function handleItems(interaction, battleMessage, user, battleState) {
     // Create item selection buttons
     const itemButtons = availableItems.map(item => 
         new ButtonBuilder()
-            .setCustomId(`use_${item.toLowerCase().replace(/\s+/g, '')}`)
+            .setCustomId(`sail_use_${item.toLowerCase().replace(/\s+/g, '')}`)
             .setLabel(item)
             .setStyle(ButtonStyle.Success)
     );
     
     itemButtons.push(
         new ButtonBuilder()
-            .setCustomId('back_to_battle')
+            .setCustomId('sail_back_to_battle')
             .setLabel('🔙 Back')
             .setStyle(ButtonStyle.Secondary)
     );
@@ -464,51 +499,6 @@ async function handleItems(interaction, battleMessage, user, battleState) {
     const itemRow = new ActionRowBuilder().addComponents(itemButtons.slice(0, 5));
     
     await battleMessage.edit({ components: [itemRow] });
-    
-    // Wait for item selection
-    try {
-        const itemInteraction = await battleMessage.awaitMessageComponent({
-            filter: i => i.user.id === interaction.user.id,
-            time: 15000
-        });
-        
-        if (itemInteraction.customId === 'back_to_battle') {
-            await itemInteraction.deferUpdate();
-            await updateBattleDisplay(battleMessage, battleState);
-            return;
-        }
-        
-        if (itemInteraction.customId.startsWith('use_')) {
-            await itemInteraction.deferUpdate();
-            const itemName = itemInteraction.customId.replace('use_', '').replace(/([a-z])([A-Z])/g, '$1 $2');
-            
-            const effect = useItem(user, itemName);
-            if (effect && effect.type === 'heal') {
-                const injuredCard = battleState.userTeam.find(card => 
-                    card.currentHp > 0 && card.currentHp < card.maxHp
-                );
-                
-                if (injuredCard) {
-                    const healAmount = Math.floor(injuredCard.maxHp * (effect.percent / 100));
-                    const actualHeal = Math.min(healAmount, injuredCard.maxHp - injuredCard.currentHp);
-                    injuredCard.currentHp += actualHeal;
-                    
-                    battleState.battleLog.push(`💚 Used ${effect.name}! ${injuredCard.name} healed for ${actualHeal} HP!`);
-                    await saveUserWithRetry(user);
-                } else {
-                    battleState.battleLog.push('❌ No injured crew members to heal!');
-                }
-            } else {
-                battleState.battleLog.push('❌ Failed to use item!');
-            }
-        }
-        
-        await updateBattleDisplay(battleMessage, battleState);
-        
-    } catch (error) {
-        // Timeout or error - go back to battle
-        await updateBattleDisplay(battleMessage, battleState);
-    }
 }
 
 async function handleFlee(interaction, battleMessage, user, battleState) {
@@ -566,11 +556,108 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
             }
         )
         .setColor(0x2ecc71)
-        .setFooter({ text: `Use 'op sail ${battleState.arcName.toLowerCase()}' to sail again!` });
+        .setFooter({ text: `Continue sailing for more adventures!` });
+    
+    // Create continue sailing buttons
+    const continueRow = new ActionRowBuilder()
+        .addComponents(
+            new ButtonBuilder()
+                .setCustomId('sail_continue')
+                .setLabel('⛵ Continue Sailing')
+                .setStyle(ButtonStyle.Success),
+            new ButtonBuilder()
+                .setCustomId('sail_stop')
+                .setLabel('🏃 Return to Port')
+                .setStyle(ButtonStyle.Secondary)
+        );
     
     await battleMessage.edit({
         embeds: [victoryEmbed],
-        components: []
+        components: [continueRow]
+    });
+    
+    // Set up collector for continue/stop buttons
+    const continueCollector = battleMessage.createMessageComponentCollector({
+        filter: i => i.user.id === interaction.user.id && (i.customId === 'sail_continue' || i.customId === 'sail_stop'),
+        time: 300000 // 5 minutes
+    });
+    
+    continueCollector.on('collect', async (continueInteraction) => {
+        if (continueInteraction.customId === 'sail_continue') {
+            await continueInteraction.deferUpdate();
+            
+            // Refresh user data and start new sailing encounter
+            const freshUser = await User.findOne({ userId: user.userId });
+            if (!freshUser) {
+                await continueInteraction.followUp({ content: '❌ User data not found!', ephemeral: true });
+                return;
+            }
+            
+            // Heal team slightly between battles (like explore does)
+            const battleTeam = calculateBattleStats(freshUser);
+            battleTeam.forEach(card => {
+                // Ensure maxHp is set
+                if (!card.maxHp) {
+                    card.maxHp = card.hp || 100;
+                }
+                // Ensure currentHp is set
+                if (!card.currentHp) {
+                    card.currentHp = card.maxHp;
+                }
+                
+                const healAmount = Math.floor(card.maxHp * 0.1); // Heal 10% between battles
+                card.currentHp = Math.min(card.maxHp, card.currentHp + healAmount);
+            });
+            
+            // Check if team is still viable
+            if (battleTeam.every(card => card.currentHp <= 0)) {
+                const healEmbed = new EmbedBuilder()
+                    .setTitle('💀 Team Defeated!')
+                    .setDescription('Your crew has no health remaining! Rest and heal before continuing to sail.')
+                    .setColor(0xe74c3c);
+                
+                await battleMessage.edit({
+                    embeds: [healEmbed],
+                    components: []
+                });
+                return;
+            }
+            
+            // Generate new sailing event
+            const newSailCount = freshUser.sailsCompleted[battleState.arcName] || 0;
+            const newEvent = generateSailEvent(battleState.arcName, newSailCount + 1);
+            
+            // Start new battle
+            await startNewSailBattle(battleMessage, freshUser, battleTeam, newEvent, battleState.arcName, interaction.user.id);
+            
+        } else if (continueInteraction.customId === 'sail_stop') {
+            await continueInteraction.deferUpdate();
+            
+            const stopEmbed = new EmbedBuilder()
+                .setTitle('🏴‍☠️ Returned to Port')
+                .setDescription('You return to port with your treasures. The seas await your next adventure!')
+                .setColor(0x95a5a6)
+                .setFooter({ text: `Use 'op sail ${battleState.arcName.toLowerCase()}' to sail again anytime!` });
+            
+            await battleMessage.edit({
+                embeds: [stopEmbed],
+                components: []
+            });
+        }
+    });
+    
+    continueCollector.on('end', async (collected, reason) => {
+        if (reason === 'time') {
+            const timeoutEmbed = new EmbedBuilder()
+                .setTitle('⏰ Sailing Session Ended')
+                .setDescription('Your sailing session has timed out. You return to port with your rewards.')
+                .setColor(0x95a5a6);
+            
+            await battleMessage.edit({
+                embeds: [timeoutEmbed],
+                components: []
+            });
+        }
     });
 }
 
@@ -584,6 +671,86 @@ async function handleDefeat(interaction, battleMessage, user, battleState) {
     await battleMessage.edit({
         embeds: [defeatEmbed],
         components: []
+    });
+}
+
+async function startNewSailBattle(battleMessage, user, battleTeam, event, arcName, userId) {
+    // Create battle embed
+    const embed = new EmbedBuilder()
+        .setTitle(`⚔️ ${event.title}`)
+        .setDescription(event.description)
+        .setColor(0x3498db)
+        .addFields(
+            {
+                name: '🏴‍☠️ Your Crew',
+                value: createProfessionalTeamDisplay(battleTeam, user.username || 'Captain'),
+                inline: false
+            },
+            {
+                name: '⚔️ Enemies',
+                value: createEnemyDisplay(event.enemies),
+                inline: false
+            },
+            {
+                name: '📜 Battle Log',
+                value: '⚔️ A new encounter begins!',
+                inline: false
+            }
+        )
+        .setFooter({ text: `Sailing in ${arcName} | Sail #${(user.sailsCompleted[arcName] || 0) + 1}` });
+    
+    // Create action buttons
+    const actionRow = new ActionRowBuilder()
+        .addComponents(
+            new ButtonBuilder()
+                .setCustomId('sail_attack')
+                .setLabel('⚔️ Attack')
+                .setStyle(ButtonStyle.Danger),
+            new ButtonBuilder()
+                .setCustomId('sail_items')
+                .setLabel('🎒 Items')
+                .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+                .setCustomId('sail_flee')
+                .setLabel('🏃 Flee')
+                .setStyle(ButtonStyle.Secondary)
+        );
+    
+    await battleMessage.edit({
+        embeds: [embed],
+        components: [actionRow]
+    });
+    
+    // Battle state
+    const battleState = {
+        userTeam: battleTeam,
+        enemies: event.enemies,
+        battleLog: ['⚔️ A new encounter begins!'],
+        event: event,
+        arcName: arcName
+    };
+    
+    // Create collector for button interactions
+    const collector = battleMessage.createMessageComponentCollector({
+        filter: i => i.user.id === userId,
+        time: 300000 // 5 minutes
+    });
+    
+    collector.on('collect', async (interaction) => {
+        await handleBattleAction(interaction, battleMessage, user, battleState, null);
+    });
+    
+    collector.on('end', async (collected, reason) => {
+        if (reason === 'time') {
+            const timeoutEmbed = EmbedBuilder.from(embed)
+                .setColor(0x95a5a6)
+                .setDescription('⏰ Battle timed out. You fled from the encounter.');
+            
+            await battleMessage.edit({
+                embeds: [timeoutEmbed],
+                components: []
+            });
+        }
     });
 }
 
@@ -605,7 +772,7 @@ async function updateBattleDisplay(battleMessage, battleState) {
             },
             {
                 name: '📜 Battle Log',
-                value: createBattleLogDisplay(battleState.battleLog.slice(-5)),
+                value: createBattleLogDisplay(battleState.battleLog.slice(-3)),
                 inline: false
             }
         )
