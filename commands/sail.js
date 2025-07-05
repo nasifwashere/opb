@@ -21,8 +21,8 @@ function getBountyForRank(rank) {
     const bountyMap = {
         'C': 10000,
         'B': 100000,
-        'A': 1000000,
-        'S': 10000000
+        'A': 300000,
+        'S': 1000000
     };
     return bountyMap[rank] || 0;
 }
