@@ -72,7 +72,7 @@ async function execute(message, args, client) {
         }
 
         // Update config based on category
-        const configKey = category === 'pulls' ? 'resetChannelId' : 
+        const configKey = category === 'pulls' ? 'pullResetChannelId' : 
                          category === 'daily' ? 'dailyQuestResetChannelId' : 
                          'weeklyQuestResetChannelId';
 

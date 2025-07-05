@@ -190,14 +190,15 @@ async function claimDrop(interaction, card, client) {
 
         if (!user) {
             return interaction.followUp({ 
-                content: '❌ You need to start your journey first with `op start`!', 
+                content: '\u274c You need to start your journey first with `op start`!', 
                 ephemeral: true 
             });
         }
 
-        // Add card to user's collection
+        // Add card to user's collection using transformation system
         if (!user.cards) user.cards = [];
-        user.cards.push({
+        const { addCardWithTransformation } = require('../../utils/cardTransformationSystem.js');
+        addCardWithTransformation(user, {
             name: card.name,
             rank: card.rank,
             level: 1,
@@ -209,7 +210,7 @@ async function claimDrop(interaction, card, client) {
 
         // Update the drop message
         const claimedEmbed = new EmbedBuilder()
-            .setTitle('🎉 Card Claimed!')
+            .setTitle('\ud83c\udf89 Card Claimed!')
             .setDescription(`**${interaction.user.username}** claimed **[${card.rank}] ${card.name}**!`)
             .setColor(0x2ecc71);
 
