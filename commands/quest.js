@@ -351,12 +351,23 @@ async function showQuestsByType(interaction, user, questType) {
     collector.on('collect', async (buttonInteraction) => {
         if (buttonInteraction.customId === 'quest_back') {
             try {
-                await buttonInteraction.deferUpdate();
+                if (!buttonInteraction.replied && !buttonInteraction.deferred) {
+                    await buttonInteraction.deferUpdate();
+                }
                 await updateToQuestMenu(buttonInteraction, user);
             } catch (error) {
-                if (error.code === 10062 || (error.rawError && error.rawError.code === 10062)) {
+                if (
+                    error.code === 10062 ||
+                    (error.rawError && error.rawError.code === 10062)
+                ) {
                     // Interaction expired or unknown, ignore or optionally log
                     console.warn('Back button interaction expired or unknown, ignoring.');
+                } else if (
+                    error.code === 40060 ||
+                    (error.rawError && error.rawError.code === 40060)
+                ) {
+                    // Interaction already acknowledged, ignore
+                    console.warn('Back button interaction already acknowledged, ignoring.');
                 } else {
                     console.error('Error handling back button in quest type view:', error);
                 }
