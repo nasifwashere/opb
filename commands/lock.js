@@ -1,15 +1,10 @@
 const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
-
-function normalize(str) {
-  return String(str || '').replace(/\s+/g, '').toLowerCase();
-}
+const { fuzzyFindCard, normalize } = require('../utils/fuzzyCardMatcher.js');
 
 function findUserCard(user, cardName) {
   if (!user.cards || !Array.isArray(user.cards)) return null;
-
-  const normInput = normalize(cardName);
-  return user.cards.find(card => normalize(card.name) === normInput);
+  return fuzzyFindCard(user.cards, cardName);
 }
 
 const data = new SlashCommandBuilder()
@@ -58,7 +53,7 @@ async function execute(message, args) {
   if (!userCard) {
     const embed = new EmbedBuilder()
       .setColor(0x2b2d31)
-      .setDescription(`You don't own "${cardName}".`)
+      .setDescription(`Please state a valid card name. You don't own "${cardName}". Try using partial names like "luffy" or "gear"!`)
       .setFooter({ text: 'Card not found in your collection' });
     
     return message.reply({ embeds: [embed] });

@@ -5,6 +5,7 @@ const path = require('path');
 const { getEvolution } = require('../utils/evolutionSystem.js');
 const { transformAllDuplicatesToEvolution } = require('../utils/cardTransformationSystem.js');
 const config = require('../config.json');
+const Fuse = require('fuse.js');
 
 const cardsPath = path.resolve('data', 'cards.json');
 const allCards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
@@ -25,16 +26,34 @@ function findCard(cardName) {
   return allCards.find(c => normalize(c.name) === normalize(cardName));
 }
 
-// Fuzzy find a card from user's card list
+// Fuzzy find a card from user's card list using Fuse.js
 function fuzzyFindCard(cards, input) {
+  if (!cards || cards.length === 0) return null;
+  
   const normInput = normalize(input);
   
   // First try exact match
   let match = cards.find(card => normalize(card.name) === normInput);
   if (match) return match;
   
-  // Then try partial match
-  const normName = normalize(card.name);
+  // Configure Fuse.js for fuzzy search
+  const fuseOptions = {
+    keys: ['name'],
+    includeScore: true,
+    threshold: 0.6, // 0 = exact match, 1 = match anything
+    ignoreLocation: true,
+    findAllMatches: true
+  };
+  
+  const fuse = new Fuse(cards, fuseOptions);
+  const results = fuse.search(input);
+  
+  // Return the best match if score is good enough
+  if (results.length > 0 && results[0].score <= 0.4) {
+    return results[0].item;
+  }
+  
+  // Fallback to partial match
   return cards.find(card => {
     const normName = normalize(card.name);
     return normName.includes(normInput) || normInput.includes(normName);
@@ -42,6 +61,7 @@ function fuzzyFindCard(cards, input) {
 }
 
 function findUserCard(user, cardName) {
+  if (!user.cards || user.cards.length === 0) return null;
   return fuzzyFindCard(user.cards, cardName);
 }
 
@@ -81,18 +101,18 @@ async function execute(message, args) {
   // Find the card in user's collection
   const userCard = findUserCard(user, cardName);
   if (!userCard) {
-    return message.reply(`<:arrow:1375872983029256303> You do not own that card. Try using partial names like "luffy" or "gear"!`);
+    return message.reply(`Please state a valid card name. You don't own "${cardName}". Try using partial names like "luffy" or "gear"!`);
   }
 
   // Find the card definition
   const cardDef = findCard(userCard.name);
   if (!cardDef) {
-    return message.reply(`<:arrow:1375872983029256303> Card definition for "${userCard.name}" not found.`);
+    return message.reply(`❌ Card definition for "${userCard.name}" not found.`);
   }
 
   // Check if card can evolve
   if (!cardDef.evolution) {
-    return message.reply(`<:arrow:1375872983029256303> "${cardDef.name}" cannot evolve further.`);
+    return message.reply(`❌ "${cardDef.name}" cannot evolve further.`);
   }
 
   const evolution = cardDef.evolution;
@@ -100,21 +120,21 @@ async function execute(message, args) {
 
   // Check level requirement
   if (currentLevel < evolution.requiredLevel) {
-    return message.reply(`<:arrow:1375872983029256303> "${cardDef.name}" needs to be level ${evolution.requiredLevel} to evolve. Current level: ${currentLevel}`);
+    return message.reply(`❌ "${cardDef.name}" needs to be level ${evolution.requiredLevel} to evolve. Current level: ${currentLevel}`);
   }
 
   // Check saga requirement - only if globally enabled
   if (config.sagaRequirementsEnabled && evolution.requiredSaga) {
     const currentSaga = user.saga || "East Blue";
     if (currentSaga !== evolution.requiredSaga) {
-      return message.reply(`<:arrow:1375872983029256303> You need to reach the "${evolution.requiredSaga}" saga to evolve this card. Current saga: ${currentSaga}`);
+      return message.reply(`❌ You need to reach the "${evolution.requiredSaga}" saga to evolve this card. Current saga: ${currentSaga}`);
     }
   }
 
   // Find the evolved form
   const evolvedCard = allCards.find(c => c.name === evolution.nextId);
   if (!evolvedCard) {
-    return message.reply(`<:arrow:1375872983029256303> Evolution target "${evolution.nextId}" not found in database.`);
+    return message.reply(`❌ Evolution target "${evolution.nextId}" not found in database.`);
   }
 
   // Calculate evolution cost
@@ -123,7 +143,7 @@ async function execute(message, args) {
 
   // Check if user has enough Beli
   if (user.beli < evolutionCost) {
-    return message.reply(`<:arrow:1375872983029256303> You need ${evolutionCost} Beli to evolve this card. You have ${user.beli} Beli.`);
+    return message.reply(`❌ You need ${evolutionCost} Beli to evolve this card. You have ${user.beli} Beli.`);
   }
 
   // Perform evolution

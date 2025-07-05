@@ -164,7 +164,7 @@ async function execute(message, args) {
   }
 
   // Item not found
-  return message.reply(`<:arrow:1375872983029256303> You don't own "${itemName}". Check your collection and inventory to see what you can sell.`);
+      return message.reply(`❌ You don't own "${itemName}". Check your collection and inventory to see what you can sell.`);
 }
 
 
