@@ -84,17 +84,17 @@ async function execute(message, args) {
     
     // Check if card is in training
     if (isCardInTraining(user, userCard.name)) {
-      return message.reply(`❌ "${userCard.name}" is currently in training and cannot be sold. Use \`op untrain ${userCard.name}\` to stop training first.`);
+      return message.reply(`"${userCard.name}" is currently in training and cannot be sold. Use \`op untrain ${userCard.name}\` to stop training first.`);
     }
     
     // Check if card is in case (locked away)
     if (user.case && user.case.find(c => normalize(c.name) === normalize(userCard.name))) {
-      return message.reply(`❌ "${userCard.name}" is locked in your case and cannot be sold. Use \`op unlock ${userCard.name}\` to return it to your collection first.`);
+      return message.reply(`"${userCard.name}" is locked in your case and cannot be sold. Use \`op unlock ${userCard.name}\` to return it to your collection first.`);
     }
 
     // Prevent selling UR cards (optional safety measure)
     if (cardDef && cardDef.rank === 'UR') {
-      return message.reply(`❌ UR rank cards cannot be sold! "${userCard.name}" is too valuable to sell.`);
+      return message.reply(`UR rank cards cannot be sold! "${userCard.name}" is too valuable to sell.`);
     }
 
     const sellValue = calculateCardValue(userCard, cardDef);
@@ -115,7 +115,7 @@ async function execute(message, args) {
     await user.save();
     
     const embed = new EmbedBuilder()
-      .setTitle('💰 Card Sold!')
+      .setTitle('<:money:1390838687104897136> Card Sold!')
       .setDescription(`You sold **${userCard.name}** for ${sellValue} Beli.`)
       .addFields(
         { name: 'Card', value: `[${cardDef?.rank || 'Unknown'}] ${userCard.name}`, inline: true },
@@ -151,7 +151,7 @@ async function execute(message, args) {
     await user.save();
     
     const embed = new EmbedBuilder()
-      .setTitle('💰 Item Sold!')
+      .setTitle('<:money:1390838687104897136> Item Sold!')
       .setDescription(`You sold **${userItem}** for ${sellValue} Beli.`)
       .addFields(
         { name: 'Item', value: userItem, inline: true },

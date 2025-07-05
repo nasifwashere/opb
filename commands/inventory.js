@@ -146,13 +146,13 @@ async function execute(message, args) {
         // Add equipment instructions for relevant categories
         if (['Weapons', 'Armor', 'Legendary Weapons', 'Legendary Armor', 'Devil Fruits'].includes(categoryName)) {
             embed.addFields({
-                name: '⚔️ Equipment Instructions',
+                name: 'Equipment Instructions',
                 value: 'Use `op equip <item> <card>` to equip items to your cards for stat bonuses!\nExample: `op equip Rusty Cutlass Luffy`',
                 inline: false
             });
         } else if (categoryName === 'Potions') {
             embed.addFields({
-                name: '💊 Potion Usage',
+                name: 'Potion Usage',
                 value: 'Potions can be used during battles by clicking the "Items" button!\nThey heal your cards based on their max HP.',
                 inline: false
             });
@@ -308,7 +308,7 @@ async function showPotions(interaction, user) {
     });
 
     const embed = new EmbedBuilder()
-        .setTitle('💊 Healing Potions')
+        .setTitle('Healing Potions')
         .setColor(0x2b2d31);
 
     if (potions.length === 0) {
@@ -343,7 +343,7 @@ async function showPotions(interaction, user) {
 
 async function showEquipmentHelp(interaction) {
     const embed = new EmbedBuilder()
-        .setTitle('⚔️ Equipment System')
+        .setTitle('Equipment System')
         .setDescription([
             '**How to Equip Items:**',
             '• `op equip <item> <card>` - Equip an item to a card',

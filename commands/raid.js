@@ -106,31 +106,31 @@ async function execute(message, args) {
 async function handleStartRaid(message, user, bossName) {
     // Check if user is captain
     if (!user.crewId || user.crewRole !== 'captain') {
-        return message.reply('❌ Only crew captains can start raids!');
+        return message.reply('Only crew captains can start raids!');
     }
 
     // Check if user has raid ticket
     if (!user.inventory || !user.inventory.includes('raidticket')) {
-        return message.reply('❌ You need a Raid Ticket to start a raid! Buy one from the shop for 1,000 Beli.');
+        return message.reply('You need a Raid Ticket to start a raid! Buy one from the shop for 1,000 Beli.');
     }
 
     // Check if boss exists
     const boss = EAST_BLUE_BOSSES[bossName.toLowerCase().replace(/\s+/g, '')];
     if (!boss) {
         const availableBosses = Object.keys(EAST_BLUE_BOSSES).join(', ');
-        return message.reply(`❌ Unknown boss! Available East Blue bosses: ${availableBosses}`);
+        return message.reply(`Unknown boss! Available East Blue bosses: ${availableBosses}`);
     }
 
     // Check if crew already has an active raid
     const existingRaid = Array.from(activeRaids.values()).find(raid => raid.crewId === user.crewId);
     if (existingRaid) {
-        return message.reply('❌ Your crew already has an active raid! Use `op raid cancel` to cancel it first.');
+        return message.reply('Your crew already has an active raid! Use `op raid cancel` to cancel it first.');
     }
 
     // Get crew data
     const crew = crews.get(user.crewId);
     if (!crew) {
-        return message.reply('❌ Crew data not found!');
+        return message.reply('Crew data not found!');
     }
 
     // Remove raid ticket from inventory
@@ -160,9 +160,9 @@ async function handleStartRaid(message, user, bossName) {
         .setDescription([
             `**Captain ${user.username}** has started a raid against **${boss.name}**!`,
             '',
-            `⏰ **Raid starts in:** 5 minutes`,
-            `🏴‍☠️ **Boss:** ${boss.name} (${boss.hp} HP)`,
-            `👥 **Participants:** 1`,
+            `**Raid starts in:** 5 minutes`,
+            `**Boss:** ${boss.name} (${boss.hp} HP)`,
+            `**Participants:** 1`,
             '',
             'Crew members can join with `op raid add @member`',
             'Select your card for battle and get ready!'
@@ -189,21 +189,21 @@ async function handleAddToRaid(message, user, args) {
     // Find active raid for user's crew
     const raid = Array.from(activeRaids.values()).find(r => r.crewId === user.crewId);
     if (!raid) {
-        return message.reply('❌ Your crew has no active raid!');
+        return message.reply('Your crew has no active raid!');
     }
 
     if (raid.started) {
-        return message.reply('❌ The raid has already started!');
+        return message.reply('The raid has already started!');
     }
 
     // Check if user is already in raid
     if (raid.participants.find(p => p.userId === user.userId)) {
-        return message.reply('❌ You are already in this raid!');
+        return message.reply('You are already in this raid!');
     }
 
     // Check if user has crew permissions
     if (!user.crewId || user.crewId !== raid.crewId) {
-        return message.reply('❌ Only crew members can join this raid!');
+        return message.reply('Only crew members can join this raid!');
     }
 
     // Add user to raid
@@ -211,7 +211,7 @@ async function handleAddToRaid(message, user, args) {
 
     await updateRaidMessage(raid);
 
-    return message.reply('✅ You joined the raid! Select your card for battle.');
+    return message.reply('<:check:1390838766821965955> You joined the raid! Select your card for battle.');
 }
 
 async function handleLeaveRaid(message, user) {
@@ -220,11 +220,11 @@ async function handleLeaveRaid(message, user) {
     );
 
     if (!raid) {
-        return message.reply('❌ You are not in any active raid!');
+        return message.reply('You are not in any active raid!');
     }
 
     if (raid.started) {
-        return message.reply('❌ Cannot leave a raid that has already started!');
+        return message.reply('Cannot leave a raid that has already started!');
     }
 
     // Remove user from raid
@@ -233,39 +233,39 @@ async function handleLeaveRaid(message, user) {
     // If captain leaves, cancel raid
     if (raid.captain === user.userId) {
         activeRaids.delete(raid.id);
-        return message.reply('🚫 Raid cancelled - captain left.');
+        return message.reply('Raid cancelled - captain left.');
     }
 
     await updateRaidMessage(raid);
-    return message.reply('✅ You left the raid.');
+    return message.reply('<:check:1390838766821965955> You left the raid.');
 }
 
 async function handleCancelRaid(message, user) {
     const raid = Array.from(activeRaids.values()).find(r => r.captain === user.userId);
     if (!raid) {
-        return message.reply('❌ You are not the captain of any active raid!');
+        return message.reply('You are not the captain of any active raid!');
     }
 
     if (raid.started) {
-        return message.reply('❌ Cannot cancel a raid that has already started!');
+        return message.reply('Cannot cancel a raid that has already started!');
     }
 
     activeRaids.delete(raid.id);
-    return message.reply('🚫 Raid cancelled.');
+    return message.reply('Raid cancelled.');
 }
 
 async function handleForceStartRaid(message, user) {
     const raid = Array.from(activeRaids.values()).find(r => r.captain === user.userId);
     if (!raid) {
-        return message.reply('❌ You are not the captain of any active raid!');
+        return message.reply('You are not the captain of any active raid!');
     }
 
     if (raid.started) {
-        return message.reply('❌ The raid has already started!');
+        return message.reply('The raid has already started!');
     }
 
     await startRaidBattle(raid);
-    return message.reply('⚔️ Raid battle started!');
+    return message.reply('Raid battle started!');
 }
 
 async function startRaidBattle(raid) {

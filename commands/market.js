@@ -85,11 +85,11 @@ function createMarketButtons(page, totalPages, hasMyListings = false) {
     const actionButtons = [
         new ButtonBuilder()
             .setCustomId('market_buy')
-            .setLabel('📋 How to Buy')
+            .setLabel('How to Buy')
             .setStyle(ButtonStyle.Secondary),
         new ButtonBuilder()
             .setCustomId('market_list')
-            .setLabel('📦 List Item')
+            .setLabel('List Item')
             .setStyle(ButtonStyle.Primary)
     ];
 

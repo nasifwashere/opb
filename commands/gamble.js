@@ -33,7 +33,7 @@ async function execute(message, args, client) {
   if (!hasNami) {
     const embed = new EmbedBuilder()
       .setColor(0x2b2d31)
-      .setTitle('🎰 Gambling Den')
+      .setTitle('<:namirich:1375662701702807632> Gambling Den')
       .setDescription('You need **Nami** in your collection to access the gambling den!')
       .setFooter({ text: 'Nami must not be locked away or training' });
     
@@ -65,7 +65,7 @@ async function execute(message, args, client) {
 
     const embed = new EmbedBuilder()
       .setColor(0x2b2d31)
-      .setTitle('🎰 Gambling Den - On Cooldown')
+      .setTitle('<:namirich:1375662701702807632> Gambling Den - On Cooldown')
       .setDescription(`You've used all your gambling opportunities!\n\n⏰ **Next reset:** ${hoursLeft}h ${minutesLeft}m`)
       .setFooter({ text: 'Gambling resets every 3 hours' });
     
@@ -74,21 +74,21 @@ async function execute(message, args, client) {
 
   // Show gambling menu
   const embed = new EmbedBuilder()
-    .setTitle('🎰 Gambling Den')
+    .setTitle('<:namirich:1375662701702807632> Gambling Den')
     .setDescription(`Welcome to the gambling den, ${username}! Nami guides your luck.\n\n**Remaining Gambles:** ${user.gamblingData.remainingGambles}/3`)
     .addFields(
       { 
-        name: '🎲 Low Risk Gamble', 
+        name: 'Low Risk Gamble', 
         value: '**50%** chance: +1,000 Beli\n**50%** chance: -500 Beli',
         inline: true 
       },
       { 
-        name: '🎯 Medium Risk Gamble', 
+        name: 'Medium Risk Gamble', 
         value: '**30%** chance: +2,000 Beli\n**70%** chance: -1,000 Beli',
         inline: true 
       },
       { 
-        name: '💎 High Risk Gamble', 
+        name: 'High Risk Gamble', 
         value: '**10%** chance: +5,000 Beli\n**90%** chance: -2,500 Beli',
         inline: true 
       }
@@ -102,17 +102,17 @@ async function execute(message, args, client) {
         .setCustomId('gamble_low')
         .setLabel('Low Risk')
         .setStyle(ButtonStyle.Secondary)
-        .setEmoji('🎲'),
+        .setEmoji(''),
       new ButtonBuilder()
         .setCustomId('gamble_medium')
         .setLabel('Medium Risk')
         .setStyle(ButtonStyle.Primary)
-        .setEmoji('🎯'),
+        .setEmoji(''),
       new ButtonBuilder()
         .setCustomId('gamble_high')
         .setLabel('High Risk')
         .setStyle(ButtonStyle.Danger)
-        .setEmoji('💎')
+        .setEmoji('')
     );
 
   const msg = await message.reply({ embeds: [embed], components: [row] });
@@ -129,7 +129,7 @@ async function execute(message, args, client) {
       await interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(0x2b2d31)
-          .setTitle('🎰 Gambling Den')
+          .setTitle('<:namirich:1375662701702807632> Gambling Den')
           .setDescription('No gambles remaining!')
         ],
         components: []
@@ -168,7 +168,7 @@ async function execute(message, args, client) {
       await interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(0x2b2d31)
-          .setTitle('🎰 Gambling Den')
+          .setTitle('<:namirich:1375662701702807632> Gambling Den')
           .setDescription(`You don't have enough Beli for this gamble!\n\nYou need at least **${loseAmount}** Beli but only have **${freshUser.beli}** Beli.`)
         ],
         components: []
@@ -196,7 +196,7 @@ async function execute(message, args, client) {
       await interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(0x2b2d31)
-          .setTitle('🎰 Gambling Den')
+          .setTitle('<:namirich:1375662701702807632> Gambling Den')
           .setDescription('An error occurred while processing your gamble. Please try again.')
         ],
         components: []
@@ -206,10 +206,10 @@ async function execute(message, args, client) {
 
     // Show result
     const resultEmbed = new EmbedBuilder()
-      .setTitle(`🎰 ${riskLevel} Gamble Result`)
+      .setTitle(` ${riskLevel} Gamble Result`)
       .setDescription(won 
-        ? `🎉 **You won!** Nami's luck blessed you!\n\n💰 **+${winAmount}** Beli`
-        : `💸 **You lost!** Better luck next time...\n\n💸 **-${loseAmount}** Beli`
+        ? ` **You won!** Nami's luck blessed you!\n\n<:money:1390838687104897136> **+${winAmount}** Beli`
+        : `**You lost!** Better luck next time...\n\n<:money:1390838687104897136> **-${loseAmount}** Beli`
       )
       .addFields(
         { name: 'Current Beli', value: `${freshUser.beli}`, inline: true },
@@ -227,7 +227,7 @@ async function execute(message, args, client) {
             .setCustomId('gamble_again')
             .setLabel('Gamble Again')
             .setStyle(ButtonStyle.Secondary)
-            .setEmoji('🎰')
+            .setEmoji('')
         );
       components = [continueRow];
     }
@@ -247,21 +247,21 @@ async function execute(message, args, client) {
           
           // Show gambling menu again
           const newEmbed = new EmbedBuilder()
-            .setTitle('🎰 Gambling Den')
+            .setTitle('<:namirich:1375662701702807632> Gambling Den')
             .setDescription(`Welcome back! Ready for another round?\n\n**Remaining Gambles:** ${freshUser.gamblingData.remainingGambles}/3`)
             .addFields(
               { 
-                name: '🎲 Low Risk Gamble', 
+                name: 'Low Risk Gamble', 
                 value: '**50%** chance: +1,000 Beli\n**50%** chance: -500 Beli',
                 inline: true 
               },
               { 
-                name: '🎯 Medium Risk Gamble', 
+                name: 'Medium Risk Gamble', 
                 value: '**30%** chance: +2,000 Beli\n**70%** chance: -1,000 Beli',
                 inline: true 
               },
               { 
-                name: '💎 High Risk Gamble', 
+                name: 'High Risk Gamble', 
                 value: '**10%** chance: +5,000 Beli\n**90%** chance: -2,500 Beli',
                 inline: true 
               }

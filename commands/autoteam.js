@@ -118,7 +118,7 @@ async function execute(message, args) {
   await user.save();
 
   const embed = new EmbedBuilder()
-    .setTitle('🤖 Auto-Team Builder')
+    .setTitle('<:Zoro_x:1390838208933269515> Auto-Team Builder')
     .setDescription(`Team built using **${preset}** preset!`)
     .setColor(0x00ff00)
     .addFields({

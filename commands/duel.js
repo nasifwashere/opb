@@ -36,11 +36,11 @@ function prettyTime(ms) {
 function createDuelEmbed(player1, player2, player1Team, player2Team, battleLog, turn, currentPlayerId, winner = null) {
   // Create modern battle embed using the same style as explore
   const embed = new EmbedBuilder()
-    .setTitle('⚔️ PvP Duel Battle')
+    .setTitle('PvP Duel Battle')
     .setColor(winner ? 0x2ecc71 : 0x2b2d31);
 
   if (winner) {
-    embed.setDescription(`🏆 **${winner.username}** wins the duel!`);
+    embed.setDescription(`**${winner.username}** wins the duel!`);
   } else {
     const currentPlayerName = currentPlayerId === player1.id ? player1.username : player2.username;
     embed.setDescription(`**Turn ${turn}** • **${currentPlayerName}'s Turn**`);
@@ -126,20 +126,20 @@ async function execute(message, args) {
 
   const mentionedUser = message.mentions.users.first();
   if (!mentionedUser) {
-    return message.reply('❌ You need to mention a player to duel! Usage: `op duel @player`');
+    return message.reply('You need to mention a player to duel! Usage: `op duel @player`');
   }
 
   if (mentionedUser.id === userId) {
-    return message.reply('❌ You cannot duel yourself!');
+    return message.reply('You cannot duel yourself!');
   }
 
   if (mentionedUser.bot) {
-    return message.reply('❌ You cannot duel bots!');
+    return message.reply('You cannot duel bots!');
   }
 
   let opponent = await User.findOne({ userId: mentionedUser.id });
   if (!opponent) {
-    return message.reply('❌ That player hasn\'t started their journey yet!');
+    return message.reply('That player hasn\'t started their journey yet!');
   }
 
   // Clean up any stale battle states first
@@ -148,25 +148,25 @@ async function execute(message, args) {
 
   // Check if either player is already in a duel
   if (user.battleState && user.battleState.inBattle) {
-    return message.reply('❌ You are already in a battle!');
+    return message.reply('You are already in a battle!');
   }
 
   if (opponent.battleState && opponent.battleState.inBattle) {
-    return message.reply('❌ That player is already in a battle!');
+    return message.reply('That player is already in a battle!');
   }
 
   // Check if both players have teams
   if (!user.team || user.team.length === 0) {
-    return message.reply('❌ You need to set up your team first! Use `op team add <card name>`');
+    return message.reply('You need to set up your team first! Use `op team add <card name>`');
   }
 
   if (!opponent.team || opponent.team.length === 0) {
-    return message.reply('❌ Your opponent doesn\'t have a team set up!');
+    return message.reply('Your opponent doesn\'t have a team set up!');
   }
 
   // Create duel confirmation
   const embed = new EmbedBuilder()
-    .setTitle('⚔️ Duel Challenge!')
+    .setTitle('Duel Challenge!')
     .setDescription(`${message.author.username} challenges ${mentionedUser.username} to a duel!\n\n${mentionedUser.username}, do you accept this challenge?`)
     .setColor(0xff6b35);
 
@@ -268,7 +268,7 @@ async function startDuel(message, user, opponent, challenger, challenged, duelMe
     const opponentCard = opponent.cards.find(c => c.name === opponent.team[0]);
 
     if (!userCard || !opponentCard) {
-      return message.reply('❌ Error finding team cards!');
+      return message.reply('Error finding team cards!');
     }
 
     // Get card definitions
@@ -276,7 +276,7 @@ async function startDuel(message, user, opponent, challenger, challenged, duelMe
     const opponentCardDef = allCards.find(c => c.name === opponentCard.name);
 
     if (!userCardDef || !opponentCardDef) {
-      return message.reply('❌ Error finding card definitions!');
+      return message.reply('Error finding card definitions!');
     }
 
     // Set up battle teams with all team members using proper card definitions
@@ -286,10 +286,10 @@ async function startDuel(message, user, opponent, challenger, challenged, duelMe
 
     // Ensure teams have cards
     if (player1Team.length === 0 || player2Team.length === 0) {
-      return message.reply('❌ Error setting up battle teams!');
+      return message.reply('Error setting up battle teams!');
     }
 
-    const battleLog = [`⚔️ ${challenger.username} vs ${challenged.username} - Team Battle!`];
+    const battleLog = [`${challenger.username} vs ${challenged.username} - Team Battle!`];
 
     // Set battle states for both users
     const now = Date.now();
@@ -354,7 +354,7 @@ async function startDuel(message, user, opponent, challenger, challenged, duelMe
     
   } catch (error) {
     console.error('Error starting duel:', error);
-    await message.reply('❌ An error occurred while starting the duel!');
+    await message.reply('An error occurred while starting the duel!');
   }
 }
 

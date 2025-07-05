@@ -48,7 +48,7 @@ async function execute(message, args, client) {
   if (message.author.id !== OWNER_ID) {
     return message.reply({
       embeds: [new EmbedBuilder()
-        .setTitle('🚫 Access Denied')
+        .setTitle('Access Denied')
         .setDescription('This command is reserved for the bot owner only.')
         .setColor(0xe74c3c)
       ]
@@ -109,7 +109,7 @@ async function execute(message, args, client) {
     switch (category) {
       case 'users':
         categoryEmbed = new EmbedBuilder()
-          .setTitle('👥 User Management')
+          .setTitle('User Management')
           .setDescription('Commands to manage user accounts and progress')
           .addFields(
             { name: 'op owner give @user <amount> beli', value: 'Give Beli to a user', inline: false },
@@ -125,7 +125,7 @@ async function execute(message, args, client) {
 
       case 'stats':
         categoryEmbed = new EmbedBuilder()
-          .setTitle('📊 Bot Statistics')
+          .setTitle('Bot Statistics')
           .setDescription('View bot performance and usage statistics')
           .addFields(
             { name: 'op owner stats', value: 'Show comprehensive bot statistics', inline: false },
@@ -138,7 +138,7 @@ async function execute(message, args, client) {
 
       case 'game':
         categoryEmbed = new EmbedBuilder()
-          .setTitle('🎮 Game Management')
+          .setTitle('Game Management')
           .setDescription('Spawn cards and manage game events')
           .addFields(
             { name: 'op owner spawn <card_name> <rank>', value: 'Spawn a card for yourself', inline: false },
@@ -152,7 +152,7 @@ async function execute(message, args, client) {
 
       case 'database':
         categoryEmbed = new EmbedBuilder()
-          .setTitle('🗄️ Database Operations')
+          .setTitle('Database Operations')
           .setDescription('Database management and cleanup operations')
           .addFields(
             { name: 'op owner cleanup', value: 'Remove users with no cards or progress', inline: false },
@@ -220,22 +220,22 @@ async function handleOwnerCommand(message, args, client) {
         return await handleToggleSagaCommand(message, args);
       
       default:
-        return message.reply('❌ Unknown owner command. Use `op owner` to see available commands.');
+        return message.reply('Unknown owner command. Use `op owner` to see available commands.');
     }
   } catch (error) {
     console.error('Owner command error:', error);
-    return message.reply('❌ An error occurred while executing the command.');
+    return message.reply('An error occurred while executing the command.');
   }
 }
 
 async function handleGiveCommand(message, args) {
   if (args.length < 3) {
-    return message.reply('❌ Usage: `op owner give @user <amount> <beli/xp>` or `op owner give @user <card_name> <rank>`\n\nExamples:\n• `op owner give @user 1000 beli`\n• `op owner give @user 500 xp`\n• `op owner give @user Monkey D. Luffy B`');
+    return message.reply('Usage: `op owner give @user <amount> <beli/xp>` or `op owner give @user <card_name> <rank>`\n\nExamples:\n• `op owner give @user 1000 beli`\n• `op owner give @user 500 xp`\n• `op owner give @user Monkey D. Luffy B`');
   }
 
   const targetUser = message.mentions.users.first();
   if (!targetUser) {
-    return message.reply('❌ Please mention a user to give items to.');
+    return message.reply('Please mention a user to give items to.');
   }
 
   let user = await User.findOne({ userId: targetUser.id });
@@ -270,7 +270,7 @@ async function handleGiveCommand(message, args) {
       console.log(`[OWNER] Created new user: ${targetUser.username} (${targetUser.id})`);
     } catch (error) {
       console.error(`[OWNER] Error creating user ${targetUser.id}:`, error);
-      return message.reply(`❌ Error creating user ${targetUser.username}. Please try again.`);
+      return message.reply(`Error creating user ${targetUser.username}. Please try again.`);
     }
   }
 
@@ -282,16 +282,16 @@ async function handleGiveCommand(message, args) {
     if (type === 'beli') {
       user.beli = (user.beli || 0) + amount;
       await user.save();
-      return message.reply(`✅ Gave ${amount} Beli to ${targetUser.username}`);
+      return message.reply(`<:check:1390838766821965955> Gave ${amount} Beli to ${targetUser.username}`);
       
     } else if (type === 'xp') {
       const { awardUserXP, formatLevelUpRewards } = require('../utils/userLevelSystem.js');
       const userLevelResult = awardUserXP(user, amount);
       await user.save();
       
-      let response = `✅ Gave ${amount} XP to ${targetUser.username}`;
+      let response = `<:check:1390838766821965955> Gave ${amount} XP to ${targetUser.username}`;
       if (userLevelResult.leveledUp) {
-        response += `\n🌟 **Level Up!** ${userLevelResult.oldLevel} → ${userLevelResult.newLevel}\n${formatLevelUpRewards(userLevelResult.rewards)}`;
+        response += `\n**Level Up!** ${userLevelResult.oldLevel} → ${userLevelResult.newLevel}\n${formatLevelUpRewards(userLevelResult.rewards)}`;
       }
       
       return message.reply(response);
@@ -328,30 +328,30 @@ async function handleGiveCommand(message, args) {
         console.log(`[OWNER] Quest progress update failed for ${targetUser.id}:`, questError);
       }
       console.log(`[OWNER] Successfully gave ${cardDef.name} (${cardDef.rank}) to ${targetUser.username} (${targetUser.id})`);
-      return message.reply(`✅ Gave ${cardDef.name} (${cardDef.rank}) to ${targetUser.username}`);
+      return message.reply(`<:check:1390838766821965955> Gave ${cardDef.name} (${cardDef.rank}) to ${targetUser.username}`);
     } catch (error) {
       console.error(`[OWNER] Error saving card for user ${targetUser.id}:`, error);
-      return message.reply(`❌ Error giving card to ${targetUser.username}. Please try again.`);
+      return message.reply(`Error giving card to ${targetUser.username}. Please try again.`);
     }
   }
 
-  return message.reply('❌ Invalid command format or card does not exist. Use: `op owner give @user <amount> <beli/xp>` or `op owner give @user <card_name> <rank>`');
+  return message.reply('Invalid command format or card does not exist. Use: `op owner give @user <amount> <beli/xp>` or `op owner give @user <card_name> <rank>`');
 }
 
 async function handleResetCommand(message, args) {
   const targetUser = message.mentions.users.first();
   if (!targetUser) {
-    return message.reply('❌ Please mention a user to reset.');
+    return message.reply('Please mention a user to reset.');
   }
 
   await User.deleteOne({ userId: targetUser.id });
-  return message.reply(`✅ Reset all progress for ${targetUser.username}`);
+  return message.reply(`<:check:1390838766821965955> Reset all progress for ${targetUser.username}`);
 }
 
 async function handleBanCommand(message, args) {
   const targetUser = message.mentions.users.first();
   if (!targetUser) {
-    return message.reply('❌ Please mention a user to ban.');
+    return message.reply('Please mention a user to ban.');
   }
 
   const reason = args.slice(2).join(' ') || 'No reason provided';
@@ -365,25 +365,25 @@ async function handleBanCommand(message, args) {
   user.banReason = reason;
   await user.save();
 
-  return message.reply(`✅ Banned ${targetUser.username}. Reason: ${reason}`);
+  return message.reply(`<:check:1390838766821965955> Banned ${targetUser.username}. Reason: ${reason}`);
 }
 
 async function handleUnbanCommand(message, args) {
   const targetUser = message.mentions.users.first();
   if (!targetUser) {
-    return message.reply('❌ Please mention a user to unban.');
+    return message.reply('Please mention a user to unban.');
   }
 
   const user = await User.findOne({ userId: targetUser.id });
   if (!user) {
-    return message.reply('❌ User not found in database.');
+    return message.reply('User not found in database.');
   }
 
   user.banned = false;
   user.banReason = undefined;
   await user.save();
 
-  return message.reply(`✅ Unbanned ${targetUser.username}`);
+  return message.reply(`<:check:1390838766821965955> Unbanned ${targetUser.username}`);
 }
 
 async function handleStatsCommand(message, client) {
@@ -401,7 +401,7 @@ async function handleStatsCommand(message, client) {
   const bannedUsers = await User.countDocuments({ banned: true });
 
   const embed = new EmbedBuilder()
-    .setTitle('📊 Bot Statistics')
+    .setTitle('Bot Statistics')
     .setColor(0x3498db)
     .addFields(
       { name: 'Total Users', value: totalUsers.toString(), inline: true },
@@ -451,12 +451,12 @@ async function handleUserListCommand(message, args) {
 async function handleUserInfoCommand(message, args) {
   const targetUser = message.mentions.users.first();
   if (!targetUser) {
-    return message.reply('❌ Please mention a user to get info about.');
+    return message.reply('Please mention a user to get info about.');
   }
 
   const user = await User.findOne({ userId: targetUser.id });
   if (!user) {
-    return message.reply('❌ User not found in database.');
+    return message.reply('User not found in database.');
   }
 
   const cardCount = user.cards ? user.cards.length : 0;
@@ -474,7 +474,7 @@ async function handleUserInfoCommand(message, args) {
       { name: 'Cards', value: cardCount.toString(), inline: true },
       { name: 'Team Size', value: teamCount.toString(), inline: true },
       { name: 'Inventory Items', value: inventoryCount.toString(), inline: true },
-      { name: 'Status', value: user.banned ? `🚫 Banned: ${user.banReason}` : '✅ Active', inline: false }
+      { name: 'Status', value: user.banned ? `Banned: ${user.banReason}` : 'Active', inline: false }
     );
 
   return message.reply({ embeds: [embed] });
@@ -482,7 +482,7 @@ async function handleUserInfoCommand(message, args) {
 
 async function handleSpawnCommand(message, args) {
   if (args.length < 3) {
-    return message.reply('❌ Usage: `op owner spawn <card_name> <rank>`');
+    return message.reply('Usage: `op owner spawn <card_name> <rank>`');
   }
 
   const cardName = args[1];
@@ -494,12 +494,12 @@ async function handleSpawnCommand(message, args) {
   const cardDef = allCards.find(c => c && c.name && c.rank && normalize(c.name) === normalize(cardName) && c.rank.toUpperCase() === rank);
 
   if (!cardDef) {
-    return message.reply('❌ Card not found in database. Please check the card name and rank.');
+    return message.reply('Card not found in database. Please check the card name and rank.');
   }
 
   let user = await User.findOne({ userId: message.author.id });
   if (!user) {
-    return message.reply('❌ You need to be registered first.');
+    return message.reply('You need to be registered first.');
   }
 
   const cardToAdd = {
@@ -513,36 +513,36 @@ async function handleSpawnCommand(message, args) {
   addCardWithTransformation(user, cardToAdd);
 
   await user.save();
-  return message.reply(`✅ Spawned ${cardDef.name} (${cardDef.rank}) for yourself`);
+  return message.reply(`<:check:1390838766821965955> Spawned ${cardDef.name} (${cardDef.rank}) for yourself`);
 }
 
 async function handleItemCommand(message, args) {
   if (args.length < 2) {
-    return message.reply('❌ Usage: `op owner item <item_name>`');
+    return message.reply('Usage: `op owner item <item_name>`');
   }
 
   const itemName = args.slice(1).join(' ');
   
   let user = await User.findOne({ userId: message.author.id });
   if (!user) {
-    return message.reply('❌ You need to be registered first.');
+    return message.reply('You need to be registered first.');
   }
 
   if (!user.inventory) user.inventory = [];
   user.inventory.push(itemName.toLowerCase().replace(/\s+/g, ''));
 
   await user.save();
-  return message.reply(`✅ Added ${itemName} to your inventory`);
+  return message.reply(`<:check:1390838766821965955> Added ${itemName} to your inventory`);
 }
 
 async function handleTestPullCommand(message, args) {
   const amount = parseInt(args[1]) || 1;
   
   if (amount > 10) {
-    return message.reply('❌ Maximum 10 test pulls at once.');
+    return message.reply('Maximum 10 test pulls at once.');
   }
 
-  return message.reply(`✅ Test pull command would simulate ${amount} pull(s). Implementation depends on your pull system.`);
+  return message.reply(`<:check:1390838766821965955> Test pull command would simulate ${amount} pull(s). Implementation depends on your pull system.`);
 }
 
 async function handleCleanupCommand(message) {
@@ -554,11 +554,11 @@ async function handleCleanupCommand(message) {
     ]
   });
 
-  return message.reply(`✅ Cleaned up ${result.deletedCount} inactive users`);
+  return message.reply(`<:check:1390838766821965955> Cleaned up ${result.deletedCount} inactive users`);
 }
 
 async function handleBackupCommand(message) {
-  return message.reply('ℹ️ Backup functionality not implemented. Configure backup system as needed.');
+  return message.reply('Backup functionality not implemented. Configure backup system as needed.');
 }
 
 async function handleCountCommand(message) {
@@ -567,7 +567,7 @@ async function handleCountCommand(message) {
   const bannedUsers = await User.countDocuments({ banned: true });
   
   const embed = new EmbedBuilder()
-    .setTitle('📊 Database Counts')
+    .setTitle('Database Counts')
     .setColor(0x3498db)
     .addFields(
       { name: 'Total Users', value: totalUsers.toString(), inline: true },
@@ -582,12 +582,12 @@ async function handleToggleSagaCommand(message, args) {
   if (args.length < 2) {
     const config = require('../config.json');
     const currentStatus = config.sagaRequirementsEnabled ? 'ON' : 'OFF';
-    return message.reply(`❓ Current saga requirements status: **${currentStatus}**\n\nUsage: \`op owner toggle-saga on/off\`\n\n**ON**: Players must reach certain sagas to evolve cards\n**OFF**: All cards can evolve immediately regardless of saga`);
+    return message.reply(`Current saga requirements status: **${currentStatus}**\n\nUsage: \`op owner toggle-saga on/off\`\n\n**ON**: Players must reach certain sagas to evolve cards\n**OFF**: All cards can evolve immediately regardless of saga`);
   }
 
   const toggle = args[1].toLowerCase();
   if (toggle !== 'on' && toggle !== 'off') {
-    return message.reply('❌ Invalid option. Use `on` or `off`.');
+    return message.reply('Invalid option. Use `on` or `off`.');
   }
 
   const newValue = toggle === 'on';

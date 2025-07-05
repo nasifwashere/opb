@@ -269,7 +269,7 @@ async function showQuestsByType(interaction, user, questType) {
     for (const quest of filteredQuests.slice(0, 6)) {
         const progress = getQuestProgress(user, quest.questId);
         let progressText = '';
-        let statusEmoji = '🔄'; // In progress
+        let statusEmoji = '<:ref:1390846865968205985>'; // In progress
         let questCompleted = true;
         
         // Build progress text - simplified format
@@ -285,7 +285,7 @@ async function showQuestsByType(interaction, user, questType) {
         progressText = progressParts.join(' • ');
         
         if (questCompleted && progress.started) {
-            statusEmoji = '✅';
+            statusEmoji = '<:check:1390838766821965955>';
         } else if (!progress.started) {
             statusEmoji = '○';
         } else {

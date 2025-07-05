@@ -13,12 +13,12 @@ function createRoundedHealthBar(current, max, length = 12) {
     
     if (filledBars > 0) {
         // Clean filled sections using solid blocks
-        healthBar += '█'.repeat(filledBars);
+        healthBar += '▰'.repeat(filledBars);
     }
     
     // Empty sections with subtle styling
     if (emptyBars > 0) {
-        healthBar += '▬'.repeat(emptyBars);
+        healthBar += '▱'.repeat(emptyBars);
     }
     
     return healthBar;
@@ -147,7 +147,7 @@ function createProgressDisplay(current, max, label = 'Progress') {
     const filledBars = Math.round((percentage / 100) * barLength);
     const emptyBars = barLength - filledBars;
     
-    const progressBar = '█'.repeat(filledBars) + '░'.repeat(emptyBars);
+    const progressBar = '▰'.repeat(filledBars) + '▱'.repeat(emptyBars);
     return `**${label}**: ${progressBar} ${Math.round(percentage)}%`;
 }
 

@@ -127,7 +127,7 @@ async function execute(message, args, client) {
   activeTrades.set(tradeId, tradeData);
 
   const embed = new EmbedBuilder()
-    .setTitle('🤝 Trade Offer')
+    .setTitle('Trade Offer')
     .setDescription(`**${message.author.username}** wants to trade with **${targetUser.username}**`)
     .addFields(
       {
@@ -201,7 +201,7 @@ async function execute(message, args, client) {
         trade.status = 'completed';
 
         const successEmbed = new EmbedBuilder()
-          .setTitle('✅ Trade Completed!')
+          .setTitle('<:check:1390838766821965955> Trade Completed!')
           .setDescription('The trade has been successfully completed!')
           .addFields(
             {
@@ -222,7 +222,7 @@ async function execute(message, args, client) {
       } catch (error) {
         console.error('Trade execution error:', error);
         const errorEmbed = new EmbedBuilder()
-          .setTitle('❌ Trade Failed')
+          .setTitle('Trade Failed')
           .setDescription('An error occurred while executing the trade.')
           .setColor(0xff0000);
 
@@ -233,7 +233,7 @@ async function execute(message, args, client) {
       trade.status = 'declined';
 
       const declineEmbed = new EmbedBuilder()
-        .setTitle('❌ Trade Declined')
+        .setTitle('Trade Declined')
         .setDescription(`${targetUser.username} declined the trade offer.`)
         .setColor(0xff0000);
 
@@ -251,7 +251,7 @@ async function execute(message, args, client) {
       activeTrades.delete(tradeId);
 
       const expiredEmbed = new EmbedBuilder()
-        .setTitle('⏰ Trade Expired')
+        .setTitle('Trade Expired')
         .setDescription('This trade offer has expired.')
         .setColor(0x95a5a6);
 

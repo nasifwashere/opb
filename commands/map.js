@@ -79,10 +79,10 @@ async function execute(message, args) {
 
     const embed = new EmbedBuilder()
         .setColor(0x2b2d31)
-        .setTitle('⚔️ Adventure Progress')
+        .setTitle('Adventure Progress')
         .setDescription(`**Current Location:** ${currentLocation}\n**Overall Progress:** ${overallBar} ${overallProgress}%`)
         .addFields(
-            { name: 'Location Status', value: currentLocation === 'East Blue Complete' ? '✅ Complete!' : `Stage ${localStage}/${totalStages}`, inline: true },
+            { name: 'Location Status', value: currentLocation === 'East Blue Complete' ? '<:check:1390838766821965955> Complete!' : `Stage ${localStage}/${totalStages}`, inline: true },
             { name: 'Global Stage', value: `${currentStage}/43`, inline: true },
             { name: 'Progress', value: `${overallProgress}%`, inline: true }
         );
@@ -108,18 +108,18 @@ async function execute(message, args) {
 
         if (!location.unlocked) {
             status = 'Locked';
-            statusIcon = '🔒';
+            statusIcon = '';
         } else if (currentStage >= locationEnd) {
             status = 'Complete';
-            statusIcon = '✅';
+            statusIcon = '';
             progress = location.stages;
         } else if (currentStage >= location.startStage) {
             status = 'Current';
-            statusIcon = '⚔️';
+            statusIcon = '';
             progress = currentStage - location.startStage;
         } else {
             status = 'Upcoming';
-            statusIcon = '⏳';
+            statusIcon = '';
         }
 
         const progressBar = createModernProgressBar(progress, location.stages, 8);
@@ -130,7 +130,7 @@ async function execute(message, args) {
     });
 
     embed.addFields({
-        name: '🗺️ East Blue Saga Locations',
+        name: 'East Blue Saga Locations',
         value: progressText.trim(),
         inline: false
     });

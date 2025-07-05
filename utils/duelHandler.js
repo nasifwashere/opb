@@ -8,7 +8,7 @@ async function handleDuelAction(interaction, client) {
         const battleData = client.battles.get(interaction.message.id);
         if (!battleData) {
             return await interaction.reply({ 
-                content: '❌ Battle data not found!', 
+                content: 'Battle data not found!', 
                 ephemeral: true 
             });
         }
@@ -18,7 +18,7 @@ async function handleDuelAction(interaction, client) {
         // Check if it's the current player's turn
         if (interaction.user.id !== currentPlayer) {
             return await interaction.reply({ 
-                content: '❌ It\'s not your turn!', 
+                content: 'It\'s not your turn!', 
                 ephemeral: true 
             });
         }
@@ -38,7 +38,7 @@ async function handleDuelAction(interaction, client) {
     } catch (error) {
         console.error('Error in handleDuelAction:', error);
         await interaction.followUp({ 
-            content: '❌ An error occurred during the duel action.', 
+            content: 'An error occurred during the duel action.', 
             ephemeral: true 
         });
     }
@@ -103,7 +103,7 @@ async function handleDuelDefend(interaction, battleData, client) {
 
 async function handleDuelItems(interaction, battleData, client) {
     return await interaction.followUp({ 
-        content: '⚠️ Items are not yet implemented in duels!', 
+        content: 'Items are not yet implemented in duels!', 
         ephemeral: true 
     });
 }
@@ -121,7 +121,7 @@ async function updateDuelDisplay(interaction, battleData, client) {
     
     // Create modern battle embed
     const embed = new EmbedBuilder()
-        .setTitle('⚔️ PvP Duel Battle')
+        .setTitle('PvP Duel Battle')
         .setDescription(`**Turn ${turn}** • **${currentPlayer === player1.data.id ? player1.data.username : player2.data.username}'s Turn**`)
         .setColor(0x2b2d31);
 
@@ -251,13 +251,13 @@ async function endDuel(messageId, client, reason, winner = null) {
                         // Update victory count
                         winnerUser.bountyVictories[winnerKey] = victoriesAgainstLoser + 1;
 
-                        bountyMessage = `\n\n💰 **Bounty Exchange:**\n` +
+                        bountyMessage = `\n\n**Bounty Exchange:**\n` +
                                       `${winner.username} gained ${actualBountyGain.toLocaleString()} bounty${isBountyTarget ? ' (5x Bounty Target bonus!)' : ''}\n` +
                                       `${loserUser.username} lost ${bountyTransfer.toLocaleString()} bounty\n` +
                                       `Victories against ${loserUser.username}: ${victoriesAgainstLoser + 1}/3`;
                     }
                 } else {
-                    bountyMessage = `\n\n💰 **Bounty Exchange:**\nNo bounty exchanged (3 victory limit reached against ${loserUser.username})`;
+                    bountyMessage = `\n\n**Bounty Exchange:**\nNo bounty exchanged (3 victory limit reached against ${loserUser.username})`;
                 }
 
                 // Base rewards
@@ -273,11 +273,11 @@ async function endDuel(messageId, client, reason, winner = null) {
 
             // Create final embed with bounty information
             const finalEmbed = new EmbedBuilder()
-                .setTitle('⚔️ Duel Complete!')
+                .setTitle('Duel Complete!')
                 .setColor(winner ? 0x2ecc71 : 0x2b2d31);
 
             if (winner) {
-                finalEmbed.setDescription(`🏆 **${winner.username}** wins the duel!${bountyMessage}`);
+                finalEmbed.setDescription(`**${winner.username}** wins the duel!${bountyMessage}`);
             } else {
                 finalEmbed.setDescription('The duel has ended.');
             }

@@ -274,11 +274,11 @@ client.on('messageCreate', async message => {
         // Enhanced error response - only send if not already replied
         try {
             await message.reply({
-                content: '⚠️ There was an error executing that command! Please try again.',
+                content: 'There was an error executing that command! Please try again.',
                 allowedMentions: { repliedUser: false }
             });
         } catch (replyError) {
-            console.error('❌ Failed to send error message:', replyError);
+            console.error('Failed to send error message:', replyError);
         }
     }
 });
@@ -296,7 +296,7 @@ client.on('interactionCreate', async interaction => {
     if (processedInteractions.has(uniqueId)) {
         const processedTime = processedInteractions.get(uniqueId);
         if (now - processedTime < 2000) { // 2 second window for interactions
-            console.log(`🔄 [BLOCKED] Duplicate interaction: ${actionName} by ${interaction.user.tag} (${now - processedTime}ms ago)`);
+            console.log(`[BLOCKED] Duplicate interaction: ${actionName} by ${interaction.user.tag} (${now - processedTime}ms ago)`);
             return;
         }
     }
@@ -318,12 +318,12 @@ client.on('interactionCreate', async interaction => {
                 });
             }
             
-            console.log(`⚡ Executing slash command: ${interaction.commandName} by ${interaction.user.tag}`);
+            console.log(`Executing slash command: ${interaction.commandName} by ${interaction.user.tag}`);
             await command.execute(interaction);
         } catch (error) {
-            console.error(`❌ Error executing slash command ${interaction.commandName}:`, error);
+            console.error(`Error executing slash command ${interaction.commandName}:`, error);
             
-            const errorMessage = '⚠️ There was an error while executing this command!';
+            const errorMessage = 'There was an error while executing this command!';
             
             try {
                 if (interaction.replied || interaction.deferred) {
@@ -332,7 +332,7 @@ client.on('interactionCreate', async interaction => {
                     await interaction.reply({ content: errorMessage, ephemeral: true });
                 }
             } catch (replyError) {
-                console.error('❌ Failed to send error response:', replyError);
+                console.error('Failed to send error response:', replyError);
             }
         }
     }
@@ -356,7 +356,7 @@ client.on('interactionCreate', async interaction => {
             // console.log(`🔘 Button interaction: ${interaction.customId} by ${interaction.user.tag}`);
             
         } catch (error) {
-            console.error(`❌ Error handling button interaction ${interaction.customId}:`, error);
+            console.error(`Error handling button interaction ${interaction.customId}:`, error);
         }
     }
 });
@@ -365,7 +365,7 @@ client.on('interactionCreate', async interaction => {
 (async () => {
     try {
         if (migrationInProgress || migrationCompleted) {
-            console.log('🔄 Migration already completed or in progress, skipping...');
+            console.log('Migration already completed or in progress, skipping...');
             return;
         }
         

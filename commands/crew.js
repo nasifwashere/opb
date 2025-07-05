@@ -40,16 +40,16 @@ async function execute(message, args) {
 
 async function handleCreateCrew(message, user, args) {
     if (user.crewId) {
-        return message.reply('❌ You are already in a crew! Use `op crew leave` to leave your current crew first.');
+        return message.reply('You are already in a crew! Use `op crew leave` to leave your current crew first.');
     }
 
     const crewName = args.join(' ').trim();
     if (!crewName) {
-        return message.reply('❌ Please provide a name for your crew: `op crew create <crew name>`');
+        return message.reply('Please provide a name for your crew: `op crew create <crew name>`');
     }
 
     if (crewName.length > 50) {
-        return message.reply('❌ Crew name must be 50 characters or less.');
+        return message.reply('Crew name must be 50 characters or less.');
     }
 
     // Generate unique crew ID
@@ -92,56 +92,56 @@ async function handleCreateCrew(message, user, args) {
 
 async function handleInviteUser(message, user, args) {
     if (!user.crewId) {
-        return message.reply('❌ You are not in a crew! Use `op crew create <crew name>` to start one.');
+        return message.reply('You are not in a crew! Use `op crew create <crew name>` to start one.');
     }
 
     if (user.crewRole !== 'captain') {
-        return message.reply('❌ Only the crew captain can invite new members.');
+        return message.reply('Only the crew captain can invite new members.');
     }
 
     const crew = crews.get(user.crewId);
     if (!crew) {
         // Try to rebuild crew data from database
         await rebuildCrewData(user.crewId);
-        return message.reply('❌ Crew data not found. Please try again.');
+        return message.reply('Crew data not found. Please try again.');
     }
 
     const mentionedUser = message.mentions.users.first();
     if (!mentionedUser) {
-        return message.reply('❌ Please mention a user to invite: `op crew invite @user`');
+        return message.reply('Please mention a user to invite: `op crew invite @user`');
     }
 
     if (mentionedUser.id === user.userId) {
-        return message.reply('❌ You cannot invite yourself!');
+        return message.reply('You cannot invite yourself!');
     }
 
     if (mentionedUser.bot) {
-        return message.reply('❌ You cannot invite bots to your crew!');
+        return message.reply('You cannot invite bots to your crew!');
     }
 
     // Check crew size
     if (crew.members.length >= MAX_CREW_SIZE) {
-        return message.reply(`❌ Your crew is full! Maximum crew size is ${MAX_CREW_SIZE} members.`);
+        return message.reply(`Your crew is full! Maximum crew size is ${MAX_CREW_SIZE} members.`);
     }
 
     // Check if user is already in crew
     if (crew.members.includes(mentionedUser.id)) {
-        return message.reply('❌ This user is already in your crew!');
+        return message.reply('This user is already in your crew!');
     }
 
     // Check target user exists in database
     const targetUser = await User.findOne({ userId: mentionedUser.id });
     if (!targetUser) {
-        return message.reply('❌ This user hasn\'t started their pirate journey yet! They need to use `op start` first.');
+        return message.reply('This user hasn\'t started their pirate journey yet! They need to use `op start` first.');
     }
 
     if (targetUser.crewId) {
-        return message.reply('❌ This user is already in another crew!');
+        return message.reply('This user is already in another crew!');
     }
 
     // Check if already invited
     if (crew.invites.has(mentionedUser.id)) {
-        return message.reply('❌ This user already has a pending invite to your crew!');
+        return message.reply('This user already has a pending invite to your crew!');
     }
 
     // Store invite
@@ -177,16 +177,16 @@ async function handleInviteUser(message, user, args) {
             crew.invites.delete(mentionedUser.id);
         }, 24 * 60 * 60 * 1000);
 
-        return message.reply(`✅ Crew invitation sent to ${mentionedUser.username}!`);
+        return message.reply(`<:check:1390838766821965955> Crew invitation sent to ${mentionedUser.username}!`);
     } catch (error) {
         crew.invites.delete(mentionedUser.id);
-        return message.reply('❌ Failed to send crew invitation. The user may have DMs disabled.');
+        return message.reply('Failed to send crew invitation. The user may have DMs disabled.');
     }
 }
 
 async function handleLeaveCrew(message, user) {
     if (!user.crewId) {
-        return message.reply('❌ You are not in a crew!');
+        return message.reply('You are not in a crew!');
     }
 
     const crew = crews.get(user.crewId);
@@ -195,14 +195,14 @@ async function handleLeaveCrew(message, user) {
         user.crewId = null;
         user.crewRole = null;
         await user.save();
-        return message.reply('❌ Crew data not found. Your crew status has been reset.');
+        return message.reply('Crew data not found. Your crew status has been reset.');
     }
 
     const crewName = crew.name;
     const isCaptain = user.crewRole === 'captain';
 
     if (isCaptain && crew.members.length > 1) {
-        return message.reply('❌ As captain, you cannot leave while there are other crew members. Use `op crew kick @member` to remove members first.');
+        return message.reply('As captain, you cannot leave while there are other crew members. Use `op crew kick @member` to remove members first.');
     }
 
     // Remove from crew
@@ -246,21 +246,21 @@ async function handleLeaveCrew(message, user) {
 
 async function handleKickMember(message, user, args) {
     if (!user.crewId || user.crewRole !== 'captain') {
-        return message.reply('❌ Only crew captains can kick members!');
+        return message.reply(' Only crew captains can kick members!');
     }
 
     const mentionedUser = message.mentions.users.first();
     if (!mentionedUser) {
-        return message.reply('❌ Please mention a user to kick: `op crew kick @user`');
+        return message.reply(' Please mention a user to kick: `op crew kick @user`');
     }
 
     if (mentionedUser.id === user.userId) {
-        return message.reply('❌ You cannot kick yourself! Use `op crew leave` instead.');
+        return message.reply('You cannot kick yourself! Use `op crew leave` instead.');
     }
 
     const crew = crews.get(user.crewId);
     if (!crew || !crew.members.includes(mentionedUser.id)) {
-        return message.reply('❌ This user is not in your crew!');
+        return message.reply('This user is not in your crew!');
     }
 
     // Remove from crew
@@ -274,7 +274,7 @@ async function handleKickMember(message, user, args) {
         await kickedUser.save();
     }
 
-    return message.reply(`✅ ${mentionedUser.username} has been kicked from the crew.`);
+    return message.reply(`${mentionedUser.username} has been kicked from the crew.`);
 }
 
 async function showCrewInfo(message, user) {
@@ -301,7 +301,7 @@ async function showCrewInfo(message, user) {
     if (!crew) {
         // Try to rebuild crew data
         await rebuildCrewData(user.crewId);
-        return message.reply('❌ Crew data not found. Please contact an administrator.');
+        return message.reply('Crew data not found. Please contact an administrator.');
     }
 
     // Get all crew members with their bounties
@@ -380,23 +380,23 @@ async function handleCrewResponse(message, user, accept) {
     }
     
     if (!pendingInvite) {
-        return message.reply('❌ You have no pending crew invitations.');
+        return message.reply('You have no pending crew invitations.');
     }
     
     if (user.crewId) {
-        return message.reply('❌ You are already in a crew!');
+        return message.reply('You are already in a crew!');
     }
     
     // Remove invite
     inviteCrew.invites.delete(user.userId);
     
     if (!accept) {
-        return message.reply('❌ You declined the crew invitation.');
+        return message.reply('You declined the crew invitation.');
     }
     
     // Check if crew is still not full
     if (inviteCrew.members.length >= MAX_CREW_SIZE) {
-        return message.reply('❌ The crew is now full.');
+        return message.reply('The crew is now full.');
     }
     
     // Add to crew
@@ -405,7 +405,7 @@ async function handleCrewResponse(message, user, accept) {
     user.crewRole = 'member';
     await user.save();
     
-    return message.reply(`✅ You joined **${inviteCrew.name}**! Welcome aboard, pirate!`);
+    return message.reply(`<:check:1390838766821965955> You joined **${inviteCrew.name}**! Welcome aboard, pirate!`);
 }
 
 // Export the crews map so raids can access it

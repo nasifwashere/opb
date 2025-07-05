@@ -108,12 +108,12 @@ async function execute(message, args, client) {
         await user.save();
         
         const startingItems = devilFruit 
-            ? `**2** Basic Potions\n**1** Normal Potion\n**${devilFruit.name}** 🍎`
+            ? `**2** Basic Potions\n**1** Normal Potion\n**${devilFruit.name}** <:gomugomunomi:1390838738073948261>`
             : `**2** Basic Potions\n**1** Normal Potion`;
         
         const embed = new EmbedBuilder()
             .setTitle('Welcome to the Grand Line')
-            .setDescription(`**${username}**, your legendary journey begins now!\n\n🎩 You've received **Monkey D. Luffy** (B Rank) to start your crew!`)
+            .setDescription(`**${username}**, your legendary journey begins now!\n\nYou've received **Monkey D. Luffy** (B Rank) to start your crew!`)
             .setColor(0x2b2d31)
             .addFields(
                 { 

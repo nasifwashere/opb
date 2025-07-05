@@ -10,10 +10,10 @@ const dailyRewards = [
   { beli: 100, xp: 50, item: null },           // Day 1
   { beli: 150, xp: 75, item: null },           // Day 2
   { beli: 200, xp: 100, item: 'Basic Potion' }, // Day 3
-  { beli: 250, xp: 125, item: null },          // Day 4
-  { beli: 300, xp: 150, item: 'Normal Potion' }, // Day 5
-  { beli: 400, xp: 200, item: 'Rusty Cutlass' },          // Day 6
-  { beli: 500, xp: 300, item: 'Max Potion' }  // Day 7 (Premium)
+  { beli: 500, xp: 125, item: null },          // Day 4
+  { beli: 700, xp: 150, item: 'Normal Potion' }, // Day 5
+  { beli: 1000, xp: 250, item: 'Rusty Cutlass' },          // Day 6
+  { beli: 1500, xp: 500, item: 'Max Potion' }  // Day 7 (Premium)
 ];
 
 const data = new SlashCommandBuilder()
@@ -137,7 +137,7 @@ async function execute(message, args) {
   // Add user level up notifications
   if (userLevelResult.leveledUp) {
     const { formatLevelUpRewards } = require('../utils/userLevelSystem.js');
-    const levelUpText = `**🌟 LEVEL UP! 🌟**\n${userLevelResult.oldLevel} → **${userLevelResult.newLevel}**\n${formatLevelUpRewards(userLevelResult.rewards)}`;
+    const levelUpText = `**LEVEL UP!**\n${userLevelResult.oldLevel} → **${userLevelResult.newLevel}**\n${formatLevelUpRewards(userLevelResult.rewards)}`;
     embed.addFields({ name: 'Pirate Level Up!', value: levelUpText.trim(), inline: false });
   }
 

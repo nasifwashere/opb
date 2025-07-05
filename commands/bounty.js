@@ -53,7 +53,7 @@ async function execute(message, args) {
     
     if (targetUser) {
       const embed = new EmbedBuilder()
-        .setTitle('🎯 Active Bounty Target')
+        .setTitle('<:zorolaugh:1390838553889476719> Active Bounty Target')
         .setDescription(`Your current bounty target is **${user.bountyTarget.username}**`)
         .addFields(
           { name: 'Target Bounty', value: `${user.bountyTarget.targetBounty.toLocaleString()} Beli`, inline: true },
@@ -89,7 +89,7 @@ async function execute(message, args) {
   // Check cooldown
   if (user.bountyTarget.cooldownUntil > now) {
     const timeLeft = user.bountyTarget.cooldownUntil - now;
-    return message.reply(`⏰ You can get a new bounty target in ${formatTime(timeLeft)}!`);
+    return message.reply(`You can get a new bounty target in ${formatTime(timeLeft)}!`);
   }
 
   // Find a random target (excluding self and users with very low bounty)
@@ -100,7 +100,7 @@ async function execute(message, args) {
   }).select('userId username bounty');
 
   if (potentialTargets.length === 0) {
-    return message.reply('❌ No suitable bounty targets found. Players need at least 1,000 bounty to be eligible.');
+    return message.reply('No suitable bounty targets found. Players need at least 1,000 bounty to be eligible.');
   }
 
   // Select random target
@@ -119,7 +119,7 @@ async function execute(message, args) {
   await user.save();
 
   const embed = new EmbedBuilder()
-    .setTitle('🎯 New Bounty Target Assigned!')
+    .setTitle('<:zorolaugh:1390838553889476719> New Bounty Target Assigned!')
     .setDescription(`Your bounty target is **${randomTarget.username}**`)
     .addFields(
       { name: 'Target Bounty', value: `${randomTarget.bounty.toLocaleString()} Beli`, inline: true },

@@ -238,7 +238,7 @@ class ResetSystem {
             if (!channel) return;
 
             const embed = new EmbedBuilder()
-                .setTitle('🔄 Pull Reset!')
+                .setTitle('<:ref:1390846865968205985> Pull Reset!')
                 .setDescription('All player pulls have been reset! Use `op pull` to get new cards!')
                 .setColor(0x00ff00)
                 .setTimestamp();

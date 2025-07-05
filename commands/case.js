@@ -31,7 +31,7 @@ async function execute(message, args, client) {
   // Check if case is empty
   if (user.case.length === 0) {
     const embed = new EmbedBuilder()
-      .setTitle('🗄️ Your Case')
+      .setTitle('<:Padlock_Crown:1390839220016250890> Your Case')
       .setDescription('Your case is empty! No cards are currently locked away.')
       .addFields(
         { name: 'Lock Cards', value: 'Use `op lock <card name>` to safely store valuable cards', inline: false }
@@ -183,12 +183,12 @@ async function execute(message, args, client) {
 
 function getRankEmoji(rank) {
   switch (rank) {
-    case 'UR': return '💎';
-    case 'S': return '⭐';
-    case 'A': return '🔥';
-    case 'B': return '⚡';
-    case 'C': return '🟦';
-    default: return '❓';
+    case 'UR': return '';
+    case 'S': return '';
+    case 'A': return '';
+    case 'B': return '';
+    case 'C': return '';
+    default: return '';
   }
 }
 

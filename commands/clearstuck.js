@@ -26,7 +26,7 @@ const data = new SlashCommandBuilder()
 async function execute(message, args, client) {
     // Admin permission check
     if (message.author.id !== ADMIN_USER_ID) {
-        return message.reply('❌ This command is restricted to administrators.');
+        return message.reply('This command is restricted to administrators.');
     }
 
     // Parse arguments - handle both slash commands and text commands
@@ -52,7 +52,7 @@ async function execute(message, args, client) {
         }
         
         if (!targetUser) {
-            return message.reply('❌ Could not find that user.');
+            return message.reply('Could not find that user.');
         }
         
         clearType = args[1] || 'all';
@@ -60,7 +60,7 @@ async function execute(message, args, client) {
 
     const user = await User.findOne({ userId: targetUser.id });
     if (!user) {
-        return message.reply(`❌ ${targetUser.username} has not started their journey yet.`);
+        return message.reply(`${targetUser.username} has not started their journey yet.`);
     }
 
     let clearedItems = [];
@@ -135,8 +135,8 @@ async function execute(message, args, client) {
             `**Clear Type:** ${clearType}`,
             '',
             clearedItems.length > 0 
-                ? `**Cleared:**\n${clearedItems.map(item => `✅ ${item}`).join('\n')}`
-                : '⚠️ No stuck states found to clear',
+                ? `**Cleared:**\n${clearedItems.map(item => `<:check:1390838766821965955> ${item}`).join('\n')}`
+                : 'No stuck states found to clear',
             '',
             'The user can now use `op explore` normally.'
         ].join('\n'))
@@ -148,7 +148,7 @@ async function execute(message, args, client) {
     // Optionally notify the target user
     try {
         const notifyEmbed = new EmbedBuilder()
-            .setTitle('🔧 Exploration State Reset')
+            .setTitle('Exploration State Reset')
             .setDescription([
                 'An administrator has cleared your stuck exploration state.',
                 'You can now continue exploring normally with `op explore`!'

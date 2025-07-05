@@ -560,13 +560,13 @@ async function execute(message, args, client) {
     const timeLeft = (lastExplore + cooldownTime) - Date.now();
 
     if (timeLeft > 0 && userId !== IMMUNE_USER_ID) {
-        return message.reply(`⏰ You need to wait ${prettyTime(timeLeft)} before exploring again!`);
+        return message.reply(`You need to wait ${prettyTime(timeLeft)} before exploring again!`);
     }
 
     // Check defeat cooldown
     if (user.exploreStates.defeatCooldown && user.exploreStates.defeatCooldown > Date.now()) {
         const defeatTimeLeft = user.exploreStates.defeatCooldown - Date.now();
-        return message.reply(`💀 You were defeated! Wait ${prettyTime(defeatTimeLeft)} before trying again.`);
+        return message.reply(`<:zorosad:1390838584369746022> You were defeated! Wait ${prettyTime(defeatTimeLeft)} before trying again.`);
     }
 
     const localStage = getLocalStage(user.stage);
@@ -584,7 +584,7 @@ async function execute(message, args, client) {
                 user.completedSagas.push('East Blue');
                 await saveUserWithRetry(user);
             }
-            return message.reply('🎉 Congratulations! You have completed all available locations in the East Blue saga!');
+            return message.reply('Congratulations! You have completed all available locations in the East Blue saga!');
         }
         
         // IMPORTANT: Actually advance the stage and save progress
@@ -603,7 +603,7 @@ async function execute(message, args, client) {
         
         // Automatically transition to next location
         const embed = new EmbedBuilder()
-            .setTitle(`🗺️ Moving to ${nextLocation}`)
+            .setTitle(`Moving to ${nextLocation}`)
             .setDescription(`You have completed **${currentLocation}**!\n\nYour adventure continues in **${nextLocation}**...\n\n✅ **Progress saved!** Use \`op explore\` again to continue.`)
             .setColor(0x2ecc71)
             .setFooter({ text: 'Your stage has been advanced to the next location!' });
@@ -659,7 +659,7 @@ async function handleNarrative(message, user, stageData, currentLocation) {
 
 async function handleChoice(message, user, stageData, currentLocation, client) {
     const embed = new EmbedBuilder()
-        .setTitle(`🗺️ ${currentLocation} - ${stageData.title}`)
+        .setTitle(`${currentLocation} - ${stageData.title}`)
         .setDescription(stageData.desc)
         .setColor(0xe67e22);
 
@@ -690,7 +690,7 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
             await applyReward(user, reward);
             
             const resultEmbed = new EmbedBuilder()
-                .setTitle(`✅ Choice Made: ${choice.toUpperCase()}`)
+                .setTitle(`<:check:1390838766821965955> Choice Made: ${choice.toUpperCase()}`)
                 .setDescription(`You chose **${choice}**!`)
                 .setColor(choice === 'yes' ? 0x2ecc71 : 0x95a5a6);
             
@@ -732,19 +732,19 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
 async function handleBattle(message, user, stageData, currentLocation, client) {
     // Validate user has a team set up
     if (!user.team || user.team.length === 0) {
-        return message.reply('❌ You need to set up your team first! Use `op team add <card>` to add cards to your team.');
+        return message.reply('You need to set up your team first! Use `op team add <card>` to add cards to your team.');
     }
 
     // Validate user has cards
     if (!user.cards || user.cards.length === 0) {
-        return message.reply('❌ You don\'t have any cards! Pull some cards first with `op pull`.');
+        return message.reply('You don\'t have any cards! Pull some cards first with `op pull`.');
     }
 
     // Get user's team using the proper battle system
     const battleTeam = calculateBattleStats(user);
 
     if (!battleTeam || battleTeam.length === 0) {
-        return message.reply('❌ Your team is invalid or cards are missing. Please check your team with `op team` and fix any issues.');
+        return message.reply('Your team is invalid or cards are missing. Please check your team with `op team` and fix any issues.');
     }
 
     // Initialize enemies
@@ -777,7 +777,7 @@ async function handleBattle(message, user, stageData, currentLocation, client) {
     // Final validation - ensure we have at least one alive team member
     const aliveCount = battleTeam.filter(card => card.currentHp > 0).length;
     if (aliveCount === 0) {
-        return message.reply('❌ Your team has no health! Please check your cards or try again.');
+        return message.reply('Your team has no health! Please check your cards or try again.');
     }
 
     const battleState = {
@@ -818,7 +818,7 @@ async function displayBattleState(message, user, client) {
         user.exploreStates.battleState = null;
         user.exploreStates.currentStage = null;
         await saveUserWithRetry(user);
-        return message.reply('❌ Battle state corrupted. Please try exploring again.');
+        return message.reply('Battle state corrupted. Please try exploring again.');
     }
 
     // Create clean battle embed
@@ -853,7 +853,7 @@ async function displayBattleState(message, user, client) {
             user.exploreStates.battleState = null;
             user.exploreStates.currentStage = null;
             await saveUserWithRetry(user);
-            return message.reply('❌ Battle initialization failed. Please try exploring again with `op explore`.');
+            return message.reply('Battle initialization failed. Please try exploring again with `op explore`.');
         }
     } else {
         const teamDisplay = createProfessionalTeamDisplay(aliveTeamMembers, message.author.username);
@@ -945,7 +945,7 @@ async function handleBattleAttack(interaction, user, battleMessage) {
             const freshUser = await User.findOne({ userId: interaction.user.id });
             if (!freshUser || !freshUser.exploreStates || !freshUser.exploreStates.battleState) {
                 return await interaction.followUp({ 
-                    content: '❌ Battle state lost! Please start exploring again with `op explore`.', 
+                    content: 'Battle state lost! Please start exploring again with `op explore`.', 
                     ephemeral: true 
                 });
             }
@@ -957,7 +957,7 @@ async function handleBattleAttack(interaction, user, battleMessage) {
         // Validate battle state has required properties
         if (!battleState.userTeam || !battleState.enemies) {
             return await interaction.followUp({ 
-                content: '❌ Invalid battle state! Please start exploring again with `op explore`.', 
+                content: 'Invalid battle state! Please start exploring again with `op explore`.', 
                 ephemeral: true 
             });
         }
@@ -972,7 +972,7 @@ async function handleBattleAttack(interaction, user, battleMessage) {
         const targetEnemy = battleState.enemies.find(e => e.currentHp > 0);
         if (!targetEnemy) {
             return await interaction.followUp({ 
-                content: '❌ No enemies to attack!', 
+                content: 'No enemies to attack!', 
                 ephemeral: true 
             });
         }
@@ -1088,7 +1088,7 @@ async function handleBattleAttack(interaction, user, battleMessage) {
     } catch (error) {
         console.error('Error in handleBattleAttack:', error);
         return await interaction.followUp({ 
-            content: '❌ An error occurred during the attack. Please try exploring again with `op explore`.', 
+            content: 'An error occurred during the attack. Please try exploring again with `op explore`.', 
             ephemeral: true 
         });
     }
@@ -1105,7 +1105,7 @@ async function handleBattleItems(interaction, user, battleMessage) {
             const freshUser = await User.findOne({ userId: interaction.user.id });
             if (!freshUser || !freshUser.exploreStates || !freshUser.exploreStates.battleState) {
                 return await interaction.followUp({ 
-                    content: '❌ Battle state lost! Please start exploring again with `op explore`.', 
+                    content: 'Battle state lost! Please start exploring again with `op explore`.', 
                     ephemeral: true 
                 });
             }
@@ -1201,7 +1201,7 @@ async function handleBattleItems(interaction, user, battleMessage) {
             } catch (error) {
                 console.error('Error in item use:', error);
                 await itemInteraction.followUp({ 
-                    content: '❌ Error using item. Please try again.', 
+                    content: 'Error using item. Please try again.', 
                     ephemeral: true 
                 });
             }
@@ -1209,7 +1209,7 @@ async function handleBattleItems(interaction, user, battleMessage) {
     } catch (error) {
         console.error('Error in handleBattleItems:', error);
         return await interaction.followUp({ 
-            content: '❌ An error occurred accessing items. Please try exploring again.', 
+            content: 'An error occurred accessing items. Please try exploring again.', 
             ephemeral: true 
         });
     }
@@ -1226,7 +1226,7 @@ async function handleEnemyTurn(interaction, user, battleMessage) {
             const freshUser = await User.findOne({ userId: interaction.user.id });
             if (!freshUser || !freshUser.exploreStates || !freshUser.exploreStates.battleState) {
                 return await interaction.followUp({ 
-                    content: '❌ Battle state lost during enemy turn!', 
+                    content: 'Battle state lost during enemy turn!', 
                     ephemeral: true 
                 });
             }
@@ -1331,7 +1331,7 @@ async function handleEnemyTurn(interaction, user, battleMessage) {
     } catch (error) {
         console.error('Error in handleEnemyTurn:', error);
         return await interaction.followUp({ 
-            content: '❌ An error occurred during enemy turn. Please try exploring again.', 
+            content: 'An error occurred during enemy turn. Please try exploring again.', 
             ephemeral: true 
         });
     }
@@ -1346,7 +1346,7 @@ async function handleBattleFlee(interaction, user, battleMessage) {
         if (!currentUser.exploreStates) {
             const freshUser = await User.findOne({ userId: interaction.user.id });
             if (!freshUser) {
-                return await interaction.followUp({ content: '❌ User data not found!', ephemeral: true });
+                return await interaction.followUp({ content: 'User data not found!', ephemeral: true });
             }
             currentUser = freshUser;
         }
@@ -1404,8 +1404,8 @@ async function handleBattleVictory(interaction, user, battleMessage, battleLog) 
     await saveUserWithRetry(user);
     
     const victoryEmbed = new EmbedBuilder()
-        .setTitle('🎉 Victory!')
-        .setDescription(battleLog + '\n\n✅ **You won the battle!**')
+        .setTitle('Victory!')
+        .setDescription(battleLog + '\n\n<:check:1390838766821965955> **You won the battle!**')
         .setColor(0x2ecc71);
     
     if (stageData.reward) {
@@ -1418,7 +1418,7 @@ async function handleBattleVictory(interaction, user, battleMessage, battleLog) 
         const userLevelUp = user.recentUserLevelUps[user.recentUserLevelUps.length - 1];
         
         if (userLevelUp.leveledUp) {
-            const levelUpText = `**🌟 LEVEL UP! 🌟**\n${userLevelUp.oldLevel} → **${userLevelUp.newLevel}**\n${formatLevelUpRewards(userLevelUp.rewards)}`;
+            const levelUpText = `** LEVEL UP! **\n${userLevelUp.oldLevel} → **${userLevelUp.newLevel}**\n${formatLevelUpRewards(userLevelUp.rewards)}`;
             victoryEmbed.addFields({ name: 'Pirate Level Up!', value: levelUpText.trim(), inline: false });
         }
         
@@ -1454,8 +1454,8 @@ async function handleBattleDefeat(interaction, user, battleMessage, battleLog) {
     await saveUserWithRetry(user);
     
     const defeatEmbed = new EmbedBuilder()
-        .setTitle('💀 Defeat!')
-        .setDescription(battleLog + '\n\n❌ **You were defeated!**')
+        .setTitle('<:zorosad:1390838584369746022> Defeat!')
+        .setDescription(battleLog + '\n\n**You were defeated!**')
         .setColor(0xe74c3c);
     
     await battleMessage.edit({ embeds: [defeatEmbed], components: [] });

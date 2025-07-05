@@ -74,16 +74,16 @@ async function execute(message, args) {
   }
 
   if (!item.available) {
-    return message.reply(`⚠️ "${item.name}" is currently out of stock.`);
+    return message.reply(`"${item.name}" is currently out of stock.`);
   }
 
   if (user.beli < item.price) {
-    return message.reply(`⚠️ You don't have enough Beli! You need ${item.price}, but you only have ${user.beli}.`);
+    return message.reply(`You don't have enough Beli! You need ${item.price}, but you only have ${user.beli}.`);
   }
 
   const normalizedItemName = normalize(item.name);
   if (item.unique && user.inventory && user.inventory.includes(normalizedItemName)) {
-    return message.reply(`⚠️ You already own "${item.name}". This item can only be purchased once.`);
+    return message.reply(`You already own "${item.name}". This item can only be purchased once.`);
   }
 
   // Process purchase
@@ -132,7 +132,7 @@ async function execute(message, args) {
   }
 
   const embed = new EmbedBuilder()
-    .setTitle('✅ Purchase Successful')
+    .setTitle('<:check:1390838766821965955> Purchase Successful')
     .setDescription(`You bought **${item.name}**${itemTypeDesc} for **${item.price} Beli**.`)
     .addFields(
       { name: 'Item', value: item.name, inline: true },
