@@ -140,6 +140,18 @@ async function dropRandomCard(client) {
             embed.setImage(randomCard.image);
         }
 
+        const rankSettings = {
+            C: { rankImage: "https://files.catbox.moe/7xzfbe.png" },
+            B: { rankImage: "https://files.catbox.moe/d0oebp.png" },
+            A: { rankImage: "https://files.catbox.moe/qlntg7.png" },
+            S: { rankImage: "https://files.catbox.moe/9iq0m3.png" },
+            UR: { rankImage: "https://files.catbox.moe/70hwjn.png" }
+        };
+        const rankSet = rankSettings[randomCard.rank] || {};
+        if (rankSet.rankImage && /^https?:\/\//.test(rankSet.rankImage)) {
+            embed.setThumbnail(rankSet.rankImage);
+        }
+
         const button = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()

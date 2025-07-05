@@ -7,11 +7,11 @@ const { isCardInTraining } = require('../utils/trainingSystem.js');
 const MAX_STORAGE = 250;
 
 const rankSettings = {
-  C: { color: 0x2C2F33, rankName: "C", rankImage: "https://files.catbox.moe/80exn1.png" },
-  B: { color: 0x2C2F33, rankName: "B", rankImage: "https://files.catbox.moe/ta2g9o.png" },
-  A: { color: 0x2C2F33, rankName: "A", rankImage: "https://files.catbox.moe/hcyso9.png" },
-  S: { color: 0x2C2F33, rankName: "S", rankImage: "https://files.catbox.moe/niidag.png" },
-  UR: { color: 0x2C2F33, rankName: "UR", rankImage: "https://files.catbox.moe/stq3f1.png" }
+  C: { color: 0x2C2F33, rankName: "C", rankImage: "https://files.catbox.moe/7xzfbe.png" },
+  B: { color: 0x2C2F33, rankName: "B", rankImage: "https://files.catbox.moe/d0oebp.png" },
+  A: { color: 0x2C2F33, rankName: "A", rankImage: "https://files.catbox.moe/qlntg7.png" },
+  S: { color: 0x2C2F33, rankName: "S", rankImage: "https://files.catbox.moe/9iq0m3.png" },
+  UR: { color: 0x2C2F33, rankName: "UR", rankImage: "https://files.catbox.moe/70hwjn.png" }
 };
 
 const cardsPath = path.resolve('data', 'cards.json');

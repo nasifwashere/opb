@@ -9,11 +9,11 @@ const allCards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
 
 // Rank settings for border/rarity visuals
 const rankSettings = {
-  C: { color: 0x2b2d31, rankName: "C" },
-  B: { color: 0x2b2d31, rankName: "B" },
-  A: { color: 0x2b2d31, rankName: "A" },
-  S: { color: 0x2b2d31, rankName: "S" },
-  UR: { color: 0x2b2d31, rankName: "UR" }
+  C: { color: 0x2b2d31, rankName: "C", rankImage: "https://files.catbox.moe/7xzfbe.png" },
+  B: { color: 0x2b2d31, rankName: "B", rankImage: "https://files.catbox.moe/d0oebp.png" },
+  A: { color: 0x2b2d31, rankName: "A", rankImage: "https://files.catbox.moe/qlntg7.png" },
+  S: { color: 0x2b2d31, rankName: "S", rankImage: "https://files.catbox.moe/9iq0m3.png" },
+  UR: { color: 0x2b2d31, rankName: "UR", rankImage: "https://files.catbox.moe/70hwjn.png" }
 };
 
 // Evolution requirements matrix
