@@ -83,102 +83,57 @@ function generateSailEvent(arcName, sailsCompleted) {
 }
 
 function generateEastBlueEvent(sailsCompleted) {
-    // Base scaling: Each sail adds a small amount to enemy stats
-    const baseHpScale = Math.floor(sailsCompleted * 1.5); // +1.5 HP per sail on average
-    const baseAtkScale = Math.floor(sailsCompleted * 0.3); // +0.3 ATK per sail on average
-    const baseSpdScale = Math.floor(sailsCompleted * 0.2); // +0.2 SPD per sail on average
+    // Add unique variation to each sail
+    const sailVariation = sailsCompleted;
     
-    if (sailsCompleted <= 5) {
-        // Sails 1-5: Basic Navy Soldier with progressive scaling
-        const baseHp = 25 + baseHpScale; // Start at 25, grow to ~32
-        const baseAtk = 6 + baseAtkScale; // Start at 6, grow to ~7
-        const baseSpd = 25 + baseSpdScale; // Start at 25, grow to ~26
+    if (sailsCompleted <= 10) {
+        // Sails 1-10: ~10 power, ~50 HP total
+        const totalHp = Math.floor(40 + sailsCompleted * 1.5 + sailVariation % 3); // 41-56 HP
+        const totalPower = Math.floor(8 + sailsCompleted * 0.3 + sailVariation % 2); // 8-13 power
+        const enemyCount = sailsCompleted <= 5 ? 1 : getRandomInt(1, 2);
+        
+        const enemies = Array.from({ length: enemyCount }, (_, i) => {
+            const hp = enemyCount === 1 ? totalHp : Math.floor(totalHp / enemyCount) + (i === 0 ? totalHp % enemyCount : 0);
+            const atk = enemyCount === 1 ? totalPower : Math.floor(totalPower / enemyCount) + (i === 0 ? totalPower % enemyCount : 0);
+            
+            return {
+                name: enemyCount === 1 ? 'Navy Soldier' : `Navy Soldier ${i + 1}`,
+                hp: hp,
+                atk: [atk, atk + 3],
+                spd: 25 + Math.floor(sailsCompleted * 0.5),
+                rank: 'C',
+                currentHp: hp,
+                maxHp: hp
+            };
+        });
         
         return {
             type: 'enemy',
             title: `Navy Patrol | Sail ${sailsCompleted}`,
-            description: sailsCompleted <= 2 ? 'A rookie Navy Soldier patrols the calm waters.' : 'An experienced Navy Soldier guards these waters.',
-            enemies: [{
-                name: sailsCompleted <= 2 ? 'Rookie Navy Soldier' : 'Navy Soldier',
-                hp: baseHp,
-                atk: [baseAtk, baseAtk + 4],
-                spd: baseSpd,
-                rank: 'C',
-                currentHp: baseHp,
-                maxHp: baseHp
-            }],
-            rewards: {
-                beli: getRandomInt(3 + sailsCompleted, 8 + sailsCompleted),
-                xp: getRandomInt(1 + Math.floor(sailsCompleted/2), 3 + Math.floor(sailsCompleted/2)),
-                items: []
-            }
-        };
-    } else if (sailsCompleted <= 10) {
-        // Sails 6-10: Navy Officers with progressive scaling
-        const baseHp = 40 + baseHpScale; // Start at ~48, grow to ~55
-        const baseAtk = 8 + baseAtkScale; // Start at ~9, grow to ~11
-        const baseSpd = 30 + baseSpdScale; // Start at ~31, grow to ~32
-        
-        // Occasionally add a second weaker enemy for variety
-        const hasSecondEnemy = sailsCompleted >= 8 && Math.random() < 0.3;
-        const enemies = [{
-            name: sailsCompleted <= 7 ? 'Navy Officer' : 'Navy Lieutenant',
-            hp: baseHp,
-            atk: [baseAtk, baseAtk + 6],
-            spd: baseSpd,
-            rank: 'C',
-            currentHp: baseHp,
-            maxHp: baseHp
-        }];
-        
-        if (hasSecondEnemy) {
-            const secondEnemyHp = Math.floor(baseHp * 0.6);
-            enemies.push({
-                name: 'Navy Recruit',
-                hp: secondEnemyHp,
-                atk: [Math.floor(baseAtk * 0.7), Math.floor(baseAtk * 0.7) + 3],
-                spd: Math.floor(baseSpd * 0.8),
-                rank: 'C',
-                currentHp: secondEnemyHp,
-                maxHp: secondEnemyHp
-            });
-        }
-        
-        return {
-            type: 'enemy',
-            title: `Navy Officer Patrol | Sail ${sailsCompleted}`,
-            description: hasSecondEnemy ? 'A Navy Officer leads a small patrol squad.' : 'A stronger Navy Officer blocks your path.',
+            description: enemyCount === 1 ? 'A Navy soldier patrols these waters.' : `${enemyCount} Navy soldiers block your path.`,
             enemies: enemies,
             rewards: {
-                beli: getRandomInt(8 + sailsCompleted * 2, 15 + sailsCompleted * 3),
-                xp: getRandomInt(4 + Math.floor(sailsCompleted/2), 8 + Math.floor(sailsCompleted/2)),
-                items: sailsCompleted >= 9 ? [getRandomItem('Common')] : []
+                beli: getRandomInt(5 + sailsCompleted, 10 + sailsCompleted * 2),
+                xp: getRandomInt(2 + Math.floor(sailsCompleted/3), 4 + Math.floor(sailsCompleted/2)),
+                items: sailsCompleted >= 8 ? [getRandomItem('Common')] : []
             }
         };
     } else if (sailsCompleted <= 20) {
-        // Sails 11-20: Navy Squad with progressive scaling and variety
-        const enemyCount = sailsCompleted <= 12 ? 1 : (sailsCompleted <= 16 ? getRandomInt(1, 2) : getRandomInt(2, 3));
-        const baseHp = 60 + baseHpScale; // Start at ~75, grow to ~90
-        const baseAtk = 10 + baseAtkScale; // Start at ~13, grow to ~16
-        const baseSpd = 35 + baseSpdScale; // Start at ~37, grow to ~39
+        // Sails 11-20: ~20 power, ~70 HP, C ranks
+        const totalHp = Math.floor(60 + (sailsCompleted - 10) * 1.5 + sailVariation % 4); // 61-84 HP
+        const totalPower = Math.floor(18 + (sailsCompleted - 10) * 0.4 + sailVariation % 3); // 18-26 power
+        const enemyCount = getRandomInt(1, 2);
         
-                 // Adjust for multiple enemies to equal single enemy total power
-         const adjustedHp = enemyCount > 1 ? Math.floor(baseHp / enemyCount) : baseHp;
-         const adjustedAtk = enemyCount > 1 ? Math.floor(baseAtk / enemyCount) : baseAtk;
-         const adjustedSpd = enemyCount > 1 ? Math.floor(baseSpd / enemyCount) : baseSpd;
-        
-        const enemyTypes = ['Navy Soldier', 'Navy Gunner', 'Navy Swordsman'];
         const enemies = Array.from({ length: enemyCount }, (_, i) => {
-            const enemyType = enemyTypes[i % enemyTypes.length];
-            const isLeader = i === 0 && enemyCount > 1;
-            const hp = isLeader ? Math.floor(adjustedHp * 1.2) : adjustedHp + getRandomInt(-3, 3);
+            const hp = enemyCount === 1 ? totalHp : Math.floor(totalHp / enemyCount) + (i === 0 ? totalHp % enemyCount : 0);
+            const atk = enemyCount === 1 ? totalPower : Math.floor(totalPower / enemyCount) + (i === 0 ? totalPower % enemyCount : 0);
             
             return {
-                name: isLeader ? 'Navy Squad Leader' : (enemyCount > 1 ? `${enemyType} ${i + 1}` : enemyType),
+                name: enemyCount === 1 ? 'Navy Officer' : `Navy Officer ${i + 1}`,
                 hp: hp,
-                atk: [adjustedAtk, adjustedAtk + 6],
-                spd: adjustedSpd,
-                rank: isLeader ? 'B' : 'C',
+                atk: [atk, atk + 4],
+                spd: 30 + Math.floor((sailsCompleted - 10) * 0.8),
+                rank: 'C',
                 currentHp: hp,
                 maxHp: hp
             };
@@ -187,38 +142,32 @@ function generateEastBlueEvent(sailsCompleted) {
         return {
             type: 'enemy',
             title: `Navy Squad | Sail ${sailsCompleted}`,
-            description: enemyCount === 1 ? 'A seasoned Navy soldier stands guard.' : `${enemyCount} Navy soldiers intercept your ship.`,
+            description: enemyCount === 1 ? 'A Navy Officer stands guard.' : `${enemyCount} Navy Officers coordinate their attack.`,
             enemies: enemies,
             rewards: {
-                beli: getRandomInt(25 + sailsCompleted * 3, 50 + sailsCompleted * 4),
-                xp: getRandomInt(8 + Math.floor(sailsCompleted/2), 12 + Math.floor(sailsCompleted/2)),
+                beli: getRandomInt(15 + sailsCompleted * 2, 25 + sailsCompleted * 3),
+                xp: getRandomInt(5 + Math.floor(sailsCompleted/3), 8 + Math.floor(sailsCompleted/2)),
                 items: sailsCompleted >= 15 ? [getRandomItem('Common')] : []
             }
         };
-    } else if (sailsCompleted <= 50) {
-        // Sails 21-50: Navy Forces with consistent progressive scaling
+    } else if (sailsCompleted <= 30) {
+        // Sails 21-30: ~30 power, ~100 HP, C ranks + C rank bosses + B ranks
+        const totalHp = Math.floor(90 + (sailsCompleted - 20) * 1.5 + sailVariation % 5); // 91-115 HP
+        const totalPower = Math.floor(28 + (sailsCompleted - 20) * 0.5 + sailVariation % 3); // 28-37 power
         const enemyCount = getRandomInt(2, 3);
-        const baseHp = 80 + sailsCompleted * 2; // Linear scaling: 122 HP at sail 21, 180 HP at sail 50
-        const baseAtk = 12 + Math.floor(sailsCompleted * 0.4); // 20 ATK at sail 21, 32 ATK at sail 50
-        const baseSpd = 40 + Math.floor(sailsCompleted * 0.3); // 46 SPD at sail 21, 55 SPD at sail 50
         
-        // Balance multiple enemies to equal single enemy total power
-        const adjustedHp = Math.floor(baseHp / enemyCount);
-        const adjustedAtk = Math.floor(baseAtk / enemyCount);
-        const adjustedSpd = Math.floor(baseSpd / enemyCount);
-        
-        const enemyTypes = ['Navy Enforcer', 'Navy Captain', 'Navy Elite', 'Navy Specialist'];
         const enemies = Array.from({ length: enemyCount }, (_, i) => {
-            const enemyType = enemyTypes[i % enemyTypes.length];
-            const isCommander = i === 0;
-            const hp = isCommander ? Math.floor(adjustedHp * 1.3) : adjustedHp + getRandomInt(-5, 5);
+            const hp = Math.floor(totalHp / enemyCount) + (i === 0 ? totalHp % enemyCount : 0);
+            const atk = Math.floor(totalPower / enemyCount) + (i === 0 ? totalPower % enemyCount : 0);
+            const isBoss = i === 0 && sailsCompleted >= 25;
+            const rank = isBoss ? 'B' : 'C';
             
             return {
-                name: isCommander ? 'Navy Commander' : `${enemyType} ${i + 1}`,
+                name: isBoss ? 'Navy Lieutenant Commander' : `Navy Lieutenant ${i + 1}`,
                 hp: hp,
-                atk: [adjustedAtk, adjustedAtk + 8],
-                spd: adjustedSpd + (isCommander ? 5 : 0),
-                rank: isCommander ? 'A' : 'B',
+                atk: [atk, atk + 5],
+                spd: 35 + Math.floor((sailsCompleted - 20) * 0.7),
+                rank: rank,
                 currentHp: hp,
                 maxHp: hp
             };
@@ -226,40 +175,270 @@ function generateEastBlueEvent(sailsCompleted) {
         
         return {
             type: 'enemy',
-            title: `Navy Blockade | Sail ${sailsCompleted}`,
-            description: `${enemyCount} Navy ships form a formidable blockade.`,
+            title: `Navy Force | Sail ${sailsCompleted}`,
+            description: `${enemyCount} Navy Lieutenants form a tactical formation.`,
             enemies: enemies,
             rewards: {
-                beli: getRandomInt(60 + sailsCompleted * 4, 120 + sailsCompleted * 6),
-                xp: getRandomInt(12 + Math.floor(sailsCompleted/3), 18 + Math.floor(sailsCompleted/3)),
-                items: [getRandomItem(sailsCompleted < 35 ? 'Uncommon' : 'Rare')]
+                beli: getRandomInt(25 + sailsCompleted * 3, 40 + sailsCompleted * 4),
+                xp: getRandomInt(8 + Math.floor(sailsCompleted/3), 12 + Math.floor(sailsCompleted/2)),
+                items: [getRandomItem('Uncommon')]
+            }
+        };
+    } else if (sailsCompleted <= 40) {
+        // Sails 31-40: ~50 power, ~150 HP, B ranks + B rank bosses
+        const totalHp = Math.floor(140 + (sailsCompleted - 30) * 1.5 + sailVariation % 6); // 141-165 HP
+        const totalPower = Math.floor(48 + (sailsCompleted - 30) * 0.4 + sailVariation % 3); // 48-57 power
+        const enemyCount = getRandomInt(2, 3);
+        
+        const enemies = Array.from({ length: enemyCount }, (_, i) => {
+            const hp = Math.floor(totalHp / enemyCount) + (i === 0 ? totalHp % enemyCount : 0);
+            const atk = Math.floor(totalPower / enemyCount) + (i === 0 ? totalPower % enemyCount : 0);
+            const isBoss = i === 0;
+            
+            return {
+                name: isBoss ? 'Navy Commander' : `Navy Captain ${i + 1}`,
+                hp: hp,
+                atk: [atk, atk + 6],
+                spd: 40 + Math.floor((sailsCompleted - 30) * 0.8),
+                rank: 'B',
+                currentHp: hp,
+                maxHp: hp
+            };
+        });
+        
+        return {
+            type: 'enemy',
+            title: `Navy Battalion | Sail ${sailsCompleted}`,
+            description: `${enemyCount} Navy Captains lead a skilled battalion.`,
+            enemies: enemies,
+            rewards: {
+                beli: getRandomInt(40 + sailsCompleted * 4, 60 + sailsCompleted * 5),
+                xp: getRandomInt(12 + Math.floor(sailsCompleted/3), 16 + Math.floor(sailsCompleted/2)),
+                items: [getRandomItem('Uncommon')]
+            }
+        };
+    } else if (sailsCompleted <= 50) {
+        // Sails 41-50: ~55 power, ~180 HP, B ranks + B rank bosses + A ranks
+        const totalHp = Math.floor(170 + (sailsCompleted - 40) * 1.5 + sailVariation % 7); // 171-195 HP
+        const totalPower = Math.floor(53 + (sailsCompleted - 40) * 0.4 + sailVariation % 3); // 53-62 power
+        const enemyCount = getRandomInt(2, 3);
+        
+        const enemies = Array.from({ length: enemyCount }, (_, i) => {
+            const hp = Math.floor(totalHp / enemyCount) + (i === 0 ? totalHp % enemyCount : 0);
+            const atk = Math.floor(totalPower / enemyCount) + (i === 0 ? totalPower % enemyCount : 0);
+            const isBoss = i === 0;
+            const hasARank = sailsCompleted >= 45 && i === 0;
+            const rank = hasARank ? 'A' : 'B';
+            
+            return {
+                name: hasARank ? 'Navy Commodore' : (isBoss ? 'Navy Major' : `Navy Captain ${i + 1}`),
+                hp: hp,
+                atk: [atk, atk + 7],
+                spd: 45 + Math.floor((sailsCompleted - 40) * 0.9),
+                rank: rank,
+                currentHp: hp,
+                maxHp: hp
+            };
+        });
+        
+        return {
+            type: 'enemy',
+            title: `Navy Regiment | Sail ${sailsCompleted}`,
+            description: `${enemyCount} elite Navy officers command a powerful regiment.`,
+            enemies: enemies,
+            rewards: {
+                beli: getRandomInt(60 + sailsCompleted * 5, 80 + sailsCompleted * 6),
+                xp: getRandomInt(16 + Math.floor(sailsCompleted/3), 20 + Math.floor(sailsCompleted/2)),
+                items: [getRandomItem('Rare')]
+            }
+        };
+    } else if (sailsCompleted <= 60) {
+        // Sails 51-60: ~70 power, ~200 HP, A ranks + A rank bosses + S ranks
+        const totalHp = Math.floor(190 + (sailsCompleted - 50) * 1.5 + sailVariation % 8); // 191-215 HP
+        const totalPower = Math.floor(68 + (sailsCompleted - 50) * 0.4 + sailVariation % 3); // 68-77 power
+        const enemyCount = getRandomInt(2, 4);
+        
+        const enemies = Array.from({ length: enemyCount }, (_, i) => {
+            const hp = Math.floor(totalHp / enemyCount) + (i === 0 ? totalHp % enemyCount : 0);
+            const atk = Math.floor(totalPower / enemyCount) + (i === 0 ? totalPower % enemyCount : 0);
+            const isBoss = i === 0;
+            const hasSRank = sailsCompleted >= 55 && i === 0;
+            const rank = hasSRank ? 'S' : 'A';
+            
+            return {
+                name: hasSRank ? 'Navy Rear Admiral' : (isBoss ? 'Navy Brigadier' : `Navy Colonel ${i + 1}`),
+                hp: hp,
+                atk: [atk, atk + 8],
+                spd: 50 + Math.floor((sailsCompleted - 50) * 1.0),
+                rank: rank,
+                currentHp: hp,
+                maxHp: hp
+            };
+        });
+        
+        return {
+            type: 'enemy',
+            title: `Navy Division | Sail ${sailsCompleted}`,
+            description: `${enemyCount} high-ranking Navy officials lead a formidable division.`,
+            enemies: enemies,
+            rewards: {
+                beli: getRandomInt(80 + sailsCompleted * 6, 120 + sailsCompleted * 7),
+                xp: getRandomInt(20 + Math.floor(sailsCompleted/3), 25 + Math.floor(sailsCompleted/2)),
+                items: [getRandomItem('Rare')]
+            }
+        };
+    } else if (sailsCompleted <= 70) {
+        // Sails 61-70: ~80 power, ~220 HP, S ranks + S rank bosses
+        const totalHp = Math.floor(210 + (sailsCompleted - 60) * 1.5 + sailVariation % 9); // 211-235 HP
+        const totalPower = Math.floor(78 + (sailsCompleted - 60) * 0.4 + sailVariation % 3); // 78-87 power
+        const enemyCount = getRandomInt(3, 4);
+        
+        const enemies = Array.from({ length: enemyCount }, (_, i) => {
+            const hp = Math.floor(totalHp / enemyCount) + (i === 0 ? totalHp % enemyCount : 0);
+            const atk = Math.floor(totalPower / enemyCount) + (i === 0 ? totalPower % enemyCount : 0);
+            const isBoss = i === 0;
+            
+            return {
+                name: isBoss ? 'Navy Vice Admiral' : `Navy Admiral ${i + 1}`,
+                hp: hp,
+                atk: [atk, atk + 9],
+                spd: 55 + Math.floor((sailsCompleted - 60) * 1.1),
+                rank: 'S',
+                currentHp: hp,
+                maxHp: hp
+            };
+        });
+        
+        return {
+            type: 'enemy',
+            title: `Navy Admiral Fleet | Sail ${sailsCompleted}`,
+            description: `${enemyCount} Navy Admirals command an unstoppable fleet.`,
+            enemies: enemies,
+            rewards: {
+                beli: getRandomInt(120 + sailsCompleted * 7, 160 + sailsCompleted * 8),
+                xp: getRandomInt(25 + Math.floor(sailsCompleted/3), 30 + Math.floor(sailsCompleted/2)),
+                items: [getRandomItem('Epic')]
+            }
+        };
+    } else if (sailsCompleted <= 80) {
+        // Sails 71-80: ~90 power, ~250 HP, S ranks + S rank bosses + UR ranks
+        const totalHp = Math.floor(240 + (sailsCompleted - 70) * 1.5 + sailVariation % 10); // 241-265 HP
+        const totalPower = Math.floor(88 + (sailsCompleted - 70) * 0.4 + sailVariation % 3); // 88-97 power
+        const enemyCount = getRandomInt(3, 4);
+        
+        const enemies = Array.from({ length: enemyCount }, (_, i) => {
+            const hp = Math.floor(totalHp / enemyCount) + (i === 0 ? totalHp % enemyCount : 0);
+            const atk = Math.floor(totalPower / enemyCount) + (i === 0 ? totalPower % enemyCount : 0);
+            const isBoss = i === 0;
+            const hasURRank = sailsCompleted >= 75 && i === 0;
+            const rank = hasURRank ? 'UR' : 'S';
+            
+            return {
+                name: hasURRank ? 'Fleet Admiral' : (isBoss ? 'Navy Admiral Supreme' : `Navy Vice Admiral ${i + 1}`),
+                hp: hp,
+                atk: [atk, atk + 10],
+                spd: 60 + Math.floor((sailsCompleted - 70) * 1.2),
+                rank: rank,
+                currentHp: hp,
+                maxHp: hp
+            };
+        });
+        
+        return {
+            type: 'enemy',
+            title: `Elite Admiral Force | Sail ${sailsCompleted}`,
+            description: `${enemyCount} legendary Navy leaders unite in battle.`,
+            enemies: enemies,
+            rewards: {
+                beli: getRandomInt(160 + sailsCompleted * 8, 200 + sailsCompleted * 9),
+                xp: getRandomInt(30 + Math.floor(sailsCompleted/3), 35 + Math.floor(sailsCompleted/2)),
+                items: [getRandomItem('Epic')]
+            }
+        };
+    } else if (sailsCompleted <= 90) {
+        // Sails 81-90: ~100 power, ~280 HP, S rank bosses + UR ranks
+        const totalHp = Math.floor(270 + (sailsCompleted - 80) * 1.5 + sailVariation % 11); // 271-295 HP
+        const totalPower = Math.floor(98 + (sailsCompleted - 80) * 0.4 + sailVariation % 3); // 98-107 power
+        const enemyCount = getRandomInt(3, 4);
+        
+        const enemies = Array.from({ length: enemyCount }, (_, i) => {
+            const hp = Math.floor(totalHp / enemyCount) + (i === 0 ? totalHp % enemyCount : 0);
+            const atk = Math.floor(totalPower / enemyCount) + (i === 0 ? totalPower % enemyCount : 0);
+            const isBoss = i === 0;
+            const rank = isBoss ? 'UR' : (Math.random() < 0.5 ? 'UR' : 'S');
+            
+            return {
+                name: rank === 'UR' ? (isBoss ? 'World Government Admiral' : `Fleet Admiral ${i + 1}`) : `Navy Admiral Supreme ${i + 1}`,
+                hp: hp,
+                atk: [atk, atk + 11],
+                spd: 65 + Math.floor((sailsCompleted - 80) * 1.3),
+                rank: rank,
+                currentHp: hp,
+                maxHp: hp
+            };
+        });
+        
+        return {
+            type: 'enemy',
+            title: `Legendary Naval Force | Sail ${sailsCompleted}`,
+            description: `${enemyCount} legendary warriors represent the pinnacle of Naval power.`,
+            enemies: enemies,
+            rewards: {
+                beli: getRandomInt(200 + sailsCompleted * 9, 250 + sailsCompleted * 10),
+                xp: getRandomInt(35 + Math.floor(sailsCompleted/3), 40 + Math.floor(sailsCompleted/2)),
+                items: [getRandomItem('Legendary')]
+            }
+        };
+    } else if (sailsCompleted <= 100) {
+        // Sails 91-100: ~120 power, ~300 HP, UR ranks + UR rank bosses
+        const totalHp = Math.floor(290 + (sailsCompleted - 90) * 1.5 + sailVariation % 12); // 291-315 HP
+        const totalPower = Math.floor(118 + (sailsCompleted - 90) * 0.4 + sailVariation % 3); // 118-127 power
+        const enemyCount = getRandomInt(3, 5);
+        
+        const enemies = Array.from({ length: enemyCount }, (_, i) => {
+            const hp = Math.floor(totalHp / enemyCount) + (i === 0 ? totalHp % enemyCount : 0);
+            const atk = Math.floor(totalPower / enemyCount) + (i === 0 ? totalPower % enemyCount : 0);
+            const isBoss = i === 0;
+            
+            return {
+                name: isBoss ? 'Supreme Fleet Admiral' : `World Government Admiral ${i + 1}`,
+                hp: hp,
+                atk: [atk, atk + 12],
+                spd: 70 + Math.floor((sailsCompleted - 90) * 1.4),
+                rank: 'UR',
+                currentHp: hp,
+                maxHp: hp
+            };
+        });
+        
+        return {
+            type: 'enemy',
+            title: `Supreme Naval Command | Sail ${sailsCompleted}`,
+            description: `${enemyCount} supreme commanders of the World Government Navy.`,
+            enemies: enemies,
+            rewards: {
+                beli: getRandomInt(250 + sailsCompleted * 10, 300 + sailsCompleted * 12),
+                xp: getRandomInt(40 + Math.floor(sailsCompleted/3), 45 + Math.floor(sailsCompleted/2)),
+                items: [getRandomItem('Legendary')]
             }
         };
     } else {
-        // Sails 51+: Elite Navy with continuous scaling
-        const enemyCount = getRandomInt(3, 4);
-        const baseHp = 200 + (sailsCompleted - 50) * 3; // Continues scaling beyond sail 50
-        const baseAtk = 25 + Math.floor((sailsCompleted - 50) * 0.5);
-        const baseSpd = 55 + Math.floor((sailsCompleted - 50) * 0.2);
-        const itemRarity = sailsCompleted < 75 ? 'Rare' : (sailsCompleted < 100 ? 'Epic' : 'Legendary');
+        // Sails 100+: 120+ power, 300+ HP, ALL UR rank bosses
+        const totalHp = Math.floor(300 + (sailsCompleted - 100) * 2 + sailVariation % 15); // 300+ HP, scaling
+        const totalPower = Math.floor(120 + (sailsCompleted - 100) * 0.5 + sailVariation % 5); // 120+ power, scaling
+        const enemyCount = getRandomInt(4, 5);
         
-        // Balance multiple enemies to equal single enemy total power
-        const adjustedHp = Math.floor(baseHp / enemyCount);
-        const adjustedAtk = Math.floor(baseAtk / enemyCount);
-        const adjustedSpd = Math.floor(baseSpd / enemyCount);
-        
-        const eliteTypes = ['Navy Admiral', 'Navy Vice Admiral', 'Navy Commodore', 'Elite Marine'];
         const enemies = Array.from({ length: enemyCount }, (_, i) => {
-            const enemyType = eliteTypes[i % eliteTypes.length];
-            const isAdmiral = i === 0;
-            const hp = isAdmiral ? Math.floor(adjustedHp * 1.4) : adjustedHp + getRandomInt(-8, 8);
+            const hp = Math.floor(totalHp / enemyCount) + (i === 0 ? totalHp % enemyCount : 0);
+            const atk = Math.floor(totalPower / enemyCount) + (i === 0 ? totalPower % enemyCount : 0);
+            const isBoss = i === 0;
             
             return {
-                name: isAdmiral ? 'Fleet Admiral' : `${enemyType} ${i}`,
+                name: isBoss ? 'Absolute Fleet Admiral' : `Divine Admiral ${i + 1}`,
                 hp: hp,
-                atk: [adjustedAtk, adjustedAtk + 10],
-                spd: adjustedSpd + (isAdmiral ? 8 : 0),
-                rank: isAdmiral ? 'S' : 'A',
+                atk: [atk, atk + 15],
+                spd: 75 + Math.floor((sailsCompleted - 100) * 1.5),
+                rank: 'UR',
                 currentHp: hp,
                 maxHp: hp
             };
@@ -267,13 +446,13 @@ function generateEastBlueEvent(sailsCompleted) {
         
         return {
             type: 'enemy',
-            title: `Elite Navy Fleet | Sail ${sailsCompleted}`,
-            description: `${enemyCount} elite Navy warships engage in an epic battle.`,
+            title: `Divine Naval Authority | Sail ${sailsCompleted}`,
+            description: `${enemyCount} divine admirals wielding absolute power over the seas.`,
             enemies: enemies,
             rewards: {
-                beli: getRandomInt(150 + sailsCompleted * 6, 300 + sailsCompleted * 8),
-                xp: getRandomInt(20 + Math.floor(sailsCompleted/4), 35 + Math.floor(sailsCompleted/4)),
-                items: [getRandomItem(itemRarity)]
+                beli: getRandomInt(300 + sailsCompleted * 12, 400 + sailsCompleted * 15),
+                xp: getRandomInt(45 + Math.floor(sailsCompleted/3), 50 + Math.floor(sailsCompleted/2)),
+                items: [getRandomItem('Legendary')]
             }
         };
     }
