@@ -49,9 +49,10 @@ async function execute(message, args) {
             const timeText = card.trainingTime.hours > 0 
                 ? `${card.trainingTime.hours}h ${card.trainingTime.minutes}m`
                 : `${card.trainingTime.minutes}m`;
+            const duplicatesText = card.duplicates > 0 ? `\nDuplicates: ${card.duplicates}` : '';
             // Always use .name for display
             trainingText += `**${card.name}** (${card.rank})\n`;
-            trainingText += `\`\`\`Training time: ${timeText}\nXP gained: ${card.currentAccumulatedXP}\nTotal XP: ${card.currentTotalXP}\`\`\`\n`;
+            trainingText += `\`\`\`Training time: ${timeText}\nXP gained: ${card.currentAccumulatedXP}\nTotal XP: ${card.currentTotalXP}${duplicatesText}\`\`\`\n`;
         }
 
         const embed = new EmbedBuilder()

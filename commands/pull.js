@@ -245,7 +245,7 @@ async function execute(message) {
         timesUpgraded: 0,
         locked: false
     };
-    addCardWithTransformation(user, cardToAdd);
+    const addResult = addCardWithTransformation(user, cardToAdd);
     
     // Save user data with retry mechanism
     try {
@@ -274,10 +274,17 @@ async function execute(message) {
     
     // Prepare the embed
     const rankSet = rankSettings[card.rank];
+    let description = `${card.shortDesc}\nPHS: ${card.phs}${evolutionText ? `\n${evolutionText}` : ""}`;
+    
+    // Add training attachment message if applicable
+    if (addResult && addResult.attachedToTraining) {
+        description += `\n\n🎯 **Attached to training card!**\nThis duplicate has been attached to **${addResult.trainingCardName}** currently in training.\nWhen training finishes, you'll receive both the trained card and this duplicate.`;
+    }
+    
     const embed = new EmbedBuilder()
         .setColor(rankSet.color)
         .setTitle(`**${card.name}**`)
-        .setDescription(`${card.shortDesc}\nPHS: ${card.phs}${evolutionText ? `\n${evolutionText}` : ""}`)
+        .setDescription(description)
         .setThumbnail(rankSet.rankImage);
     
     if (card.image && card.image !== "placeholder") {
@@ -285,8 +292,12 @@ async function execute(message) {
     }
     
     const pullsRemaining = DAILY_PULL_LIMIT - user.pullData.dailyPulls;
+    const footerText = addResult && addResult.attachedToTraining 
+        ? `Pulled by ${message.author.username} • Attached to training card • ${pullsRemaining} pulls remaining today`
+        : `Pulled by ${message.author.username} • ${pullsRemaining} pulls remaining today`;
+    
     embed.setFooter({
-        text: `Pulled by ${message.author.username} • ${pullsRemaining} pulls remaining today`,
+        text: footerText,
         iconURL: message.author.displayAvatarURL()
     });
     

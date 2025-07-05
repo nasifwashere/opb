@@ -224,6 +224,20 @@ async function stopTraining(userId, cardName) {
           locked: trainingCard.locked
         };
         user.cards.push(returnedCard);
+        
+        // Add any duplicates that were collected during training back to collection
+        const duplicateCount = trainingCard.duplicates || 0;
+        for (let i = 0; i < duplicateCount; i++) {
+          const duplicateCard = {
+            name: fixedName,
+            rank: fixedRank,
+            level: 1, // Duplicates start at level 1
+            experience: 0,
+            timesUpgraded: 0,
+            locked: false
+          };
+          user.cards.push(duplicateCard);
+        }
 
         // Mark arrays as modified and save
         user.markModified('training');
@@ -235,12 +249,15 @@ async function stopTraining(userId, cardName) {
         const hoursTrained = Math.floor(minutesTrained / 60);
         const remainingMinutes = minutesTrained % 60;
 
+        const duplicatesMessage = duplicateCount > 0 ? ` (+${duplicateCount} duplicate${duplicateCount > 1 ? 's' : ''} collected during training)` : '';
+        
         return { 
             success: true, 
-            message: `**${fixedName}** has finished training!`,
+            message: `**${fixedName}** has finished training!${duplicatesMessage}`,
             card: returnedCard,
             xpGained: accumulatedXP,
             totalXP: totalXP,
+            duplicatesReturned: duplicateCount,
             trainingTime: { hours: hoursTrained, minutes: remainingMinutes, total: minutesTrained }
         };
     } catch (error) {
@@ -311,6 +328,7 @@ async function getTrainingStatus(userId) {
                 rank: fixedRank,
                 currentAccumulatedXP: currentXP,
                 currentTotalXP: totalXP,
+                duplicates: trainingCard.duplicates || 0,
                 trainingTime: { hours: hoursTrained, minutes: remainingMinutes, total: minutesTrained }
             };
         });
@@ -383,6 +401,20 @@ async function autoUntrainExpiredCards() {
                         timesUpgraded: finalTimesUpgraded, // Keep this consistent with level
                         locked: trainingCard.locked
                     });
+                    
+                    // Add any duplicates that were collected during training back to collection
+                    const duplicateCount = trainingCard.duplicates || 0;
+                    for (let i = 0; i < duplicateCount; i++) {
+                        const duplicateCard = {
+                            name: fixedName,
+                            rank: fixedRank,
+                            level: 1, // Duplicates start at level 1
+                            experience: 0,
+                            timesUpgraded: 0,
+                            locked: false
+                        };
+                        user.cards.push(duplicateCard);
+                    }
 
                     expiredCards.push({
                         name: fixedName,

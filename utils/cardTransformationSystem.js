@@ -145,16 +145,52 @@ function transformAllDuplicatesToEvolution(user, evolvedCardName, evolvedCardDef
 
 /**
  * Add a card to user's collection with automatic evolution transformation
+ * Handles special case of cards in training by attaching duplicates to training cards
  * @param {Object} user - User object
  * @param {Object} cardToAdd - Card object to add
+ * @returns {Object} - Result object with success status and additional info
  */
 function addCardWithTransformation(user, cardToAdd) {
   if (!user.cards) user.cards = [];
+  
+  // Check if this card (or any card in its evolution chain) is currently in training
+  if (user.training && user.training.length > 0) {
+    const evolutionChain = getEvolutionChain(cardToAdd.name);
+    
+    // Find if any card in the evolution chain is in training
+    const trainingCard = user.training.find(trainingCard => {
+      const trainingChain = getEvolutionChain(trainingCard.cardName);
+      return evolutionChain.some(chainCard => 
+        trainingChain.some(trainingChainCard => 
+          normalize(chainCard) === normalize(trainingChainCard)
+        )
+      );
+    });
+    
+    if (trainingCard) {
+      // Add as duplicate to the training card instead of collection
+      if (!trainingCard.duplicates) {
+        trainingCard.duplicates = 0;
+      }
+      trainingCard.duplicates += 1;
+      
+      // Mark training as modified so it saves properly
+      user.markModified('training');
+      
+      console.log(`Added duplicate of ${cardToAdd.name} to training card ${trainingCard.cardName} (${trainingCard.duplicates} duplicates)`);
+      return { 
+        attachedToTraining: true, 
+        trainingCardName: trainingCard.cardName,
+        duplicateCount: trainingCard.duplicates
+      };
+    }
+  }
   
   // Transform the card if user owns higher evolution
   const transformedCard = transformCardToEvolution(user, cardToAdd);
   
   user.cards.push(transformedCard);
+  return { attachedToTraining: false, addedCard: transformedCard };
 }
 
 /**
