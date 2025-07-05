@@ -16,6 +16,17 @@ const SAGA_UNLOCK_REQUIREMENTS = {
     'East Blue': 42 // Must complete stage 42 (defeat Arlong)
 };
 
+// Bounty rewards for different enemy ranks
+function getBountyForRank(rank) {
+    const bountyMap = {
+        'C': 10000,
+        'B': 100000,
+        'A': 1000000,
+        'S': 10000000
+    };
+    return bountyMap[rank] || 0;
+}
+
 const data = {
     name: 'sail',
     description: 'Infinite grind mode: Sail an arc for endless rewards!'
@@ -627,13 +638,44 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
     // Award rewards
     user.beli = (user.beli || 0) + rewards.beli;
     
+    // Award XP to both user and team
+    const xpBoost = user.activeBoosts?.find(boost => 
+        boost.type === 'double_xp' && boost.expiresAt > Date.now()
+    );
+    const finalXP = xpBoost ? rewards.xp * 2 : rewards.xp;
+
+    // Award XP to user with new leveling system
+    const { awardUserXP } = require('../utils/userLevelSystem.js');
+    const userLevelResult = awardUserXP(user, finalXP);
+
+    // Store user level up information for display
+    if (userLevelResult.leveledUp) {
+        if (!user.recentUserLevelUps) user.recentUserLevelUps = [];
+        user.recentUserLevelUps.push(userLevelResult);
+    }
+
     // Award XP to team
-    distributeXPToTeam(user, rewards.xp);
+    distributeXPToTeam(user, finalXP);
     
     // Award items
     if (rewards.items && rewards.items.length > 0) {
         if (!user.inventory) user.inventory = [];
         rewards.items.forEach(item => user.inventory.push(item));
+    }
+    
+    // Award bounty for defeating enemies based on their rank
+    let totalBounty = 0;
+    battleState.enemies.forEach(enemy => {
+        if (enemy.rank) {
+            const bountyReward = getBountyForRank(enemy.rank);
+            if (bountyReward > 0) {
+                totalBounty += bountyReward;
+            }
+        }
+    });
+    
+    if (totalBounty > 0) {
+        user.bounty = (user.bounty || 0) + totalBounty;
     }
     
     // Initialize sailing progress if needed
@@ -660,6 +702,9 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
     let rewardText = `**${rewards.beli} Beli**\n**${rewards.xp} XP**`;
     if (rewards.items && rewards.items.length > 0) {
         rewardText += `\n**${rewards.items.join(', ')}**`;
+    }
+    if (totalBounty > 0) {
+        rewardText += `\n**+${totalBounty.toLocaleString()} Bounty**`;
     }
     
     const currentSailCount = user.sailsCompleted[battleState.arcName] || 0;

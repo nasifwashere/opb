@@ -20,6 +20,12 @@ const USABLE_ITEMS = {
     effect: 'speed_boost',
     consumable: true,
     duration: 60 * 60 * 1000 // 1 hour
+  },
+  'resettoken': {
+    name: 'Reset Token',
+    description: 'Resets your pull statistics and gives you a fresh start',
+    effect: 'reset_pulls',
+    consumable: true
   }
 };
 
@@ -54,7 +60,7 @@ async function execute(message, args) {
       .setDescription('Use consumable items from your inventory.')
       .addFields(
         { name: 'Usage', value: '`op use <item name>`', inline: false },
-        { name: 'Usable Items', value: 'Time Crystal • Energy Potion • Energy Drink', inline: false }
+        { name: 'Usable Items', value: 'Time Crystal • Energy Potion • Energy Drink • Reset Token', inline: false }
       )
       .setFooter({ text: 'Use items to gain various effects' });
     
@@ -106,6 +112,22 @@ async function execute(message, args) {
         multiplier: 1.5
       });
       effectMessage = 'Your team gains a speed boost for 1 hour!';
+      break;
+    case 'reset_pulls':
+      // Reset pull statistics
+      if (!user.pullData) {
+        user.pullData = {
+          dailyPulls: 0,
+          lastReset: Date.now()
+        };
+      } else {
+        user.pullData.dailyPulls = 0;
+        user.pullData.lastReset = Date.now();
+      }
+      if (user.pulls) {
+        user.pulls = [];
+      }
+      effectMessage = 'Your pull statistics have been reset! You can now pull cards again.';
       break;
   }
 

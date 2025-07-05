@@ -324,6 +324,17 @@ const LOCATION_COOLDOWNS = {
 const DEFEAT_COOLDOWN = 5 * 60 * 1000; // 5 minutes on defeat
 const IMMUNE_USER_ID = "1257718161298690119";
 
+// Bounty rewards for different enemy ranks
+function getBountyForRank(rank) {
+    const bountyMap = {
+        'C': 10000,
+        'B': 100000,
+        'A': 1000000,
+        'S': 10000000
+    };
+    return bountyMap[rank] || 0;
+}
+
 function normalizeItemName(item) {
     return item.replace(/\s+/g, '').toLowerCase();
 }
@@ -530,131 +541,150 @@ const data = {
 
 
 async function execute(message, args, client) {
-    const userId = message.author.id;
-    let user = await User.findOne({ userId });
+    try {
+        const userId = message.author.id;
+        let user = await User.findOne({ userId });
 
-    if (!user) {
-        return message.reply('Start your journey with `op start`!');
-    }
+        if (!user) {
+            return message.reply('Start your journey with `op start`!');
+        }
 
-    // Initialize user progress if needed
-    if (user.stage === undefined) user.stage = 0;
-    if (!user.exploreStates) user.exploreStates = {};
+        // Initialize user progress if needed
+        if (user.stage === undefined) user.stage = 0;
+        if (!user.exploreStates) user.exploreStates = {};
 
-    // Check if user is in boss fight state
-    if (user.exploreStates.inBossFight) {
-        return await handleBossFight(message, user, client);
-    }
+        // Check if user is in boss fight state
+        if (user.exploreStates.inBossFight) {
+            return await handleBossFight(message, user, client);
+        }
 
-    // Check cooldowns
-    const currentLocation = getCurrentLocation(user.stage);
-    
-    if (currentLocation === 'COMPLETED') {
-        return message.reply('🎉 Congratulations! You have completed the East Blue Saga! More adventures await in future updates!');
-    }
-
-    // Check explore cooldown using config
-    const config = require('../config.json');
-    const cooldownTime = config.exploreCooldown || 120000; // 2 minutes default
-    const lastExplore = user.lastExplore ? new Date(user.lastExplore).getTime() : 0;
-    const timeLeft = (lastExplore + cooldownTime) - Date.now();
-
-    if (timeLeft > 0 && userId !== IMMUNE_USER_ID) {
-        return message.reply(`You need to wait ${prettyTime(timeLeft)} before exploring again!`);
-    }
-
-    // Check defeat cooldown
-    if (user.exploreStates.defeatCooldown && user.exploreStates.defeatCooldown > Date.now()) {
-        const defeatTimeLeft = user.exploreStates.defeatCooldown - Date.now();
-        return message.reply(`<:zorosad:1390838584369746022> You were defeated! Wait ${prettyTime(defeatTimeLeft)} before trying again.`);
-    }
-
-    const localStage = getLocalStage(user.stage);
-    const locationData = LOCATIONS[currentLocation];
-    
-    // Check if we need to move to next location
-    if (!locationData || localStage >= locationData.length) {
-        // Instead of showing "no more stages", automatically move to next location
-        const nextLocation = getNextLocation(currentLocation);
+        // Check cooldowns
+        const currentLocation = getCurrentLocation(user.stage);
         
-        if (nextLocation === 'COMPLETED') {
-            // Mark saga as completed for infinite sail eligibility
-            if (!user.completedSagas) user.completedSagas = [];
-            if (!user.completedSagas.includes('East Blue')) {
-                user.completedSagas.push('East Blue');
-                await saveUserWithRetry(user);
+        if (currentLocation === 'COMPLETED') {
+            return message.reply('🎉 Congratulations! You have completed the East Blue Saga! More adventures await in future updates!');
+        }
+
+        // Check explore cooldown using config
+        const config = require('../config.json');
+        const cooldownTime = config.exploreCooldown || 120000; // 2 minutes default
+        const lastExplore = user.lastExplore ? new Date(user.lastExplore).getTime() : 0;
+        const timeLeft = (lastExplore + cooldownTime) - Date.now();
+
+        if (timeLeft > 0 && userId !== IMMUNE_USER_ID) {
+            return message.reply(`You need to wait ${prettyTime(timeLeft)} before exploring again!`);
+        }
+
+        // Check defeat cooldown
+        if (user.exploreStates.defeatCooldown && user.exploreStates.defeatCooldown > Date.now()) {
+            const defeatTimeLeft = user.exploreStates.defeatCooldown - Date.now();
+            return message.reply(`<:zorosad:1390838584369746022> You were defeated! Wait ${prettyTime(defeatTimeLeft)} before trying again.`);
+        }
+
+        const localStage = getLocalStage(user.stage);
+        const locationData = LOCATIONS[currentLocation];
+        
+        // Check if we need to move to next location
+        if (!locationData || localStage >= locationData.length) {
+            // Instead of showing "no more stages", automatically move to next location
+            const nextLocation = getNextLocation(currentLocation);
+            
+            if (nextLocation === 'COMPLETED') {
+                // Mark saga as completed for infinite sail eligibility
+                if (!user.completedSagas) user.completedSagas = [];
+                if (!user.completedSagas.includes('East Blue')) {
+                    user.completedSagas.push('East Blue');
+                    await saveUserWithRetry(user);
+                }
+                return message.reply('Congratulations! You have completed all available locations in the East Blue saga!');
             }
-            return message.reply('Congratulations! You have completed all available locations in the East Blue saga!');
+            
+            // IMPORTANT: Actually advance the stage and save progress
+            user.stage++; // Increment stage to move to first stage of next location
+            user.lastExplore = new Date(); // Set cooldown
+            
+            // Update quest progress for exploration
+            try {
+                const { updateQuestProgress } = require('../utils/questSystem.js');
+                await updateQuestProgress(user, 'explore', 1);
+            } catch (error) {
+                // Quest system is optional
+            }
+            
+            await saveUserWithRetry(user); // Save the user's progress
+            
+            // Automatically transition to next location
+            const embed = new EmbedBuilder()
+                .setTitle(`Moving to ${nextLocation}`)
+                .setDescription(`You have completed **${currentLocation}**!\n\nYour adventure continues in **${nextLocation}**...\n\n✅ **Progress saved!** Use \`op explore\` again to continue.`)
+                .setColor(0x2ecc71)
+                .setFooter({ text: 'Your stage has been advanced to the next location!' });
+            
+            await saveUserWithRetry(user);
+            
+            return await message.reply({ embeds: [embed] });
+        }
+
+        const stageData = locationData[localStage];
+        
+        // Validate stage data exists
+        if (!stageData) {
+            console.error(`Missing stage data for location: ${currentLocation}, stage: ${localStage}`);
+            return message.reply('An error occurred with the stage data. Please try again or contact support.');
         }
         
-        // IMPORTANT: Actually advance the stage and save progress
-        user.stage++; // Increment stage to move to first stage of next location
-        user.lastExplore = new Date(); // Set cooldown
+        // Handle different stage types
+        if (stageData.type === 'narrative') {
+            await handleNarrative(message, user, stageData, currentLocation);
+        } else if (stageData.type === 'choice') {
+            await handleChoice(message, user, stageData, currentLocation, client);
+        } else if (stageData.type === 'enemy' || stageData.type === 'boss' || stageData.type === 'multi_enemy') {
+            await handleBattle(message, user, stageData, currentLocation, client);
+        } else {
+            console.error(`Unknown stage type: ${stageData.type}`);
+            return message.reply('An error occurred with the stage type. Please try again or contact support.');
+        }
+    } catch (error) {
+        console.error('Error in explore command:', error);
+        return message.reply('An error occurred while exploring. Please try again. If the issue persists, contact support.');
+    }
+}
+
+async function handleNarrative(message, user, stageData, currentLocation) {
+    try {
+        const embed = new EmbedBuilder()
+            .setTitle(`🗺️ ${currentLocation} - ${stageData.title}`)
+            .setDescription(stageData.desc)
+            .setColor(0x3498db);
+
+        // Apply rewards
+        await applyReward(user, stageData.reward);
+        
+        // Add reward info to embed
+        if (stageData.reward) {
+            embed.addFields({ name: 'Reward', value: getRewardText(stageData.reward), inline: false });
+        }
+
+        // Set cooldown and advance stage
+        user.lastExplore = new Date();
+        user.stage++;
         
         // Update quest progress for exploration
         try {
             const { updateQuestProgress } = require('../utils/questSystem.js');
             await updateQuestProgress(user, 'explore', 1);
         } catch (error) {
-            // Quest system is optional
+            // Remove excessive logging - quest system is optional
+            // console.log('Quest system not available');
         }
-        
-        await saveUserWithRetry(user); // Save the user's progress
-        
-        // Automatically transition to next location
-        const embed = new EmbedBuilder()
-            .setTitle(`Moving to ${nextLocation}`)
-            .setDescription(`You have completed **${currentLocation}**!\n\nYour adventure continues in **${nextLocation}**...\n\n✅ **Progress saved!** Use \`op explore\` again to continue.`)
-            .setColor(0x2ecc71)
-            .setFooter({ text: 'Your stage has been advanced to the next location!' });
         
         await saveUserWithRetry(user);
         
         await message.reply({ embeds: [embed] });
-    }
-
-    const stageData = locationData[localStage];
-    
-    // Handle different stage types
-    if (stageData.type === 'narrative') {
-        await handleNarrative(message, user, stageData, currentLocation);
-    } else if (stageData.type === 'choice') {
-        await handleChoice(message, user, stageData, currentLocation, client);
-    } else if (stageData.type === 'enemy' || stageData.type === 'boss' || stageData.type === 'multi_enemy') {
-        await handleBattle(message, user, stageData, currentLocation, client);
-    }
-}
-
-async function handleNarrative(message, user, stageData, currentLocation) {
-    const embed = new EmbedBuilder()
-        .setTitle(`🗺️ ${currentLocation} - ${stageData.title}`)
-        .setDescription(stageData.desc)
-        .setColor(0x3498db);
-
-    // Apply rewards
-    await applyReward(user, stageData.reward);
-    
-    // Add reward info to embed
-    if (stageData.reward) {
-        embed.addFields({ name: 'Reward', value: getRewardText(stageData.reward), inline: false });
-    }
-
-    // Set cooldown and advance stage
-    user.lastExplore = new Date();
-    user.stage++;
-    
-    // Update quest progress for exploration
-    try {
-        const { updateQuestProgress } = require('../utils/questSystem.js');
-        await updateQuestProgress(user, 'explore', 1);
     } catch (error) {
-        // Remove excessive logging - quest system is optional
-        // console.log('Quest system not available');
+        console.error('Error in handleNarrative:', error);
+        await message.reply('An error occurred during the narrative. Please try exploring again.');
     }
-    
-    await saveUserWithRetry(user);
-    
-    await message.reply({ embeds: [embed] });
 }
 
 async function handleChoice(message, user, stageData, currentLocation, client) {
@@ -730,78 +760,96 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
 }
 
 async function handleBattle(message, user, stageData, currentLocation, client) {
-    // Validate user has a team set up
-    if (!user.team || user.team.length === 0) {
-        return message.reply('You need to set up your team first! Use `op team add <card>` to add cards to your team.');
-    }
-
-    // Validate user has cards
-    if (!user.cards || user.cards.length === 0) {
-        return message.reply('You don\'t have any cards! Pull some cards first with `op pull`.');
-    }
-
-    // Get user's team using the proper battle system
-    const battleTeam = calculateBattleStats(user);
-
-    if (!battleTeam || battleTeam.length === 0) {
-        return message.reply('Your team is invalid or cards are missing. Please check your team with `op team` and fix any issues.');
-    }
-
-    // Initialize enemies
-    let enemies = [];
-    
-    if (stageData.type === 'multi_enemy') {
-        enemies = stageData.enemies.map(enemy => ({
-            ...enemy,
-            currentHp: enemy.hp,
-            maxHp: enemy.hp
-        }));
-    } else {
-        enemies = [{
-            ...stageData.enemy,
-            currentHp: stageData.enemy.hp,
-            maxHp: stageData.enemy.hp
-        }];
-    }
-
-    // Ensure battle team has proper health values
-    battleTeam.forEach(card => {
-        if (!card.currentHp || card.currentHp <= 0) {
-            card.currentHp = card.hp || card.maxHp || 100;
+    try {
+        // Validate user has a team set up
+        if (!user.team || user.team.length === 0) {
+            return message.reply('You need to set up your team first! Use `op team add <card>` to add cards to your team.');
         }
-        if (!card.maxHp) {
-            card.maxHp = card.hp || 100;
+
+        // Validate user has cards
+        if (!user.cards || user.cards.length === 0) {
+            return message.reply('You don\'t have any cards! Pull some cards first with `op pull`.');
         }
-    });
 
-    // Final validation - ensure we have at least one alive team member
-    const aliveCount = battleTeam.filter(card => card.currentHp > 0).length;
-    if (aliveCount === 0) {
-        return message.reply('Your team has no health! Please check your cards or try again.');
+        // Get user's team using the proper battle system
+        const battleTeam = calculateBattleStats(user);
+
+        if (!battleTeam || battleTeam.length === 0) {
+            return message.reply('Your team is invalid or cards are missing. Please check your team with `op team` and fix any issues.');
+        }
+
+        // Initialize enemies
+        let enemies = [];
+        
+        if (stageData.type === 'multi_enemy') {
+            enemies = stageData.enemies.map(enemy => ({
+                ...enemy,
+                currentHp: enemy.hp,
+                maxHp: enemy.hp
+            }));
+        } else {
+            enemies = [{
+                ...stageData.enemy,
+                currentHp: stageData.enemy.hp,
+                maxHp: stageData.enemy.hp
+            }];
+        }
+
+        // Ensure battle team has proper health values
+        battleTeam.forEach(card => {
+            if (!card.currentHp || card.currentHp <= 0) {
+                card.currentHp = card.hp || card.maxHp || 100;
+            }
+            if (!card.maxHp) {
+                card.maxHp = card.hp || 100;
+            }
+        });
+
+        // Final validation - ensure we have at least one alive team member
+        const aliveCount = battleTeam.filter(card => card.currentHp > 0).length;
+        if (aliveCount === 0) {
+            return message.reply('Your team has no health! Please check your cards or try again.');
+        }
+
+        const battleState = {
+            userTeam: battleTeam,
+            enemies: enemies,
+            turn: 1,
+            userBoosts: {},
+            isBossFight: stageData.type === 'boss'
+        };
+
+        // Initialize exploreStates if it doesn't exist
+        if (!user.exploreStates) {
+            user.exploreStates = {};
+        }
+        
+        // Store battle state
+        user.exploreStates.battleState = battleState;
+        user.exploreStates.inBossFight = true;
+        user.exploreStates.currentStage = stageData;
+        user.exploreStates.currentLocation = currentLocation;
+        
+        await saveUserWithRetry(user);
+
+        return await displayBattleState(message, user, client);
+    } catch (error) {
+        console.error('Error in handleBattle:', error);
+        
+        // Clean up any corrupted battle state
+        try {
+            if (user.exploreStates) {
+                user.exploreStates.inBossFight = false;
+                user.exploreStates.battleState = null;
+                user.exploreStates.currentStage = null;
+                await saveUserWithRetry(user);
+            }
+        } catch (cleanupError) {
+            console.error('Error cleaning up battle state:', cleanupError);
+        }
+        
+        return message.reply('An error occurred while initializing the battle. Please try exploring again.');
     }
-
-    const battleState = {
-        userTeam: battleTeam,
-        enemies: enemies,
-        turn: 1,
-        userBoosts: {},
-        isBossFight: stageData.type === 'boss'
-    };
-
-    // Initialize exploreStates if it doesn't exist
-    if (!user.exploreStates) {
-        user.exploreStates = {};
-    }
-    
-    // Store battle state
-    user.exploreStates.battleState = battleState;
-    user.exploreStates.inBossFight = true;
-    user.exploreStates.currentStage = stageData;
-    user.exploreStates.currentLocation = currentLocation;
-    
-    await saveUserWithRetry(user);
-
-    return await displayBattleState(message, user, client);
 }
 
 async function handleBossFight(message, user, client) {
@@ -1385,9 +1433,29 @@ async function handleBattleVictory(interaction, user, battleMessage, battleLog) 
     // Apply rewards
     await applyReward(user, stageData.reward);
     
+    // Add bounty rewards for boss battles
+    if (stageData.type === 'boss' && stageData.enemy && stageData.enemy.rank) {
+        const bountyReward = getBountyForRank(stageData.enemy.rank);
+        if (bountyReward > 0) {
+            user.bounty = (user.bounty || 0) + bountyReward;
+        }
+    }
+    
     // Set cooldown and advance stage
     user.lastExplore = new Date();
     user.stage++;
+    
+    // Special handling for completing East Blue saga (stage 42)
+    if (user.stage === 43) {
+        // Give 10M bounty for completing East Blue saga
+        user.bounty = (user.bounty || 0) + 10000000;
+        
+        // Add sailing unlock
+        if (!user.completedSagas) user.completedSagas = [];
+        if (!user.completedSagas.includes('East Blue')) {
+            user.completedSagas.push('East Blue');
+        }
+    }
     
     // Update quest progress
     try {
@@ -1408,8 +1476,31 @@ async function handleBattleVictory(interaction, user, battleMessage, battleLog) 
         .setDescription(battleLog + '\n\n<:check:1390838766821965955> **You won the battle!**')
         .setColor(0x2ecc71);
     
+    // Build rewards text
+    let rewardsText = '';
     if (stageData.reward) {
-        victoryEmbed.addFields({ name: 'Rewards', value: getRewardText(stageData.reward), inline: false });
+        rewardsText += getRewardText(stageData.reward);
+    }
+    
+    // Add bounty rewards for boss battles
+    if (stageData.type === 'boss' && stageData.enemy && stageData.enemy.rank) {
+        const bountyReward = getBountyForRank(stageData.enemy.rank);
+        if (bountyReward > 0) {
+            if (rewardsText) rewardsText += '\n';
+            rewardsText += `+${bountyReward.toLocaleString()} Bounty`;
+        }
+    }
+    
+    // Add saga completion bounty
+    if (user.stage === 43) {
+        if (rewardsText) rewardsText += '\n';
+        rewardsText += `+10,000,000 Bounty (East Blue Saga Complete!)`;
+        rewardsText += '\n🌊 **Sailing Command Unlocked!**';
+        rewardsText += '\nUse `op sail` to explore the Grand Line!';
+    }
+    
+    if (rewardsText) {
+        victoryEmbed.addFields({ name: 'Rewards', value: rewardsText, inline: false });
     }
     
     // Add user level up notifications

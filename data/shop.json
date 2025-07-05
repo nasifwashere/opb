@@ -149,6 +149,15 @@
       "available": true,
       "category": "raid",
       "uses": 1
+    },
+    {
+      "name": "Reset Token",
+      "price": 5000,
+      "description": "Resets your pull statistics and gives you a fresh start",
+      "type": "consumable",
+      "available": true,
+      "category": "utility",
+      "uses": 1
     }
   ],
   "cards": [],
