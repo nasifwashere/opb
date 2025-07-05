@@ -30,13 +30,15 @@ function loadShopData() {
 
 function createShopEmbed(category, items) {
   const categoryNames = {
-    items: 'Items',
-    cards: 'Cards', 
-    boosts: 'Boosts'
+    potions: '🧪 Potions',
+    equipment: '⚔️ Equipment',
+    legendary: '⭐ Legendary Items',
+    items: '📦 Items',
+    devilfruits: '🍎 Devil Fruits'
   };
 
   const embed = new EmbedBuilder()
-    .setTitle(`Shop - ${categoryNames[category] || 'All Items'}`)
+    .setTitle(`Shop - ${categoryNames[category] || '🛒 All Items'}`)
     .setDescription('Purchase items with your Beli!')
     .setColor(0x2b2d31)
     .setFooter({ text: 'Use op buy <item name> to purchase' });
@@ -47,13 +49,14 @@ function createShopEmbed(category, items) {
   }
 
   items.forEach((item, index) => {
-    const status = item.available ? 'Available' : 'Out of Stock';
+    const status = item.available ? '✅ Available' : '❌ Out of Stock';
     const duration = item.duration ? `\nDuration: ${Math.floor(item.duration / 60000)} minutes` : '';
-    const category = item.category ? `\n${item.category}` : '';
+    const rarity = item.rarity ? getRarityEmoji(item.rarity) : '';
+    const statBoostText = getStatBoostText(item.statBoost);
 
     embed.addFields({
-      name: `${index + 1}. ${item.name}`,
-      value: `**${item.price.toLocaleString()} Beli**\n${status}\n${item.description}${duration}${category}`,
+      name: `${index + 1}. ${item.name} ${rarity}`,
+      value: `**${item.price.toLocaleString()} Beli**\n${status}\n${item.description}${statBoostText}${duration}`,
       inline: true
     });
   });
@@ -61,23 +64,49 @@ function createShopEmbed(category, items) {
   return embed;
 }
 
+function getRarityEmoji(rarity) {
+  const rarityEmojis = {
+    'common': '⚪',
+    'uncommon': '🟢',
+    'rare': '🔵',
+    'epic': '🟣',
+    'legendary': '🟠'
+  };
+  return rarityEmojis[rarity] || '';
+}
+
+function getStatBoostText(statBoost) {
+  if (!statBoost) return '';
+  
+  const boosts = [];
+  if (statBoost.power) boosts.push(`+${statBoost.power}% ATK`);
+  if (statBoost.health) boosts.push(`+${statBoost.health}% HP`);
+  if (statBoost.speed) boosts.push(`+${statBoost.speed}% SPD`);
+  
+  return boosts.length > 0 ? `\n${boosts.join(', ')}` : '';
+}
+
 function createShopButtons(currentCategory) {
   const buttons = [
     new ButtonBuilder()
+      .setCustomId('shop_potions')
+      .setLabel('🧪 Potions')
+      .setStyle(currentCategory === 'potions' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('shop_equipment')
+      .setLabel('⚔️ Equipment')
+      .setStyle(currentCategory === 'equipment' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('shop_legendary')
+      .setLabel('⭐ Legendary')
+      .setStyle(currentCategory === 'legendary' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder()
       .setCustomId('shop_items')
-      .setLabel('Items')
+      .setLabel('📦 Items')
       .setStyle(currentCategory === 'items' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
-      .setCustomId('shop_cards')
-      .setLabel('Cards')
-      .setStyle(currentCategory === 'cards' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('shop_boosts')
-      .setLabel('Boosts')
-      .setStyle(currentCategory === 'boosts' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-    new ButtonBuilder()
       .setCustomId('shop_all')
-      .setLabel('All')
+      .setLabel('🛒 All')
       .setStyle(currentCategory === 'all' ? ButtonStyle.Primary : ButtonStyle.Secondary)
   ];
 
@@ -114,7 +143,7 @@ async function execute(message, args) {
   // Check if user specified a category
   if (args.length > 0) {
     const categoryArg = args[0].toLowerCase();
-    if (['items', 'cards', 'boosts'].includes(categoryArg)) {
+    if (['potions', 'equipment', 'legendary', 'items', 'devilfruits'].includes(categoryArg)) {
       currentCategory = categoryArg;
     }
   }
@@ -122,7 +151,7 @@ async function execute(message, args) {
   // Get items for current category
   let items = [];
   if (currentCategory === 'all') {
-    items = [...shopData.items, ...shopData.cards, ...shopData.boosts];
+    items = [...(shopData.potions || []), ...(shopData.equipment || []), ...(shopData.legendary || []), ...(shopData.items || []), ...(shopData.devilfruits || [])];
   } else {
     items = shopData[currentCategory] || [];
   }
@@ -149,7 +178,7 @@ async function execute(message, args) {
       // Get items for new category
       let newItems = [];
       if (currentCategory === 'all') {
-        newItems = [...shopData.items, ...shopData.cards, ...shopData.boosts];
+        newItems = [...(shopData.potions || []), ...(shopData.equipment || []), ...(shopData.legendary || []), ...(shopData.items || []), ...(shopData.devilfruits || [])];
       } else {
         newItems = shopData[currentCategory] || [];
       }

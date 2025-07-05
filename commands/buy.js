@@ -8,14 +8,27 @@ const shopPath = path.resolve('data', 'shop.json');
 
 function loadShopData() {
   if (!fs.existsSync(shopPath)) {
-    return { items: [], cards: [], boosts: [], devilFruits: [] };
+    return { potions: [], equipment: [], legendary: [], items: [], devilfruits: [] };
   }
   return JSON.parse(fs.readFileSync(shopPath, 'utf8'));
 }
 
 function findShopItem(itemName, shopData) {
   const normalizedTarget = itemName.toLowerCase();
-  const allItems = [...shopData.items, ...shopData.cards, ...shopData.boosts, ...(shopData.devilFruits || [])];
+  
+  // Get all items from new shop structure
+  const allItems = [];
+  ['potions', 'equipment', 'legendary', 'items', 'devilfruits'].forEach(category => {
+    if (shopData[category]) {
+      shopData[category].forEach(item => allItems.push(item));
+    }
+  });
+  
+  // Also check old structure for backward compatibility
+  if (shopData.items) allItems.push(...shopData.items);
+  if (shopData.cards) allItems.push(...shopData.cards);
+  if (shopData.boosts) allItems.push(...shopData.boosts);
+  if (shopData.devilFruits) allItems.push(...shopData.devilFruits);
   
   // First try exact match
   let exactMatch = allItems.find(item =>
@@ -90,9 +103,15 @@ async function execute(message, args) {
   user.beli -= item.price;
 
   // Handle different item types
-  if (item.type === 'potion' || item.type === 'equipment') {
-    if (!user.inventory) user.inventory = [];
-    user.inventory.push(normalizedItemName);
+  if (item.type === 'potion' || item.type === 'equipment' || item.type === 'consumable') {
+    if (!user.inventory) user.inventory = {};
+    
+    // Use the new inventory system (object-based)
+    if (user.inventory[normalizedItemName]) {
+      user.inventory[normalizedItemName]++;
+    } else {
+      user.inventory[normalizedItemName] = 1;
+    }
   } else if (item.type === 'card') {
     const cardToAdd = {
       name: item.name,
@@ -105,8 +124,14 @@ async function execute(message, args) {
     addCardWithTransformation(user, cardToAdd);
   } else {
     // Default to inventory for any other items
-    if (!user.inventory) user.inventory = [];
-    user.inventory.push(normalizedItemName);
+    if (!user.inventory) user.inventory = {};
+    
+    // Use the new inventory system (object-based)
+    if (user.inventory[normalizedItemName]) {
+      user.inventory[normalizedItemName]++;
+    } else {
+      user.inventory[normalizedItemName] = 1;
+    }
   }
 
   // Update quest progress for market transactions
@@ -131,11 +156,21 @@ async function execute(message, args) {
     itemTypeDesc = boostText ? ` (${boostText})` : '';
   }
 
+  // Get rarity emoji
+  const rarityEmojis = {
+    'common': '⚪',
+    'uncommon': '🟢',
+    'rare': '🔵',
+    'epic': '🟣',
+    'legendary': '🟠'
+  };
+  const rarityEmoji = item.rarity ? rarityEmojis[item.rarity] : '';
+
   const embed = new EmbedBuilder()
     .setTitle('<:check:1390838766821965955> Purchase Successful')
-    .setDescription(`You bought **${item.name}**${itemTypeDesc} for **${item.price} Beli**.`)
+    .setDescription(`You bought **${item.name}** ${rarityEmoji}${itemTypeDesc} for **${item.price} Beli**.`)
     .addFields(
-      { name: 'Item', value: item.name, inline: true },
+      { name: 'Item', value: `${item.name} ${rarityEmoji}`, inline: true },
       { name: 'Price', value: `${item.price.toLocaleString()} Beli`, inline: true },
       { name: 'Remaining Beli', value: `${user.beli.toLocaleString()}`, inline: true }
     )

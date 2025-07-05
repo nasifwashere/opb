@@ -1441,6 +1441,19 @@ async function handleBattleVictory(interaction, user, battleMessage, battleLog) 
         }
     }
     
+    // Check for item rewards
+    let itemReward = null;
+    try {
+        const { getExplorationReward, addItemToInventory } = require('../utils/rewardSystem.js');
+        itemReward = getExplorationReward(stageData.type, stageData.enemy?.rank);
+        if (itemReward) {
+            addItemToInventory(user, itemReward);
+        }
+    } catch (error) {
+        // Item rewards are optional
+        console.log('Reward system not available');
+    }
+    
     // Set cooldown and advance stage
     user.lastExplore = new Date();
     user.stage++;
@@ -1488,6 +1501,19 @@ async function handleBattleVictory(interaction, user, battleMessage, battleLog) 
         if (bountyReward > 0) {
             if (rewardsText) rewardsText += '\n';
             rewardsText += `+${bountyReward.toLocaleString()} Bounty`;
+        }
+    }
+    
+    // Add item rewards
+    if (itemReward) {
+        try {
+            const { formatItemReward } = require('../utils/rewardSystem.js');
+            if (rewardsText) rewardsText += '\n';
+            rewardsText += formatItemReward(itemReward);
+        } catch (error) {
+            // Fallback format
+            if (rewardsText) rewardsText += '\n';
+            rewardsText += `**${itemReward.name}** obtained!`;
         }
     }
     

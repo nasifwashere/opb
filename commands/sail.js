@@ -663,6 +663,19 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
         rewards.items.forEach(item => user.inventory.push(item));
     }
     
+    // Check for additional item rewards from reward system
+    let bonusItemReward = null;
+    try {
+        const { getSailingReward, addItemToInventory } = require('../utils/rewardSystem.js');
+        bonusItemReward = getSailingReward(battleState.arcName);
+        if (bonusItemReward) {
+            addItemToInventory(user, bonusItemReward);
+        }
+    } catch (error) {
+        // Item rewards are optional
+        console.log('Reward system not available');
+    }
+    
     // Award bounty for defeating enemies based on their rank
     let totalBounty = 0;
     battleState.enemies.forEach(enemy => {
@@ -705,6 +718,17 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
     }
     if (totalBounty > 0) {
         rewardText += `\n**+${totalBounty.toLocaleString()} Bounty**`;
+    }
+    
+    // Add bonus item reward from reward system
+    if (bonusItemReward) {
+        try {
+            const { formatItemReward } = require('../utils/rewardSystem.js');
+            rewardText += `\n${formatItemReward(bonusItemReward)}`;
+        } catch (error) {
+            // Fallback format
+            rewardText += `\n**${bonusItemReward.name}** obtained!`;
+        }
     }
     
     const currentSailCount = user.sailsCompleted[battleState.arcName] || 0;

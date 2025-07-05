@@ -117,9 +117,38 @@ async function execute(message, args) {
     if (!user.inventory) user.inventory = [];
     user.inventory.push(normalize(reward.item));
   }
+  
+  // Check for additional daily item rewards from reward system
+  let bonusItemReward = null;
+  try {
+    const { getDailyReward, addItemToInventory } = require('../utils/rewardSystem.js');
+    bonusItemReward = getDailyReward();
+    if (bonusItemReward) {
+      addItemToInventory(user, bonusItemReward);
+    }
+  } catch (error) {
+    // Item rewards are optional
+    console.log('Reward system not available');
+  }
 
   // Save final rewards
   await user.save();
+
+  // Build item display
+  let itemDisplay = reward.item || 'None';
+  if (bonusItemReward) {
+    try {
+      const { formatItemReward } = require('../utils/rewardSystem.js');
+      itemDisplay = itemDisplay === 'None' ? 
+        formatItemReward(bonusItemReward) : 
+        `${itemDisplay}\n${formatItemReward(bonusItemReward)}`;
+    } catch (error) {
+      // Fallback format
+      itemDisplay = itemDisplay === 'None' ? 
+        `**${bonusItemReward.name}** obtained!` : 
+        `${itemDisplay}\n**${bonusItemReward.name}** obtained!`;
+    }
+  }
 
   const embed = new EmbedBuilder()
     .setTitle('Daily Reward Claimed')
@@ -127,7 +156,7 @@ async function execute(message, args) {
     .addFields(
       { name: 'Beli', value: `+${reward.beli}`, inline: true },
       { name: 'XP', value: `+${reward.xp}`, inline: true },
-      { name: 'Item', value: reward.item || 'None', inline: true }
+      { name: 'Items', value: itemDisplay, inline: true }
     )
     .setColor(0x2b2d31)
     .setFooter({ 

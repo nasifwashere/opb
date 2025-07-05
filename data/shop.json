@@ -1,5 +1,5 @@
 {
-  "items": [
+  "potions": [
     {
       "name": "Basic Potion",
       "price": 50,
@@ -7,6 +7,7 @@
       "type": "potion",
       "available": true,
       "category": "healing",
+      "rarity": "common",
       "healPercent": 10
     },
     {
@@ -16,6 +17,7 @@
       "type": "potion",
       "available": true,
       "category": "healing",
+      "rarity": "common",
       "healPercent": 20
     },
     {
@@ -25,8 +27,21 @@
       "type": "potion",
       "available": true,
       "category": "healing",
+      "rarity": "uncommon",
       "healPercent": 30
     },
+    {
+      "name": "God Potion",
+      "price": 25000,
+      "description": "Restores 50% HP to a card during battle - ultimate healing power",
+      "type": "potion",
+      "available": true,
+      "category": "healing",
+      "rarity": "legendary",
+      "healPercent": 50
+    }
+  ],
+  "equipment": [
     {
       "name": "Rusty Cutlass",
       "price": 300,
@@ -35,6 +50,7 @@
       "subtype": "sword",
       "available": true,
       "category": "weapon",
+      "rarity": "common",
       "statBoost": {
         "power": 5,
         "speed": 5
@@ -48,9 +64,66 @@
       "subtype": "sword",
       "available": true,
       "category": "weapon",
+      "rarity": "common",
       "statBoost": {
         "power": 10,
         "speed": 8
+      }
+    },
+    {
+      "name": "Gryphon",
+      "price": 3000,
+      "description": "Shanks' legendary sword that boosts fighting stats by 12%",
+      "type": "equipment",
+      "subtype": "sword",
+      "available": true,
+      "category": "weapon",
+      "rarity": "rare",
+      "statBoost": {
+        "power": 12,
+        "speed": 12
+      }
+    },
+    {
+      "name": "Wado Ichimonji",
+      "price": 5000,
+      "description": "Zoro's katana that boosts fighting stats by 15%",
+      "type": "equipment",
+      "subtype": "sword",
+      "available": true,
+      "category": "weapon",
+      "rarity": "rare",
+      "statBoost": {
+        "power": 15,
+        "speed": 15
+      }
+    },
+    {
+      "name": "Kabuto",
+      "price": 300,
+      "description": "Usopp's slingshot that boosts fighting stats by 5%",
+      "type": "equipment",
+      "subtype": "gun",
+      "available": true,
+      "category": "weapon",
+      "rarity": "common",
+      "statBoost": {
+        "power": 5,
+        "speed": 5
+      }
+    },
+    {
+      "name": "Kuro Kabuto",
+      "price": 500,
+      "description": "Upgraded slingshot that boosts fighting stats by 7%",
+      "type": "equipment",
+      "subtype": "gun",
+      "available": true,
+      "category": "weapon",
+      "rarity": "common",
+      "statBoost": {
+        "power": 7,
+        "speed": 7
       }
     },
     {
@@ -61,6 +134,7 @@
       "subtype": "gun",
       "available": true,
       "category": "weapon",
+      "rarity": "common",
       "statBoost": {
         "power": 8,
         "speed": 12
@@ -74,9 +148,24 @@
       "subtype": "gun",
       "available": true,
       "category": "weapon",
+      "rarity": "uncommon",
       "statBoost": {
         "power": 12,
         "speed": 10
+      }
+    },
+    {
+      "name": "Clima-Tact",
+      "price": 4000,
+      "description": "Nami's weather weapon that boosts fighting stats by 18%",
+      "type": "equipment",
+      "subtype": "gun",
+      "available": true,
+      "category": "weapon",
+      "rarity": "rare",
+      "statBoost": {
+        "power": 18,
+        "speed": 20
       }
     },
     {
@@ -87,6 +176,20 @@
       "subtype": "armor",
       "available": true,
       "category": "armor",
+      "rarity": "common",
+      "statBoost": {
+        "health": 5
+      }
+    },
+    {
+      "name": "Punk Hazard Suit",
+      "price": 200,
+      "description": "Protective suit that boosts HP by 5%",
+      "type": "equipment",
+      "subtype": "armor",
+      "available": true,
+      "category": "armor",
+      "rarity": "common",
       "statBoost": {
         "health": 5
       }
@@ -99,34 +202,22 @@
       "subtype": "armor",
       "available": true,
       "category": "armor",
+      "rarity": "common",
       "statBoost": {
         "health": 10
       }
     },
     {
-      "name": "Wado Ichimonji",
+      "name": "Raid Suit",
       "price": 5000,
-      "description": "Zoro's legendary katana that boosts fighting stats by 20%",
+      "description": "Advanced technology suit that boosts HP by 15%",
       "type": "equipment",
-      "subtype": "sword",
+      "subtype": "armor",
       "available": true,
-      "category": "legendary",
+      "category": "armor",
+      "rarity": "rare",
       "statBoost": {
-        "power": 20,
-        "speed": 18
-      }
-    },
-    {
-      "name": "Clima-Tact",
-      "price": 4000,
-      "description": "Nami's weather weapon that boosts fighting stats by 18%",
-      "type": "equipment",
-      "subtype": "gun",
-      "available": true,
-      "category": "legendary",
-      "statBoost": {
-        "power": 18,
-        "speed": 20
+        "health": 15
       }
     },
     {
@@ -136,11 +227,113 @@
       "type": "equipment",
       "subtype": "armor",
       "available": true,
-      "category": "legendary",
+      "category": "armor",
+      "rarity": "epic",
       "statBoost": {
         "health": 20
       }
+    }
+  ],
+  "legendary": [
+    {
+      "name": "Enma",
+      "price": 15000,
+      "description": "Oden's legendary sword that boosts attack by 25%",
+      "type": "equipment",
+      "subtype": "sword",
+      "available": true,
+      "category": "legendary",
+      "rarity": "legendary",
+      "statBoost": {
+        "power": 25
+      }
     },
+    {
+      "name": "Yoru",
+      "price": 13000,
+      "description": "Mihawk's black blade that boosts attack by 23%",
+      "type": "equipment",
+      "subtype": "sword",
+      "available": true,
+      "category": "legendary",
+      "rarity": "legendary",
+      "statBoost": {
+        "power": 23
+      }
+    },
+    {
+      "name": "Zeus",
+      "price": 20000,
+      "description": "Big Mom's thunder cloud that boosts all stats by 20%",
+      "type": "equipment",
+      "subtype": "special",
+      "available": true,
+      "category": "legendary",
+      "rarity": "legendary",
+      "statBoost": {
+        "power": 20,
+        "health": 20,
+        "speed": 20
+      }
+    },
+    {
+      "name": "Prometheus",
+      "price": 18000,
+      "description": "Big Mom's fire cloud that boosts all stats by 15%",
+      "type": "equipment",
+      "subtype": "special",
+      "available": true,
+      "category": "legendary",
+      "rarity": "legendary",
+      "statBoost": {
+        "power": 15,
+        "health": 15,
+        "speed": 15
+      }
+    },
+    {
+      "name": "Napoleon",
+      "price": 30000,
+      "description": "Big Mom's sword that boosts all stats by 30%",
+      "type": "equipment",
+      "subtype": "sword",
+      "available": true,
+      "category": "legendary",
+      "rarity": "legendary",
+      "statBoost": {
+        "power": 30,
+        "health": 30,
+        "speed": 30
+      }
+    },
+    {
+      "name": "Franky Shogun",
+      "price": 25000,
+      "description": "Franky's robot suit that boosts defense by 25%",
+      "type": "equipment",
+      "subtype": "armor",
+      "available": true,
+      "category": "legendary",
+      "rarity": "legendary",
+      "statBoost": {
+        "health": 25
+      }
+    },
+    {
+      "name": "Pacifista Armour",
+      "price": 30000,
+      "description": "Advanced cyborg armor that boosts defense by 30%",
+      "type": "equipment",
+      "subtype": "armor",
+      "available": true,
+      "category": "legendary",
+      "rarity": "legendary",
+      "statBoost": {
+        "health": 30
+      }
+    }
+  ],
+  "items": [
     {
       "name": "Raid Ticket",
       "price": 1000,
@@ -148,6 +341,7 @@
       "type": "consumable",
       "available": true,
       "category": "raid",
+      "rarity": "rare",
       "uses": 1
     },
     {
@@ -157,6 +351,7 @@
       "type": "consumable",
       "available": true,
       "category": "utility",
+      "rarity": "rare",
       "uses": 1
     }
   ],
