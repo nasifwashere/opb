@@ -4,47 +4,51 @@ const User = require('../db/models/User.js');
 const tutorialSteps = [
   {
     title: 'Welcome to the Bot!',
-    desc: 'This tutorial will guide you through the basics. Ready to become a pirate legend? Click Next to begin!'
+    desc: 'This interactive tutorial will guide you through the basics of the game.\n\nReact with **Next** to continue.'
   },
   {
-    title: 'Step 1: Your Adventure Begins',
-    desc: 'Use `/start` to create your account and begin your journey.'
+    title: 'Step 1: Starting Out',
+    desc: 'Type `op start` in the server to create your account and begin your pirate adventure.\n\nYou only need to do this once!'
   },
   {
-    title: 'Step 2: Viewing Your Cards',
-    desc: 'Use `/collection` to see all the cards you own. Cards are your main assets!'
+    title: 'Step 2: Viewing Your Collection',
+    desc: 'Type `op collection` to see all the cards you own.\n\nCards are your main assets and can be leveled up, evolved, and equipped.'
   },
   {
-    title: 'Step 3: Pulling New Cards',
-    desc: 'Use `/pull` to get new cards. Try it every day for new surprises!\n\n*You received a free pull!*'
+    title: 'Step 3: Pulling Cards',
+    desc: 'Type `op pull` to get a new card.\n\nYou can pull cards every day.\n\n*You received a free pull!*'
   },
   {
-    title: 'Step 4: Equipping Items',
-    desc: 'Use `/shop` to buy items and `/equip` to equip them to your cards.\n\n*You received a Lucky Charm!*'
+    title: 'Step 4: Using Items',
+    desc: 'Type `op inventory` to see your items.\nType `op use <item>` to use an item.\n\n*You received a Basic Potion!*'
   },
   {
-    title: 'Step 5: Leveling Up',
-    desc: 'Cards gain XP from battles and can be leveled up for better stats.'
+    title: 'Step 5: Equipping Items',
+    desc: 'Type `op shop` to buy items.\nType `op equip <card> <item>` to equip an item to a card.\n\n*You received a Lucky Charm!*'
   },
   {
-    title: 'Step 6: Evolving Cards',
-    desc: 'Some cards can evolve into stronger forms. Use `/evolve` to upgrade them!'
+    title: 'Step 6: Leveling Up',
+    desc: 'Cards gain XP from battles and quests.\nType `op mycard <card>` to see a card’s stats and XP.'
   },
   {
-    title: 'Step 7: Exploring',
-    desc: 'Use `/explore` to go on adventures and find rare cards and items.'
+    title: 'Step 7: Evolving Cards',
+    desc: 'Some cards can evolve into stronger forms.\nType `op evolve <card>` to upgrade them if you meet the requirements.'
   },
   {
-    title: 'Step 8: Simple Battle Example',
-    desc: 'Let’s try a simple battle!\n\n*You fought a Marine and won! Your card gained XP.*'
+    title: 'Step 8: Exploring',
+    desc: 'Type `op explore` to go on adventures and find rare cards and items.'
   },
   {
-    title: 'Step 9: Quests & Rewards',
-    desc: 'Complete `/quest` tasks for extra rewards every day.'
+    title: 'Step 9: Example Battle',
+    desc: 'Let’s simulate a simple battle!\n\nYou face a Marine...\n\n**Your card attacks!**\nYou win and gain 50 XP.\n\n*You received 50 XP!*'
   },
   {
-    title: 'Step 10: You’re Ready!',
-    desc: 'You’ve finished the tutorial! Use `/help` anytime for more info. Good luck, captain!'
+    title: 'Step 10: Quests & Rewards',
+    desc: 'Type `op quest` to see daily and weekly quests.\nComplete quests for extra rewards every day.'
+  },
+  {
+    title: 'Tutorial Complete!',
+    desc: 'You’ve finished the tutorial!\n\nTry typing `op help` in the server for more commands.\n\nGood luck, captain!'
   }
 ];
 
@@ -56,7 +60,7 @@ async function execute(message) {
   const userId = message.author.id;
   let user = await User.findOne({ userId });
   if (!user) {
-    return message.reply('Start your journey with `/start` first!');
+    return message.reply('Start your journey with `op start` first!');
   }
 
   // Track tutorial progress in user object
@@ -105,12 +109,17 @@ async function execute(message) {
         user.pulls = (user.pulls || []);
         user.pulls.push({ tutorial: true });
       }
-      if (step === 4 && !user.tutorial.luckyCharmGiven) {
+      if (step === 4 && !user.tutorial.basicPotionGiven) {
+        user.tutorial.basicPotionGiven = true;
+        user.inventory = user.inventory || [];
+        user.inventory.push('basicpotion');
+      }
+      if (step === 5 && !user.tutorial.luckyCharmGiven) {
         user.tutorial.luckyCharmGiven = true;
         user.inventory = user.inventory || [];
         user.inventory.push('luckycharm');
       }
-      if (step === 8 && !user.tutorial.battleXpGiven) {
+      if (step === 9 && !user.tutorial.battleXpGiven) {
         user.tutorial.battleXpGiven = true;
         user.xp = (user.xp || 0) + 50;
       }
