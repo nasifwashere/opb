@@ -136,6 +136,12 @@ async function execute(message, args, client) {
 
         await message.reply({ embeds: [embed] });
         
+        // Send tutorial prompt
+        try {
+            await message.author.send('Welcome to the adventure! For a quick interactive guide, use `/tutorial` or type `op tutorial` here.');
+        } catch (e) {
+            // Ignore DM errors
+        }
     } catch (error) {
         console.error('Error creating user:', error);
         const errorEmbed = new EmbedBuilder()
