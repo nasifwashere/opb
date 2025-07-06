@@ -139,14 +139,10 @@ async function execute(message, args) {
         return message.reply(`You do not have any ${shopItem.name} in your inventory.`);
     }
 
-    // Check if item is equipment (including legacy items)
-    const legacyEquipment = ['marinesword', 'townmap', 'battlebanner', 'powergloves', 'defensearmor', 'luckycharm'];
-    const normalizedItemName = normalize(itemName);
-    // Allow equipping devil fruits and equipment
-    const isDevilFruit = shopItem && (shopItem.type === 'devil_fruit' || shopItem.type === 'devilfruit');
+    // Only allow equipping equipment (not devil fruits)
     const isEquipment = shopItem && shopItem.type === 'equipment';
-    if (!isEquipment && !isDevilFruit && !legacyEquipment.includes(normalizedItemName)) {
-        return message.reply(`**${itemName}** is not an equipment or devil fruit that can be equipped.`);
+    if (!isEquipment && !legacyEquipment.includes(normalizedItemName)) {
+        return message.reply(`**${itemName}** is not an equipment item that can be equipped.`);
     }
 
     // Find the card
@@ -160,13 +156,8 @@ async function execute(message, args) {
 
     // Check if card already has something equipped
     const currentEquipped = user.equipped[card.name];
-    // If current equipped is a devil fruit, do not allow unequipping
     if (currentEquipped) {
-        const currentItem = findShopItem(currentEquipped);
-        const isCurrentDevilFruit = currentItem && (currentItem.type === 'devil_fruit' || currentItem.type === 'devilfruit');
-        if (isCurrentDevilFruit) {
-            return message.reply(`A devil fruit is already equipped to **${card.name}** and cannot be unequipped!`);
-        }
+        // Always return the unequipped item to inventory
         user.inventory.push(currentEquipped);
     }
 
@@ -198,7 +189,7 @@ async function execute(message, args) {
         .setColor(0x2b2d31)
         .setFooter({ text: 'Bonuses are applied in battles' });
 
-    if (currentEquipped && !isDevilFruit) {
+    if (currentEquipped) {
         embed.addFields({ 
             name: 'Previous Equipment', 
             value: `**${currentEquipped}** was returned to your inventory`, 

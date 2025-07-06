@@ -153,10 +153,16 @@ async function execute(message, args) {
         });
 
         // Add equipment instructions for relevant categories
-        if (['Weapons', 'Armor', 'Legendary Weapons', 'Legendary Armor', 'Devil Fruits'].includes(categoryName)) {
+        if (['Weapons', 'Armor', 'Legendary Weapons', 'Legendary Armor'].includes(categoryName)) {
             embed.addFields({
                 name: 'Equipment Instructions',
                 value: 'Use `op equip <item> <card>` to equip items to your cards for stat bonuses!\nExample: `op equip Rusty Cutlass Luffy`',
+                inline: false
+            });
+        } else if (categoryName === 'Devil Fruits') {
+            embed.addFields({
+                name: 'Devil Fruit Instructions',
+                value: 'Use `op eat <fruit> <card>` to feed a devil fruit to a card.\n**Devil fruits are permanent and cannot be uneaten!**\nA card can have both an equipped item and an eaten devil fruit.',
                 inline: false
             });
         } else if (categoryName === 'Potions') {
@@ -357,21 +363,23 @@ async function showEquipmentHelp(interaction) {
             '**How to Equip Items:**',
             '• `op equip <item> <card>` - Equip an item to a card',
             '• `op equip` - View all equipped items',
+            '• `op eat <fruit> <card>` - Feed a devil fruit to a card (permanent)',
             '',
             '**Equipment Types:**',
             '• **Weapons** (Swords/Guns) - Boost power and speed',
             '• **Armor** - Boosts health',  
-            '• **Devil Fruits** - Boost all stats (very rare)',
+            '• **Devil Fruits** - Boost all stats (very rare, permanent, cannot be uneaten)',
             '',
             '**Examples:**',
             '• `op equip Rusty Cutlass Luffy`',
             '• `op equip Marine Coat Zoro`',
-            '• `op equip Gomu Gomu no Mi Luffy`',
+            '• `op eat Gomu Gomu no Mi Luffy`',
             '',
             '**Tips:**',
             '• Equipment bonuses show in `op mycard` and `op team`',
             '• Bonuses are applied in all battles',
-            '• You can only equip one item per card'
+            '• You can only equip one item per card',
+            '• A card can have both an equipped item and an eaten devil fruit'
         ].join('\n'))
         .setColor(0x2b2d31)
         .setFooter({ text: 'Equipment Help' });
