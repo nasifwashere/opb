@@ -122,13 +122,7 @@ async function execute(message, args) {
     user.inventory.push(normalizedItemName);
   }
 
-  // Update quest progress for market transactions
-  try {
-    const { updateQuestProgress } = require('../utils/questSystem.js');
-    await updateQuestProgress(user, 'market_transaction', 1);
-  } catch (error) {
-    // Ignore quest system errors
-  }
+  // Do NOT update quest progress for market transactions here (shop purchases should not count)
 
   await user.save();
 
