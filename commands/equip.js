@@ -160,8 +160,10 @@ async function execute(message, args) {
     // Check if card already has something equipped
     const currentEquipped = user.equipped[card.name];
     if (currentEquipped) {
-        // Return the currently equipped item to inventory
-        user.inventory.push(normalize(currentEquipped));
+        // Return the currently equipped item to inventory (object-based)
+        const prevNorm = normalize(currentEquipped);
+        if (!user.inventory[prevNorm]) user.inventory[prevNorm] = 0;
+        user.inventory[prevNorm]++;
     }
 
     // Remove item from inventory (object-based)
