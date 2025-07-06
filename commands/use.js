@@ -91,20 +91,35 @@ async function execute(message, args) {
     return message.reply({ embeds: [embed] });
   }
 
-  // Object-based inventory
-  if (!user.inventory || typeof user.inventory !== 'object') user.inventory = {};
-  // Find the actual key in inventory that matches the normalized key (robust fuzzy match)
-  let actualInventoryKey = Object.keys(user.inventory).find(k => {
-    const normK = normalize(k);
-    return normK === itemName || normK.includes(itemName) || itemName.includes(normK);
-  });
-  if (!actualInventoryKey || user.inventory[actualInventoryKey] < 1) {
+  // Always normalize inventory to a flat array of strings
+  user.inventory = normalizeInventory(user.inventory);
+
+  // Robustly match usable item by normalized name (handles legacy and normalized inventory)
+  let normalizedArg = normalize(args.join(' '));
+  let actualInventoryKey = user.inventory.find(i => normalize(i) === normalizedArg);
+
+  // Fallback: if not found, try to match by known usable item keys (e.g., 'resettoken')
+  if (!actualInventoryKey && USABLE_ITEMS[normalizedArg]) {
+    actualInventoryKey = user.inventory.find(i => normalize(i) === normalizedArg);
+  }
+
+  if (!actualInventoryKey) {
     const notFoundEmbed = new EmbedBuilder()
       .setColor(0x2b2d31)
-      .setDescription(`You don't have any ${shopItem.name}!`)
+      .setDescription(`You don't have any ${shopItem ? shopItem.name : args.join(' ')}!`)
       .setFooter({ text: 'Item not found in inventory' });
     return message.reply({ embeds: [notFoundEmbed] });
   }
+
+  // Remove only one instance of the used item from inventory
+  let removed = false;
+  user.inventory = user.inventory.filter(i => {
+    if (!removed && normalize(i) === normalize(actualInventoryKey)) {
+      removed = true;
+      return false;
+    }
+    return true;
+  });
 
   // Apply item effect
   let effectMessage = '';
@@ -145,10 +160,6 @@ async function execute(message, args) {
       effectMessage = 'Your pull statistics have been reset! You can now pull cards again.';
       break;
   }
-
-  // After use, decrement inventory
-  user.inventory[actualInventoryKey]--;
-  if (user.inventory[actualInventoryKey] <= 0) delete user.inventory[actualInventoryKey];
 
   await user.save();
 
