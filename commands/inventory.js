@@ -72,7 +72,7 @@ function groupItemsByCategory(inventory) {
     if (Array.isArray(inventory)) {
         invObj = {};
         for (const item of inventory) {
-            const norm = normalize(item);
+            const norm = normalizeItemName(item); // FIXED: use normalizeItemName
             if (!invObj[norm]) invObj[norm] = 0;
             invObj[norm]++;
         }
