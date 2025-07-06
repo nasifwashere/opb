@@ -176,6 +176,16 @@ client.once('ready', async () => {
     console.log(`🚀 Ready! Logged in as ${client.user.tag}`);
     console.log(`📊 Serving ${client.guilds.cache.size} guilds`);
     
+    // Set streaming status
+    client.user.setPresence({
+        activities: [{
+            name: 'One Piece',
+            type: 1, // STREAMING
+            url: 'https://discord.gg/a8jhaWfS'
+        }],
+        status: 'online'
+    });
+    
     // Initialize battles Map for duel system with size limit
     if (!client.battles) {
         client.battles = new Map();
