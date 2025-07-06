@@ -124,6 +124,20 @@ async function execute(message, args) {
         }
     }
 
+    // Ensure inventory is a flat array of strings
+    if (!Array.isArray(user.inventory)) {
+        if (user.inventory && typeof user.inventory === 'object') {
+            user.inventory = Object.keys(user.inventory).reduce((arr, key) => {
+                for (let i = 0; i < user.inventory[key]; i++) arr.push(key);
+                return arr;
+            }, []);
+        } else {
+            user.inventory = [];
+        }
+    } else {
+        user.inventory = user.inventory.flat().map(String);
+    }
+
     if (args.length < 2) {
         // Show equipped items
         if (!user.equipped || Object.keys(user.equipped).length === 0) {
