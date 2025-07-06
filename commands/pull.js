@@ -218,17 +218,6 @@ async function execute(message) {
             ]
         });
     }
-    // Show pulls remaining if not at limit
-    if (pullsRemaining > 0 && user.pullData.dailyPulls > 0) {
-        message.reply({
-            embeds: [new EmbedBuilder()
-                .setColor(0x2ecc40)
-                .setTitle('Pulls Available')
-                .setDescription(`**Pulls used:** ${user.pullData.dailyPulls}/${DAILY_PULL_LIMIT} (**${pullsRemaining}** remaining)`)
-                .setFooter({ text: 'Pulls reset every 5 hours globally' })
-            ]
-        });
-    }
     
     // Load cards
     let cards;
@@ -288,35 +277,27 @@ async function execute(message) {
     if (card.evolvesFrom) {
         evolutionText = `Evolves from **${card.evolvesFrom}**`;
     }
-    
     // Prepare the embed
     const rankSet = rankSettings[card.rank];
     let description = `${card.shortDesc}\nPHS: ${card.phs}${evolutionText ? `\n${evolutionText}` : ""}`;
-    
-    // Add training attachment message if applicable
     if (addResult && addResult.attachedToTraining) {
         description += `\n\n🎯 **Attached to training card!**\nThis duplicate has been attached to **${addResult.trainingCardName}** currently in training.\nWhen training finishes, you'll receive both the trained card and this duplicate.`;
     }
-    
+    const footerText = addResult && addResult.attachedToTraining 
+        ? `Pulled by ${message.author.username} • Attached to training card • ${pullsRemaining} pulls remaining today`
+        : `Pulled by ${message.author.username} • ${pullsRemaining} pulls remaining today`;
     const embed = new EmbedBuilder()
         .setColor(rankSet.color)
         .setTitle(`**${card.name}**`)
         .setDescription(description)
         .setThumbnail(rankSet.rankImage);
-    
     if (card.image && card.image !== "placeholder") {
         embed.setImage(card.image);
     }
-    
-    const footerText = addResult && addResult.attachedToTraining 
-        ? `Pulled by ${message.author.username} • Attached to training card • ${pullsRemaining} pulls remaining today`
-        : `Pulled by ${message.author.username} • ${pullsRemaining} pulls remaining today`;
-    
     embed.setFooter({
         text: footerText,
         iconURL: message.author.displayAvatarURL()
     });
-    
     await message.reply({ embeds: [embed] });
 }
 
