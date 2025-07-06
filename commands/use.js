@@ -88,7 +88,12 @@ async function execute(message, args) {
 
   // Object-based inventory
   if (!user.inventory || typeof user.inventory !== 'object') user.inventory = {};
-  if (!user.inventory[itemName] || user.inventory[itemName] < 1) {
+  // Find the actual key in inventory that matches the normalized key (robust fuzzy match)
+  let actualInventoryKey = Object.keys(user.inventory).find(k => {
+    const normK = normalize(k);
+    return normK === itemName || normK.includes(itemName) || itemName.includes(normK);
+  });
+  if (!actualInventoryKey || user.inventory[actualInventoryKey] < 1) {
     const embed = new EmbedBuilder()
       .setColor(0x2b2d31)
       .setDescription(`You don't have any ${shopItem.name}!`)
@@ -137,8 +142,8 @@ async function execute(message, args) {
   }
 
   // After use, decrement inventory
-  user.inventory[itemName]--;
-  if (user.inventory[itemName] <= 0) delete user.inventory[itemName];
+  user.inventory[actualInventoryKey]--;
+  if (user.inventory[actualInventoryKey] <= 0) delete user.inventory[actualInventoryKey];
 
   await user.save();
 

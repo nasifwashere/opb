@@ -88,6 +88,18 @@ async function execute(message, args) {
         await user.save();
     }
 
+    // MIGRATION: Convert array inventory to object if needed
+    if (Array.isArray(user.inventory)) {
+        const obj = {};
+        for (const item of user.inventory) {
+            const norm = normalize(item);
+            if (!obj[norm]) obj[norm] = 0;
+            obj[norm]++;
+        }
+        user.inventory = obj;
+        await user.save();
+    }
+
     if (args.length < 2) {
         // Show equipped items
         if (!user.equipped || Object.keys(user.equipped).length === 0) {

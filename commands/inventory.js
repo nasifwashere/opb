@@ -66,24 +66,25 @@ function getItemInfo(itemName) {
 
 function groupItemsByCategory(inventory) {
     const grouped = {};
-    
-    inventory.forEach(item => {
+    // Support both array and object inventory, but always convert to object
+    let invObj = inventory;
+    if (Array.isArray(inventory)) {
+        invObj = {};
+        for (const item of inventory) {
+            const norm = normalize(item);
+            if (!invObj[norm]) invObj[norm] = 0;
+            invObj[norm]++;
+        }
+    }
+    for (const [item, count] of Object.entries(invObj)) {
         const info = getItemInfo(item);
-        if (!grouped[info.category]) {
-            grouped[info.category] = {};
-        }
-        
-        const normalizedName = normalizeItemName(item);
-        if (!grouped[info.category][normalizedName]) {
-            grouped[info.category][normalizedName] = {
-                name: item,
-                count: 0,
-                description: info.description
-            };
-        }
-        grouped[info.category][normalizedName].count++;
-    });
-    
+        if (!grouped[info.category]) grouped[info.category] = {};
+        grouped[info.category][item] = {
+            name: item,
+            count,
+            description: info.description
+        };
+    }
     return grouped;
 }
 
