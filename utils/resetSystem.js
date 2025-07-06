@@ -300,13 +300,11 @@ class ResetSystem {
 
     // Force reset user's pulls regardless of global timer
     async forceResetUserPulls(user) {
-        user.pulls = [];
-        user.lastPull = 0;
-        if (!user.pullData) {
-            user.pullData = {};
-        }
+        if (!user.pullData) user.pullData = {};
         user.pullData.dailyPulls = 0;
         user.pullData.lastReset = Date.now();
+        user.pulls = [];
+        user.lastPull = 0;
         await user.save();
         return true;
     }
