@@ -140,11 +140,11 @@ async function execute(message, args) {
 
   // Get rarity emoji
   const rarityEmojis = {
-    'common': '⚪',
-    'uncommon': '🟢',
-    'rare': '🔵',
-    'epic': '🟣',
-    'legendary': '🟠'
+    'common': '<:c_:1375608627213242468>',
+    'uncommon': '<:b_:1375608257921679360>',
+    'rare': '<:a_:1375608345288904786>',
+    'epic': '<:s_:1375608412477329600>',
+    'legendary': '<:ur:1375608483940139048>'
   };
   const rarityEmoji = item.rarity ? rarityEmojis[item.rarity] : '';
 

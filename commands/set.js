@@ -116,7 +116,7 @@ async function execute(message, args) {
     
     if (!setting) {
       const availableSettings = Object.keys(validSettings).map(key => validSettings[key].name).join(', ');
-      return message.reply(`❌ Unknown setting. Available settings: ${availableSettings}`);
+      return message.reply(`Unknown setting. Available settings: ${availableSettings}`);
     }
     
     const embed = new EmbedBuilder()
@@ -138,12 +138,12 @@ async function execute(message, args) {
   const setting = validSettings[settingName];
   if (!setting) {
     const availableSettings = Object.keys(validSettings).map(key => validSettings[key].name).join(', ');
-    return message.reply(`❌ Unknown setting. Available settings: ${availableSettings}`);
+    return message.reply(`Unknown setting. Available settings: ${availableSettings}`);
   }
 
   const validation = validateAndConvertValue(setting, value);
   if (!validation.valid) {
-    return message.reply(`❌ Invalid value: ${validation.error}`);
+    return message.reply(`Invalid value: ${validation.error}`);
   }
 
   // Update the setting

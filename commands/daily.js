@@ -13,7 +13,7 @@ const dailyRewards = [
   { beli: 500, xp: 125, item: null },          // Day 4
   { beli: 700, xp: 150, item: 'Normal Potion' }, // Day 5
   { beli: 1000, xp: 250, item: 'Rusty Cutlass' },          // Day 6
-  { beli: 1500, xp: 500, item: 'Max Potion' }  // Day 7 (Premium)
+  { beli: 2000, xp: 1000, item: 'Max Potion' }  // Day 7 (Premium)
 ];
 
 const data = new SlashCommandBuilder()

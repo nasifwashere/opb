@@ -107,12 +107,12 @@ async function execute(message, args) {
   // Find the card definition
   const cardDef = findCard(userCard.name);
   if (!cardDef) {
-    return message.reply(`❌ Card definition for "${userCard.name}" not found.`);
+    return message.reply(`Card definition for "${userCard.name}" not found.`);
   }
 
   // Check if card can evolve
   if (!cardDef.evolution) {
-    return message.reply(`❌ "${cardDef.name}" cannot evolve further.`);
+    return message.reply(`"${cardDef.name}" cannot evolve further.`);
   }
 
   const evolution = cardDef.evolution;
@@ -120,21 +120,21 @@ async function execute(message, args) {
 
   // Check level requirement
   if (currentLevel < evolution.requiredLevel) {
-    return message.reply(`❌ "${cardDef.name}" needs to be level ${evolution.requiredLevel} to evolve. Current level: ${currentLevel}`);
+    return message.reply(`"${cardDef.name}" needs to be level ${evolution.requiredLevel} to evolve. Current level: ${currentLevel}`);
   }
 
   // Check saga requirement - only if globally enabled
   if (config.sagaRequirementsEnabled && evolution.requiredSaga) {
     const currentSaga = user.saga || "East Blue";
     if (currentSaga !== evolution.requiredSaga) {
-      return message.reply(`❌ You need to reach the "${evolution.requiredSaga}" saga to evolve this card. Current saga: ${currentSaga}`);
+      return message.reply(`You need to reach the "${evolution.requiredSaga}" saga to evolve this card. Current saga: ${currentSaga}`);
     }
   }
 
   // Find the evolved form
   const evolvedCard = allCards.find(c => c.name === evolution.nextId);
   if (!evolvedCard) {
-    return message.reply(`❌ Evolution target "${evolution.nextId}" not found in database.`);
+    return message.reply(`Evolution target "${evolution.nextId}" not found in database.`);
   }
 
   // Calculate evolution cost
@@ -143,7 +143,7 @@ async function execute(message, args) {
 
   // Check if user has enough Beli
   if (user.beli < evolutionCost) {
-    return message.reply(`❌ You need ${evolutionCost} Beli to evolve this card. You have ${user.beli} Beli.`);
+    return message.reply(`You need ${evolutionCost} Beli to evolve this card. You have ${user.beli} Beli.`);
   }
 
   // Perform evolution

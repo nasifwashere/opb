@@ -50,12 +50,12 @@ async function execute(message, args, client) {
     } else {
         // Text command - fix argument parsing
         if (!args || args.length === 0) {
-            return message.reply('❌ Usage: `op setresets <pulls/daily/weekly> [#channel]`');
+            return message.reply('Usage: `op setresets <pulls/daily/weekly> [#channel]`');
         }
 
         category = args[0].toLowerCase();
         if (!['pulls', 'daily', 'weekly'].includes(category)) {
-            return message.reply('❌ Category must be: pulls, daily, or weekly');
+            return message.reply('Category must be: pulls, daily, or weekly');
         }
 
         channel = message.mentions.channels.first() || message.channel;
@@ -100,7 +100,7 @@ async function execute(message, args, client) {
 
     } catch (error) {
         console.error('Error setting reset channel:', error);
-        await message.reply('❌ Failed to set reset channel.');
+        await message.reply('Failed to set reset channel.');
     }
 }
 

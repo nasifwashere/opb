@@ -72,7 +72,7 @@ async function execute(message, args, client) {
         
     } catch (error) {
         console.error('Error setting market channel:', error);
-        await message.reply('❌ Failed to set market channel.');
+        await message.reply('Failed to set market channel.');
     }
 }
 

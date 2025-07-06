@@ -60,7 +60,7 @@ async function execute(message, args, client) {
         await fs.writeFile(CONFIG_PATH, JSON.stringify(config, null, 2));
 
         const embed = new EmbedBuilder()
-            .setTitle('✅ Drop Channel Set')
+            .setTitle('Drop Channel Set')
             .setDescription(`Card drops will now appear in ${channel} every 5 minutes`)
             .setColor(0x00ff00);
 
@@ -156,7 +156,7 @@ async function dropRandomCard(client) {
             .addComponents(
                 new ButtonBuilder()
                     .setCustomId(`claim_drop_${randomCard.name}`)
-                    .setLabel('🎯 Claim Card!')
+                    .setLabel('Claim Card!')
                     .setStyle(ButtonStyle.Primary)
             );
 
@@ -181,7 +181,7 @@ async function dropRandomCard(client) {
             if (collected.size === 0) {
                 // No one claimed it
                 const expiredEmbed = new EmbedBuilder()
-                    .setTitle('💨 Card Escaped!')
+                    .setTitle('Card Escaped!')
                     .setDescription('The card disappeared into the wind...')
                     .setColor(0x95a5a6);
 
@@ -231,7 +231,7 @@ async function claimDrop(interaction, card, client) {
         // Send DM to the user
         try {
             const dmEmbed = new EmbedBuilder()
-                .setTitle('🎁 You Got a Drop!')
+                .setTitle('You Got a Drop!')
                 .setDescription(`You successfully claimed **[${card.rank}] ${card.name}** from the drop!\n\n${card.shortDesc}`)
                 .setColor(getRankColor(card.rank));
 
