@@ -27,7 +27,15 @@ function normalize(str) {
 }
 
 function findShopItem(itemName) {
-  const allItems = [...shopData.items, ...(shopData.devilFruits || [])];
+  // Search all relevant shop categories for the item
+  const allItems = [
+    ...(shopData.items || []),
+    ...(shopData.potions || []),
+    ...(shopData.equipment || []),
+    ...(shopData.legendary || []),
+    ...(shopData.devilFruits || []),
+    ...(shopData.devilfruits || [])
+  ];
   return allItems.find(item => 
     normalize(item.name) === normalize(itemName) || 
     item.name.toLowerCase().includes(itemName.toLowerCase())

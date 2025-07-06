@@ -34,34 +34,39 @@ function normalizeItemName(item) {
 
 function getItemInfo(itemName) {
     const normalized = normalizeItemName(itemName);
-    
-    // Check our predefined items first
-    if (itemData[normalized]) {
-        return itemData[normalized];
-    }
-    
-    // Try to find in shop data
-    const allItems = [...shopData.items, ...(shopData.devilFruits || [])];
-    const shopItem = allItems.find(item => 
-        normalizeItemName(item.name) === normalized
-    );
-    
+    // Search all shop categories for the item
+    const allItems = [
+        ...(shopData.items || []),
+        ...(shopData.potions || []),
+        ...(shopData.equipment || []),
+        ...(shopData.legendary || []),
+        ...(shopData.devilFruits || []),
+        ...(shopData.devilfruits || [])
+    ];
+    const shopItem = allItems.find(item => normalizeItemName(item.name) === normalized);
     if (shopItem) {
         let category = 'Miscellaneous';
         if (shopItem.type === 'potion') category = 'Potions';
         else if (shopItem.subtype === 'sword' || shopItem.subtype === 'gun') category = 'Weapons';
         else if (shopItem.subtype === 'armor') category = 'Armor';
         else if (shopItem.subtype === 'devil_fruit') category = 'Devil Fruits';
-        
+        else if (shopItem.category && shopItem.category.toLowerCase().includes('legendary')) category = 'Legendary';
+        // Build stat boost description if available
+        let description = shopItem.description;
+        if (shopItem.statBoost) {
+            const boostText = Object.entries(shopItem.statBoost)
+                .map(([stat, boost]) => `${stat.charAt(0).toUpperCase() + stat.slice(1)} +${boost}%`)
+                .join(', ');
+            description += boostText ? `\nStat Boosts: ${boostText}` : '';
+        }
         return {
             category: category,
-            description: shopItem.description
+            description: description
         };
     }
-    
-    return { 
-        category: 'Miscellaneous', 
-        description: 'A mysterious item from your adventures' 
+    return {
+        category: 'Miscellaneous',
+        description: 'A mysterious item from your adventures'
     };
 }
 
