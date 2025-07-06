@@ -129,8 +129,9 @@ async function execute(message, args) {
     }
     // Always use normalized shop item name as inventory key
     const inventoryKey = normalize(shopItem.name);
-    if (!user.inventory || typeof user.inventory !== 'object') user.inventory = {};
-    if (!user.inventory[inventoryKey] || user.inventory[inventoryKey] < 1) {
+    // Find the actual key in inventory that matches the normalized key
+    let actualInventoryKey = Object.keys(user.inventory).find(k => normalize(k) === inventoryKey);
+    if (!actualInventoryKey || user.inventory[actualInventoryKey] < 1) {
         return message.reply(`You do not have any ${shopItem.name} in your inventory.`);
     }
 
@@ -167,8 +168,8 @@ async function execute(message, args) {
     }
 
     // Remove item from inventory (object-based)
-    user.inventory[inventoryKey]--;
-    if (user.inventory[inventoryKey] <= 0) delete user.inventory[inventoryKey];
+    user.inventory[actualInventoryKey]--;
+    if (user.inventory[actualInventoryKey] <= 0) delete user.inventory[actualInventoryKey];
 
     // Equip the new item (use mapped name if it's a legacy item)
     const equipItemName = item ? item.name : (legacyItemMappings[normalizedItemName] || itemName);
