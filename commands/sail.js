@@ -839,7 +839,15 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
     // Award items
     if (rewards.items && rewards.items.length > 0) {
         if (!user.inventory) user.inventory = [];
-        rewards.items.forEach(item => user.inventory.push(item));
+        // Normalize all item names before adding to inventory
+        const { normalizeInventory } = require('../utils/inventoryUtils.js');
+        rewards.items.forEach(item => {
+            // Add as normalized string (flat array)
+            user.inventory.push(item.replace(/\s+/g, '').toLowerCase());
+        });
+        // Always normalize after adding
+        user.inventory = normalizeInventory(user.inventory);
+        user.markModified('inventory');
     }
     
     // Check for additional item rewards from reward system
