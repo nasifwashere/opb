@@ -123,14 +123,14 @@ async function execute(message, args) {
 
     const itemName = args[0].trim();
     const cardName = args.slice(1).join(' ').trim();
-    const normalizedItemName = normalize(itemName);
     const shopItem = findShopItem(itemName);
     if (!shopItem) {
         return message.reply('That item does not exist in the shop and cannot be equipped.');
     }
-    // Object-based inventory
+    // Always use normalized shop item name as inventory key
+    const inventoryKey = normalize(shopItem.name);
     if (!user.inventory || typeof user.inventory !== 'object') user.inventory = {};
-    if (!user.inventory[normalizedItemName] || user.inventory[normalizedItemName] < 1) {
+    if (!user.inventory[inventoryKey] || user.inventory[inventoryKey] < 1) {
         return message.reply(`You do not have any ${shopItem.name} in your inventory.`);
     }
 
@@ -165,8 +165,8 @@ async function execute(message, args) {
     }
 
     // Remove item from inventory (object-based)
-    user.inventory[normalizedItemName]--;
-    if (user.inventory[normalizedItemName] <= 0) delete user.inventory[normalizedItemName];
+    user.inventory[inventoryKey]--;
+    if (user.inventory[inventoryKey] <= 0) delete user.inventory[inventoryKey];
 
     // Equip the new item (use mapped name if it's a legacy item)
     const equipItemName = item ? item.name : (legacyItemMappings[normalizedItemName] || itemName);
