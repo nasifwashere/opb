@@ -23,6 +23,18 @@ async function execute(message, args, client) {
     return message.reply({ embeds: [embed] });
   }
 
+  // Defensive: ensure user.cards is always an array
+  if (!Array.isArray(user.cards)) user.cards = [];
+
+  // Defensive: ensure gamblingData is always initialized
+  if (!user.gamblingData || typeof user.gamblingData !== 'object') {
+    user.gamblingData = {
+      lastGamble: 0,
+      remainingGambles: 3
+    };
+    await user.save();
+  }
+
   // Check if user has Nami card
   const hasNami = user.cards && user.cards.some(card => 
     normalize(card.name) === normalize('Nami') && 
