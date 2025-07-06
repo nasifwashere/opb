@@ -109,8 +109,7 @@ async function execute(message, args) {
             { name: 'op duel @user', value: 'Quick 1v1 card battle with bounty', inline: true },
             { name: 'op map', value: 'View current location', inline: true },
             { name: 'op quest', value: 'View and track your quests', inline: true },
-            { name: 'op level <n>', value: 'Level up your cards', inline: true },
-            { name: 'op chest', value: 'Open treasure chests you find', inline: true }
+            { name: 'op level <n>', value: 'Level up your cards', inline: true }
           )
           .setColor(0x2b2d31)
           .setFooter({ text: 'Explore the Grand Line and grow stronger' });

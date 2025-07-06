@@ -31,11 +31,17 @@ function getAllItemsFromShop() {
   return allItems;
 }
 
+// Check if item is in shop
+function isItemInShop(itemName) {
+  const allItems = getAllItemsFromShop();
+  return allItems.some(item => item.name.toLowerCase() === String(itemName).toLowerCase());
+}
+
 // Get weighted random item based on rarity
 function getRandomItemByRarity(rarityLevel = 'common') {
   const allItems = getAllItemsFromShop();
   const availableItems = allItems.filter(item => 
-    item.rarity === rarityLevel && item.available
+    item.rarity === rarityLevel && item.available && isItemInShop(item.name)
   );
   
   if (availableItems.length === 0) return null;

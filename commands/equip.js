@@ -120,28 +120,17 @@ async function execute(message, args) {
         return message.reply({ embeds: [embed] });
     }
 
-    const itemName = args[0];
-    const cardName = args.slice(1).join(' ');
-
-    // Check if user owns the item - try fuzzy matching
+    const itemName = args[0].trim();
+    const cardName = args.slice(1).join(' ').trim();
     const normalizedItemName = normalize(itemName);
-    let hasItem = user.inventory?.includes(normalizedItemName);
-    let actualItemName = normalizedItemName;
-    
-    // If exact match not found, try fuzzy matching
-    if (!hasItem && user.inventory) {
-        const fuzzyMatch = user.inventory.find(invItem => {
-            const normInvItem = normalize(invItem);
-            return normInvItem.includes(normalizedItemName) || normalizedItemName.includes(normInvItem);
-        });
-        if (fuzzyMatch) {
-            hasItem = true;
-            actualItemName = fuzzyMatch;
-        }
+    const shopItem = findShopItem(itemName);
+    if (!shopItem) {
+        return message.reply('That item does not exist in the shop and cannot be equipped.');
     }
-
-    if (!hasItem) {
-        return message.reply(`You don't own **${itemName}**. Try using partial names like "potion" or "saber"!`);
+    // Object-based inventory
+    if (!user.inventory || typeof user.inventory !== 'object') user.inventory = {};
+    if (!user.inventory[normalizedItemName] || user.inventory[normalizedItemName] < 1) {
+        return message.reply(`You do not have any ${shopItem.name} in your inventory.`);
     }
 
     // Check if item is equipment (including legacy items)

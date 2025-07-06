@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
+const { loadShopData } = require('../utils/rewardSystem.js');
 
 const USABLE_ITEMS = {
   'timecrystal': {
@@ -67,27 +68,31 @@ async function execute(message, args) {
     return message.reply({ embeds: [embed] });
   }
 
-  const itemName = args.join(' ').toLowerCase().replace(/\s+/g, '');
-  const item = USABLE_ITEMS[itemName];
+  const shopData = loadShopData();
+  const allShopItems = [];
+  ['potions', 'equipment', 'legendary', 'items', 'devilfruits'].forEach(category => {
+    if (shopData[category]) {
+      shopData[category].forEach(item => allShopItems.push(item));
+    }
+  });
 
-  if (!item) {
+  const itemName = args.join(' ').trim().toLowerCase().replace(/\s+/g, '');
+  const shopItem = allShopItems.find(i => i.name.toLowerCase().replace(/\s+/g, '') === itemName);
+  if (!shopItem) {
     const embed = new EmbedBuilder()
       .setColor(0x2b2d31)
       .setDescription("That item cannot be used or doesn't exist!")
       .setFooter({ text: 'Check your inventory for usable items' });
-    
     return message.reply({ embeds: [embed] });
   }
 
-  if (!user.inventory) user.inventory = [];
-  const itemIndex = user.inventory.indexOf(itemName);
-
-  if (itemIndex === -1) {
+  // Object-based inventory
+  if (!user.inventory || typeof user.inventory !== 'object') user.inventory = {};
+  if (!user.inventory[itemName] || user.inventory[itemName] < 1) {
     const embed = new EmbedBuilder()
       .setColor(0x2b2d31)
-      .setDescription(`You don't have any ${item.name}!`)
+      .setDescription(`You don't have any ${shopItem.name}!`)
       .setFooter({ text: 'Item not found in inventory' });
-    
     return message.reply({ embeds: [embed] });
   }
 
@@ -95,7 +100,7 @@ async function execute(message, args) {
   let effectMessage = '';
   const now = Date.now();
 
-  switch (item.effect) {
+  switch (shopItem.effect) {
     case 'clear_explore_cooldowns':
       user.locationCooldowns = new Map();
       effectMessage = 'All exploration cooldowns have been cleared!';
@@ -108,7 +113,7 @@ async function execute(message, args) {
       if (!user.activeBoosts) user.activeBoosts = [];
       user.activeBoosts.push({
         type: 'speed_boost',
-        expiresAt: now + item.duration,
+        expiresAt: now + shopItem.duration,
         multiplier: 1.5
       });
       effectMessage = 'Your team gains a speed boost for 1 hour!';
@@ -131,16 +136,15 @@ async function execute(message, args) {
       break;
   }
 
-  // Remove item if consumable
-  if (item.consumable) {
-    user.inventory.splice(itemIndex, 1);
-  }
+  // After use, decrement inventory
+  user.inventory[itemName]--;
+  if (user.inventory[itemName] <= 0) delete user.inventory[itemName];
 
   await user.save();
 
   const embed = new EmbedBuilder()
-    .setTitle(`Used ${item.name}`)
-    .setDescription(`${item.description}\n\n${effectMessage}`)
+    .setTitle(`Used ${shopItem.name}`)
+    .setDescription(`${shopItem.description}\n\n${effectMessage}`)
     .setColor(0x2b2d31)
     .setFooter({ text: 'Item effect applied' });
 
