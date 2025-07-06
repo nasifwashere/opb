@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const User = require('../db/models/User.js');
 const fs = require('fs');
 const path = require('path');
+const { normalizeInventory } = require('../utils/inventoryUtils.js');
 
 // Load shop data for equipment info
 const shopPath = path.resolve('data', 'shop.json');
@@ -124,12 +125,8 @@ async function execute(message, args) {
         }
     }
 
-    // Ensure inventory is a flat array of strings
-    if (!Array.isArray(user.inventory)) {
-        user.inventory = [];
-    } else {
-        user.inventory = user.inventory.flat().map(String);
-    }
+    // Always normalize inventory to a flat array of strings
+    user.inventory = normalizeInventory(user.inventory);
 
     if (args.length < 2) {
         // Show equipped items

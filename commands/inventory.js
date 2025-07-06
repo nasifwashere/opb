@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 const User = require('../db/models/User.js');
 const fs = require('fs');
 const path = require('path');
+const { normalizeInventory } = require('../utils/inventoryUtils.js');
 
 // Load shop data for item info
 const shopPath = path.resolve('data', 'shop.json');
@@ -95,6 +96,8 @@ const data = new SlashCommandBuilder()
 async function execute(message, args) {
     const userId = message.author.id;
     let user = await User.findOne({ userId });
+    // Always normalize inventory to a flat array of strings
+    user.inventory = normalizeInventory(user.inventory);
 
     if (!user) {
         const embed = new EmbedBuilder()

@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
 const { addCardWithTransformation } = require('../utils/cardTransformationSystem.js');
+const { normalizeInventory } = require('../utils/inventoryUtils.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -79,6 +80,9 @@ async function execute(message, args) {
     await user.save();
   }
 
+  // Always normalize inventory to a flat array of strings
+  user.inventory = normalizeInventory(user.inventory);
+
   const shopData = loadShopData();
   const item = findShopItem(itemName, shopData);
 
@@ -92,32 +96,6 @@ async function execute(message, args) {
 
   if (user.beli < item.price) {
     return message.reply(`You don't have enough Beli! You need ${item.price}, but you only have ${user.beli}.`);
-  }
-
-  // DEBUG: Log inventory type and value before normalization
-  console.log('DEBUG inventory before normalization:', typeof user.inventory, JSON.stringify(user.inventory));
-  // Ensure inventory is a flat array of strings
-  if (!Array.isArray(user.inventory)) {
-    if (user.inventory && typeof user.inventory === 'object') {
-      user.inventory = Object.keys(user.inventory).reduce((arr, key) => {
-        for (let i = 0; i < user.inventory[key]; i++) arr.push(key);
-        return arr;
-      }, []);
-    } else {
-      user.inventory = [];
-    }
-  } else if (
-    user.inventory.length === 1 &&
-    typeof user.inventory[0] === 'object' &&
-    !Array.isArray(user.inventory[0])
-  ) {
-    // Handle [ { basicpotion: 12, ... } ]
-    user.inventory = Object.keys(user.inventory[0]).reduce((arr, key) => {
-      for (let i = 0; i < user.inventory[0][key]; i++) arr.push(key);
-      return arr;
-    }, []);
-  } else {
-    user.inventory = user.inventory.flat().map(String);
   }
 
   const normalizedItemName = normalize(item.name);
