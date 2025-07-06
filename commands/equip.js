@@ -51,19 +51,20 @@ const legacyItemMappings = {
   'luckycharm': 'Rusty Cutlass'
 };
 
-// Find equipment item in shop data
+// Find equipment item in shop data (search all categories)
 function findShopItem(itemName) {
   const normalizedTarget = normalize(itemName);
-  
   // Check for legacy item mapping first
   const mappedItem = legacyItemMappings[normalizedTarget];
+  let allItems = [];
+  ['potions', 'equipment', 'legendary', 'items', 'devilfruits'].forEach(category => {
+    if (shopData[category]) {
+      shopData[category].forEach(item => allItems.push(item));
+    }
+  });
   if (mappedItem) {
-    const allItems = [...shopData.items, ...(shopData.devilFruits || [])];
     return allItems.find(item => normalize(item.name) === normalize(mappedItem));
   }
-  
-  // Then check normal items
-  const allItems = [...shopData.items, ...(shopData.devilFruits || [])];
   return allItems.find(item => normalize(item.name) === normalizedTarget);
 }
 
@@ -163,9 +164,9 @@ async function execute(message, args) {
         user.inventory.push(normalize(currentEquipped));
     }
 
-    // Remove item from inventory
-    const itemIndex = user.inventory.indexOf(actualItemName);
-    user.inventory.splice(itemIndex, 1);
+    // Remove item from inventory (object-based)
+    user.inventory[normalizedItemName]--;
+    if (user.inventory[normalizedItemName] <= 0) delete user.inventory[normalizedItemName];
 
     // Equip the new item (use mapped name if it's a legacy item)
     const equipItemName = item ? item.name : (legacyItemMappings[normalizedItemName] || itemName);
@@ -192,12 +193,11 @@ async function execute(message, args) {
         .setColor(0x2b2d31)
         .setFooter({ text: 'Bonuses are applied in battles' });
 
+    // If card already had something equipped, return it to inventory
     if (currentEquipped) {
-        embed.addFields({ 
-            name: 'Previous Equipment', 
-            value: `**${currentEquipped}** was returned to your inventory`, 
-            inline: false 
-        });
+        const prevNorm = normalize(currentEquipped);
+        if (!user.inventory[prevNorm]) user.inventory[prevNorm] = 0;
+        user.inventory[prevNorm]++;
     }
 
     return message.reply({ embeds: [embed] });
