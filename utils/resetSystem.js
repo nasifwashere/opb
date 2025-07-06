@@ -300,19 +300,14 @@ class ResetSystem {
 
     // Force reset user's pulls regardless of global timer
     async forceResetUserPulls(user) {
+        // Use the same logic as the global reset, but only for this user
+        user.pulls = [];
+        user.lastPull = 0;
         if (!user.pullData) user.pullData = {};
         user.pullData.dailyPulls = 0;
         user.pullData.lastReset = Date.now();
-        user.pulls = [];
-        user.lastPull = 0;
         await user.save();
-        // Also update global lastPullReset and send notification
-        this.config.lastPullReset = Date.now();
-        await this.saveConfig && this.saveConfig();
-        if (this.client && this.config.pullResetChannelId) {
-            await this.sendPullResetNotification();
-        }
-        console.log(`[DEBUG] Pulls reset for user ${user.userId || user.id}`);
+        console.log(`[DEBUG] Per-user pulls reset for user ${user.userId || user.id}`);
         return true;
     }
 
