@@ -234,6 +234,10 @@ class ResetSystem {
 
     async sendPullResetNotification() {
         try {
+            if (!this.client) {
+                console.warn('Pull reset notification: Discord client not available.');
+                return;
+            }
             const channel = this.client.channels.cache.get(this.config.pullResetChannelId);
             if (!channel) return;
 

@@ -75,6 +75,10 @@ const EAST_BLUE_BOSSES = {
     }
 };
 
+function normalize(str) {
+    return String(str || '').replace(/\s+/g, '').toLowerCase();
+}
+
 async function execute(message, args) {
     const userId = message.author.id;
     let user = await User.findOne({ userId });
@@ -109,8 +113,9 @@ async function handleStartRaid(message, user, bossName) {
         return message.reply('Only crew captains can start raids!');
     }
 
-    // Check if user has raid ticket
-    if (!user.inventory || !user.inventory.includes('raidticket')) {
+    // Check if user has raid ticket (robust, normalized)
+    const ticketIdx = user.inventory ? user.inventory.findIndex(item => normalize(item) === 'raidticket') : -1;
+    if (ticketIdx === -1) {
         return message.reply('You need a Raid Ticket to start a raid! Buy one from the shop for 1,000 Beli.');
     }
 
@@ -133,9 +138,8 @@ async function handleStartRaid(message, user, bossName) {
         return message.reply('Crew data not found!');
     }
 
-    // Remove raid ticket from inventory
-    const ticketIndex = user.inventory.indexOf('raidticket');
-    user.inventory.splice(ticketIndex, 1);
+    // Remove raid ticket from inventory (robust, normalized)
+    user.inventory.splice(ticketIdx, 1);
     await user.save();
 
     // Create raid

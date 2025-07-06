@@ -3,16 +3,13 @@ const User = require('../db/models/User.js');
 const fs = require('fs');
 const path = require('path');
 const { saveUserWithRetry } = require('../utils/saveWithRetry.js');
+const { fuzzyFindCard } = require('../utils/fuzzyCardMatcher.js');
 
 const cardsPath = path.resolve('data', 'cards.json');
 const allCards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
 
 function normalize(str) {
   return String(str || '').replace(/\s+/g, '').toLowerCase();
-}
-
-function findCard(cardName) {
-  return allCards.find(c => normalize(c.name) === normalize(cardName));
 }
 
 function calculateLevelUpCost(currentLevel) {
@@ -71,11 +68,9 @@ async function execute(message, args) {
     return message.reply({ embeds: [embed] });
   }
 
-
-  // Find all cards matching the name
-  const userCards = user.cards.filter(c => normalize(c.name) === normalize(cardName));
-
-  if (userCards.length === 0) {
+  // Use fuzzyFindCard to find the main card in user's collection
+  const mainCard = fuzzyFindCard(user.cards, cardName);
+  if (!mainCard) {
     const embed = new EmbedBuilder()
       .setColor(0x2b2d31)
       .setDescription(`You don't own "${cardName}".`)
@@ -83,24 +78,18 @@ async function execute(message, args) {
     return message.reply({ embeds: [embed] });
   }
 
+  // Find all duplicates of the main card (by normalized name)
+  const userCards = user.cards.filter(c => normalize(c.name) === normalize(mainCard.name));
+
   // Only the first card (lowest index) is the main card
-  // Find the main card in the user's collection (by reference, not just value)
-  const mainCardIndex = user.cards.findIndex(c => normalize(c.name) === normalize(cardName));
+  const mainCardIndex = user.cards.findIndex(c => normalize(c.name) === normalize(mainCard.name));
   if (mainCardIndex === -1) {
     const embed = new EmbedBuilder()
       .setColor(0x2b2d31)
-      .setDescription(`You don't own "${cardName}".`)
-      .setFooter({ text: 'Card not found in your collection' });
+      .setDescription('Main card not found in your collection.')
+      .setFooter({ text: 'Card not found' });
     return message.reply({ embeds: [embed] });
   }
-  const mainCard = user.cards[mainCardIndex];
-  // Only use level 1 duplicates for leveling up, and skip the main card
-  const duplicateCards = user.cards.filter((c, idx) =>
-    idx !== mainCardIndex &&
-    normalize(c.name) === normalize(cardName) &&
-    (c.level === 1 || !c.level)
-  );
-  const duplicates = duplicateCards.length;
   const currentLevel = mainCard.level || 1;
 
   if (currentLevel >= 100) {
@@ -112,6 +101,7 @@ async function execute(message, args) {
     return message.reply({ embeds: [embed] });
   }
 
+  const duplicates = userCards.length - 1; // Exclude the main card
   if (duplicates < amount) {
     const embed = new EmbedBuilder()
       .setColor(0x2b2d31)
