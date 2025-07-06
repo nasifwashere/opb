@@ -94,13 +94,30 @@ async function execute(message, args) {
         if (user.inventory.length === 1 && typeof user.inventory[0] === 'object' && !Array.isArray(user.inventory[0])) {
             user.inventory = user.inventory[0];
             await user.save();
-        } else {
-            // Otherwise, convert array of strings to object
+        } else if (user.inventory.every(i => typeof i === 'string')) {
+            // If it's an array of strings, convert to object
             const obj = {};
             for (const item of user.inventory) {
                 const norm = normalize(item);
                 if (!obj[norm]) obj[norm] = 0;
                 obj[norm]++;
+            }
+            user.inventory = obj;
+            await user.save();
+        } else {
+            // If it's an array of objects or mixed, flatten and merge all objects
+            const obj = {};
+            for (const entry of user.inventory) {
+                if (typeof entry === 'object' && !Array.isArray(entry)) {
+                    for (const [k, v] of Object.entries(entry)) {
+                        if (!obj[k]) obj[k] = 0;
+                        obj[k] += v;
+                    }
+                } else if (typeof entry === 'string') {
+                    const norm = normalize(entry);
+                    if (!obj[norm]) obj[norm] = 0;
+                    obj[norm]++;
+                }
             }
             user.inventory = obj;
             await user.save();
@@ -158,16 +175,13 @@ async function execute(message, args) {
     }
 
     // Check if item is equipment (including legacy items)
-    const item = findShopItem(itemName);
-    
-    // List of legacy equipment items that should be considered valid
+    // Use shopItem for all logic below
     const legacyEquipment = ['marinesword', 'townmap', 'battlebanner', 'powergloves', 'defensearmor', 'luckycharm'];
-    
-    if (!item && !legacyEquipment.includes(normalizedItemName)) {
+    const normalizedItemName = normalize(itemName);
+    if (!shopItem && !legacyEquipment.includes(normalizedItemName)) {
         return message.reply(`**${itemName}** is not an equipment item that can be equipped.`);
     }
-    
-    if (item && item.type !== 'equipment') {
+    if (shopItem && shopItem.type !== 'equipment') {
         return message.reply(`**${itemName}** is not an equipment item that can be equipped.`);
     }
 
@@ -194,7 +208,7 @@ async function execute(message, args) {
     if (user.inventory[actualInventoryKey] <= 0) delete user.inventory[actualInventoryKey];
 
     // Equip the new item (use mapped name if it's a legacy item)
-    const equipItemName = item ? item.name : (legacyItemMappings[normalizedItemName] || itemName);
+    const equipItemName = shopItem ? shopItem.name : (legacyItemMappings[normalizedItemName] || itemName);
     user.equipped[card.name] = equipItemName;
 
     // Mark as modified and save
@@ -202,7 +216,7 @@ async function execute(message, args) {
     await user.save();
 
     // Build stat boost description
-    const statBoosts = item.statBoost || {};
+    const statBoosts = shopItem ? (shopItem.statBoost || {}) : {};
     const boostText = Object.entries(statBoosts)
         .map(([stat, boost]) => `**${stat.charAt(0).toUpperCase() + stat.slice(1)}**: +${boost}%`)
         .join('\n');
