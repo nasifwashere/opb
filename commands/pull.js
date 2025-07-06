@@ -175,6 +175,9 @@ async function execute(message) {
         return message.reply({ embeds: [embed] });
     }
     
+    // Always reload user from DB to ensure latest state (fixes reset token issue)
+    user = await User.findOne({ userId });
+    
     let needsSave = false;
     
     // Set default saga if missing
