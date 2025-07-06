@@ -94,6 +94,8 @@ async function execute(message, args) {
     return message.reply(`You don't have enough Beli! You need ${item.price}, but you only have ${user.beli}.`);
   }
 
+  // DEBUG: Log inventory type and value before normalization
+  console.log('DEBUG inventory before normalization:', typeof user.inventory, JSON.stringify(user.inventory));
   // Ensure inventory is a flat array of strings
   if (!Array.isArray(user.inventory)) {
     if (user.inventory && typeof user.inventory === 'object') {
