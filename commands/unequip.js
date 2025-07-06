@@ -75,16 +75,13 @@ async function execute(message, args) {
 
     const equippedItem = user.equipped[normCard];
 
-    // Remove from equipped and add back to inventory (object-based)
+    // Remove from equipped and add back to inventory (array-based)
     delete user.equipped[normCard];
-    const normItem = normalize(equippedItem);
-    if (!user.inventory || typeof user.inventory !== 'object') user.inventory = {};
-    if (!user.inventory[normItem]) user.inventory[normItem] = 0;
-    user.inventory[normItem]++;
+    if (!user.inventory || !Array.isArray(user.inventory)) user.inventory = [];
+    user.inventory.push(equippedItem);
 
     // Mark as modified and save
     user.markModified('equipped');
-    user.markModified('inventory');
     await user.save();
 
     const embed = new EmbedBuilder()
