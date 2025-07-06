@@ -143,22 +143,30 @@ async function execute(message, args) {
       });
       effectMessage = 'Your team gains a speed boost for 1 hour!';
       break;
-    case 'reset_pulls':
-      // Reset pull statistics
-      if (!user.pullData) {
-        user.pullData = {
-          dailyPulls: 0,
-          lastReset: Date.now()
-        };
+    case 'reset_pulls': {
+      // Robustly reset all pull-related stats using resetSystem
+      const resetSystem = require('../utils/resetSystem.js');
+      if (typeof resetSystem.resetUserPullsIfNeeded === 'function') {
+        resetSystem.resetUserPullsIfNeeded(user); // This resets pulls, dailyPulls, lastReset, etc.
       } else {
-        user.pullData.dailyPulls = 0;
-        user.pullData.lastReset = Date.now();
-      }
-      if (user.pulls) {
-        user.pulls = [];
+        // Fallback: manual reset
+        if (!user.pullData) {
+          user.pullData = {
+            dailyPulls: 0,
+            lastReset: Date.now()
+          };
+        } else {
+          user.pullData.dailyPulls = 0;
+          user.pullData.lastReset = Date.now();
+        }
+        if (user.pulls) {
+          user.pulls = [];
+        }
+        user.lastPull = 0;
       }
       effectMessage = 'Your pull statistics have been reset! You can now pull cards again.';
       break;
+    }
   }
 
   await user.save();
