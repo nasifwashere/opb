@@ -298,6 +298,17 @@ class ResetSystem {
         return false;
     }
 
+    // Force reset user's pulls regardless of global timer
+    forceResetUserPulls(user) {
+        user.pulls = [];
+        user.lastPull = 0;
+        if (user.pullData) {
+            user.pullData.dailyPulls = 0;
+            user.pullData.lastReset = Date.now();
+        }
+        return true;
+    }
+
     cleanup() {
         if (this.pullResetTimer) clearTimeout(this.pullResetTimer);
         if (this.dailyQuestResetTimer) clearTimeout(this.dailyQuestResetTimer);

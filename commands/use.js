@@ -144,10 +144,10 @@ async function execute(message, args) {
       effectMessage = 'Your team gains a speed boost for 1 hour!';
       break;
     case 'reset_pulls': {
-      // Robustly reset all pull-related stats using resetSystem
+      // Force reset all pull-related stats using resetSystem
       const resetSystem = require('../utils/resetSystem.js');
-      if (typeof resetSystem.resetUserPullsIfNeeded === 'function') {
-        resetSystem.resetUserPullsIfNeeded(user); // This resets pulls, dailyPulls, lastReset, etc.
+      if (typeof resetSystem.forceResetUserPulls === 'function') {
+        resetSystem.forceResetUserPulls(user); // This always resets pulls, dailyPulls, lastReset, etc.
       } else {
         // Fallback: manual reset
         if (!user.pullData) {
