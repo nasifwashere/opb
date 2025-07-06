@@ -148,6 +148,7 @@ async function execute(message, args) {
       const resetSystem = require('../utils/resetSystem.js');
       if (typeof resetSystem.forceResetUserPulls === 'function') {
         resetSystem.forceResetUserPulls(user); // This always resets pulls, dailyPulls, lastReset, etc.
+        console.log(`[DEBUG] Reset token used by ${userId}, pulls reset.`);
         await user.save(); // Persist the reset to the database
       } else {
         // Fallback: manual reset
