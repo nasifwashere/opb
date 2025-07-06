@@ -148,6 +148,7 @@ async function execute(message, args) {
       const resetSystem = require('../utils/resetSystem.js');
       if (typeof resetSystem.forceResetUserPulls === 'function') {
         resetSystem.forceResetUserPulls(user); // This always resets pulls, dailyPulls, lastReset, etc.
+        await user.save(); // Persist the reset to the database
       } else {
         // Fallback: manual reset
         if (!user.pullData) {
@@ -163,6 +164,7 @@ async function execute(message, args) {
           user.pulls = [];
         }
         user.lastPull = 0;
+        await user.save(); // Persist fallback reset
       }
       effectMessage = 'Your pull statistics have been reset! You can now pull cards again.';
       break;
