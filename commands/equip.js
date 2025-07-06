@@ -126,14 +126,7 @@ async function execute(message, args) {
 
     // Ensure inventory is a flat array of strings
     if (!Array.isArray(user.inventory)) {
-        if (user.inventory && typeof user.inventory === 'object') {
-            user.inventory = Object.keys(user.inventory).reduce((arr, key) => {
-                for (let i = 0; i < user.inventory[key]; i++) arr.push(key);
-                return arr;
-            }, []);
-        } else {
-            user.inventory = [];
-        }
+        user.inventory = [];
     } else {
         user.inventory = user.inventory.flat().map(String);
     }
@@ -179,17 +172,13 @@ async function execute(message, args) {
     }
     // Always use normalized shop item name as inventory key
     const inventoryKey = normalize(shopItem.name);
-    // Find the actual key in inventory that matches the normalized key (robust fuzzy match)
-    let actualInventoryKey = Object.keys(user.inventory).find(k => {
-        const normK = normalize(k);
-        return normK === inventoryKey || normK.includes(inventoryKey) || inventoryKey.includes(normK);
-    });
-    if (!actualInventoryKey || user.inventory[actualInventoryKey] < 1) {
+    // Find the index in inventory array that matches the normalized key
+    const itemIndex = user.inventory.findIndex(i => normalize(i) === inventoryKey);
+    if (itemIndex === -1) {
         return message.reply(`You do not have any ${shopItem.name} in your inventory.`);
     }
 
     // Check if item is equipment (including legacy items)
-    // Use shopItem for all logic below
     const legacyEquipment = ['marinesword', 'townmap', 'battlebanner', 'powergloves', 'defensearmor', 'luckycharm'];
     const normalizedItemName = normalize(itemName);
     if (!shopItem && !legacyEquipment.includes(normalizedItemName)) {
@@ -211,15 +200,12 @@ async function execute(message, args) {
     // Check if card already has something equipped
     const currentEquipped = user.equipped[card.name];
     if (currentEquipped) {
-        // Return the currently equipped item to inventory (object-based)
-        const prevNorm = normalize(currentEquipped);
-        if (!user.inventory[prevNorm]) user.inventory[prevNorm] = 0;
-        user.inventory[prevNorm]++;
+        // Return the currently equipped item to inventory
+        user.inventory.push(normalize(currentEquipped));
     }
 
-    // Remove item from inventory (object-based)
-    user.inventory[actualInventoryKey]--;
-    if (user.inventory[actualInventoryKey] <= 0) delete user.inventory[actualInventoryKey];
+    // Remove item from inventory array
+    user.inventory.splice(itemIndex, 1);
 
     // Equip the new item (use mapped name if it's a legacy item)
     const equipItemName = shopItem ? shopItem.name : (legacyItemMappings[normalizedItemName] || itemName);
@@ -230,7 +216,7 @@ async function execute(message, args) {
     await user.save();
 
     // Build stat boost description
-    const statBoosts = shopItem ? (shopItem.statBoost || {}) : {};
+    const statBoosts = shopItem.statBoost || {};
     const boostText = Object.entries(statBoosts)
         .map(([stat, boost]) => `**${stat.charAt(0).toUpperCase() + stat.slice(1)}**: +${boost}%`)
         .join('\n');
@@ -246,11 +232,12 @@ async function execute(message, args) {
         .setColor(0x2b2d31)
         .setFooter({ text: 'Bonuses are applied in battles' });
 
-    // If card already had something equipped, return it to inventory
     if (currentEquipped) {
-        const prevNorm = normalize(currentEquipped);
-        if (!user.inventory[prevNorm]) user.inventory[prevNorm] = 0;
-        user.inventory[prevNorm]++;
+        embed.addFields({ 
+            name: 'Previous Equipment', 
+            value: `**${currentEquipped}** was returned to your inventory`, 
+            inline: false 
+        });
     }
 
     return message.reply({ embeds: [embed] });
