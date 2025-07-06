@@ -104,6 +104,16 @@ async function execute(message, args) {
     } else {
       user.inventory = [];
     }
+  } else if (
+    user.inventory.length === 1 &&
+    typeof user.inventory[0] === 'object' &&
+    !Array.isArray(user.inventory[0])
+  ) {
+    // Handle [ { basicpotion: 12, ... } ]
+    user.inventory = Object.keys(user.inventory[0]).reduce((arr, key) => {
+      for (let i = 0; i < user.inventory[0][key]; i++) arr.push(key);
+      return arr;
+    }, []);
   } else {
     user.inventory = user.inventory.flat().map(String);
   }
