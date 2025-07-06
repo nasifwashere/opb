@@ -30,8 +30,13 @@ const shopData = JSON.parse(fs.readFileSync(shopPath, 'utf8'));
 function findShopItem(itemName) {
   const normalize = str => String(str || '').replace(/\s+/g, '').toLowerCase();
   const normalizedTarget = normalize(itemName);
-  
-  const allItems = [...shopData.items, ...(shopData.devilFruits || [])];
+  // Search all relevant shop categories
+  const allItems = [
+    ...(shopData.items || []),
+    ...(shopData.equipment || []),
+    ...(shopData.legendary || []),
+    ...(shopData.devilFruits || []),
+  ];
   return allItems.find(item => normalize(item.name) === normalizedTarget);
 }
 
