@@ -89,42 +89,6 @@ async function execute(message, args) {
         await user.save();
     }
 
-    // MIGRATION: Convert array inventory to object if needed
-    if (Array.isArray(user.inventory)) {
-        // If it's an array with a single object, unwrap it
-        if (user.inventory.length === 1 && typeof user.inventory[0] === 'object' && !Array.isArray(user.inventory[0])) {
-            user.inventory = user.inventory[0];
-            await user.save();
-        } else if (user.inventory.every(i => typeof i === 'string')) {
-            // If it's an array of strings, convert to object
-            const obj = {};
-            for (const item of user.inventory) {
-                const norm = normalize(item);
-                if (!obj[norm]) obj[norm] = 0;
-                obj[norm]++;
-            }
-            user.inventory = obj;
-            await user.save();
-        } else {
-            // If it's an array of objects or mixed, flatten and merge all objects
-            const obj = {};
-            for (const entry of user.inventory) {
-                if (typeof entry === 'object' && !Array.isArray(entry)) {
-                    for (const [k, v] of Object.entries(entry)) {
-                        if (!obj[k]) obj[k] = 0;
-                        obj[k] += v;
-                    }
-                } else if (typeof entry === 'string') {
-                    const norm = normalize(entry);
-                    if (!obj[norm]) obj[norm] = 0;
-                    obj[norm]++;
-                }
-            }
-            user.inventory = obj;
-            await user.save();
-        }
-    }
-
     // Always normalize inventory to a flat array of strings
     user.inventory = normalizeInventory(user.inventory);
 
@@ -140,17 +104,17 @@ async function execute(message, args) {
             return message.reply({ embeds: [embed] });
         }
 
-            // Show all equipped items
-    let equipmentText = '';
-    for (const [cardName, itemName] of Object.entries(user.equipped)) {
-      const item = findShopItem(itemName);
-      const statBoosts = item?.statBoost || {};
-      const boostText = Object.entries(statBoosts)
-        .map(([stat, boost]) => `${stat}: +${boost}%`)
-        .join(', ');
-      
-      equipmentText += `**${cardName}**: ${itemName}${boostText ? ` (${boostText})` : ''}\n`;
-    }
+        // Show all equipped items
+        let equipmentText = '';
+        for (const [cardName, itemName] of Object.entries(user.equipped)) {
+            const item = findShopItem(itemName);
+            const statBoosts = item?.statBoost || {};
+            const boostText = Object.entries(statBoosts)
+                .map(([stat, boost]) => `${stat}: +${boost}%`)
+                .join(', ');
+            
+            equipmentText += `**${cardName}**: ${itemName}${boostText ? ` (${boostText})` : ''}\n`;
+        }
 
         const embed = new EmbedBuilder()
             .setTitle('Equipment Status')
@@ -197,8 +161,7 @@ async function execute(message, args) {
     // Check if card already has something equipped
     const currentEquipped = user.equipped[card.name];
     if (currentEquipped) {
-        // Return the currently equipped item to inventory
-        user.inventory.push(normalize(currentEquipped));
+        user.inventory.push(currentEquipped);
     }
 
     // Remove item from inventory array
