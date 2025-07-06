@@ -306,6 +306,7 @@ class ResetSystem {
         user.pulls = [];
         user.lastPull = 0;
         await user.save();
+        console.log(`[DEBUG] Pulls reset for user ${user.userId || user.id}`);
         return true;
     }
 

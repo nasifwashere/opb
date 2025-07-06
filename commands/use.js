@@ -148,6 +148,8 @@ async function execute(message, args) {
       const resetSystem = require('../utils/resetSystem.js');
       if (typeof resetSystem.forceResetUserPulls === 'function') {
         await resetSystem.forceResetUserPulls(user); // Always await and let it save the user
+        // Reload user from DB to ensure fresh state
+        user = await require('../db/models/User.js').findOne({ userId: user.userId || user.id });
         console.log(`[DEBUG] Reset token used by ${userId}, pulls reset.`);
       } else {
         // Fallback: manual reset
@@ -165,6 +167,8 @@ async function execute(message, args) {
         }
         user.lastPull = 0;
         await user.save(); // Persist fallback reset
+        // Reload user from DB to ensure fresh state
+        user = await require('../db/models/User.js').findOne({ userId: user.userId || user.id });
       }
       effectMessage = 'Your pull statistics have been reset! You can now pull cards again.';
       break;

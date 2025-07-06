@@ -201,13 +201,27 @@ async function execute(message) {
         }
     }
     
+    // Calculate pulls remaining at the start
+    const pullsRemaining = DAILY_PULL_LIMIT - user.pullData.dailyPulls;
+
     // Check daily pull limit
     if (user.pullData.dailyPulls >= DAILY_PULL_LIMIT) {
         return message.reply({
             embeds: [new EmbedBuilder()
                 .setColor(0xff6b6b)
                 .setTitle('Daily Pull Limit Reached!')
-                .setDescription(`You've used all **${DAILY_PULL_LIMIT}** of your daily pulls!\n\n⏰ **Next reset:** Check \`op timers\` for reset time`)
+                .setDescription(`You've used all **${DAILY_PULL_LIMIT}** of your daily pulls!\n\n⏰ **Next reset:** Check \`op timers\` for reset time\n\n**Pulls used:** ${user.pullData.dailyPulls}/${DAILY_PULL_LIMIT} (0 remaining)`)
+                .setFooter({ text: 'Pulls reset every 5 hours globally' })
+            ]
+        });
+    }
+    // Show pulls remaining if not at limit
+    if (pullsRemaining > 0 && user.pullData.dailyPulls > 0) {
+        message.reply({
+            embeds: [new EmbedBuilder()
+                .setColor(0x2ecc40)
+                .setTitle('Pulls Available')
+                .setDescription(`**Pulls used:** ${user.pullData.dailyPulls}/${DAILY_PULL_LIMIT} (**${pullsRemaining}** remaining)`)
                 .setFooter({ text: 'Pulls reset every 5 hours globally' })
             ]
         });
@@ -291,7 +305,6 @@ async function execute(message) {
         embed.setImage(card.image);
     }
     
-    const pullsRemaining = DAILY_PULL_LIMIT - user.pullData.dailyPulls;
     const footerText = addResult && addResult.attachedToTraining 
         ? `Pulled by ${message.author.username} • Attached to training card • ${pullsRemaining} pulls remaining today`
         : `Pulled by ${message.author.username} • ${pullsRemaining} pulls remaining today`;
