@@ -113,18 +113,15 @@ async function execute(message, args, client) {
       new ButtonBuilder()
         .setCustomId('gamble_low')
         .setLabel('Low Risk')
-        .setStyle(ButtonStyle.Secondary)
-        .setEmoji(''),
+        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('gamble_medium')
         .setLabel('Medium Risk')
-        .setStyle(ButtonStyle.Primary)
-        .setEmoji(''),
+        .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId('gamble_high')
         .setLabel('High Risk')
         .setStyle(ButtonStyle.Danger)
-        .setEmoji('')
     );
 
   const msg = await message.reply({ embeds: [embed], components: [row] });
@@ -239,7 +236,6 @@ async function execute(message, args, client) {
             .setCustomId('gamble_again')
             .setLabel('Gamble Again')
             .setStyle(ButtonStyle.Secondary)
-            .setEmoji('')
         );
       components = [continueRow];
     }
