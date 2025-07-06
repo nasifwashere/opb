@@ -5,7 +5,9 @@ const fs = require('fs');
 const path = require('path');
 
 const cardsPath = path.resolve('data', 'cards.json');
+const shopPath = path.resolve('data', 'shop.json');
 const allCards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
+const shopData = JSON.parse(fs.readFileSync(shopPath, 'utf8'));
 
 // Base sell values by rank
 const rankValues = {
@@ -14,15 +16,6 @@ const rankValues = {
   A: 250,
   S: 1000,
   UR: 5000
-};
-
-// Item values (simple mapping for common items)
-const itemValues = {
-      'basicpotion': 25,
-  'luckycharm': 50,
-  'treasuremap': 200,
-  'healingpotion': 75,
-  'powerboost': 150
 };
 
 function normalize(str) {
@@ -37,9 +30,23 @@ function calculateCardValue(card, cardDef) {
   return baseValue + levelBonus;
 }
 
-function calculateItemValue(itemName) {
-  const normalizedName = normalize(itemName);
-  return itemValues[normalizedName] || 10; // Default 10 Beli for unknown items
+function calculateItemSellValue(itemName) {
+  const normalizeItemName = str => String(str || '').replace(/\s+/g, '').toLowerCase();
+  const normalized = normalizeItemName(itemName);
+  // Search all shop categories for the item
+  const allItems = [
+    ...(shopData.items || []),
+    ...(shopData.potions || []),
+    ...(shopData.equipment || []),
+    ...(shopData.legendary || []),
+    ...(shopData.devilFruits || []),
+    ...(shopData.devilfruits || [])
+  ];
+  const shopItem = allItems.find(item => normalizeItemName(item.name) === normalized);
+  if (shopItem && shopItem.price) {
+    return Math.floor(shopItem.price * 0.6);
+  }
+  return 10; // Default if not found
 }
 
 function findCard(cardName) {
@@ -139,7 +146,7 @@ async function execute(message, args) {
     const normalizedItem = normalize(userItem);
     
     
-    const sellValue = calculateItemValue(userItem);
+    const sellValue = calculateItemSellValue(userItem);
     
     // Remove item from inventory
     const itemIndex = user.inventory.findIndex(i => normalize(i) === normalize(userItem));

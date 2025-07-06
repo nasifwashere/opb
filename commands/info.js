@@ -71,19 +71,28 @@ function attackRange(phs, rank) {
 function getEvolutionRequirements(card) {
   let next = allCards.find(c => c.evolvesFrom === card.name);
   if (!next) return "No further evolutions available.";
-  
-  const rule = evoMatrix.find(row =>
-      row.from === card.rank && row.to === next.rank
-  );
-  
-  let reqs = [];
-  if (rule) {
-    reqs.push(`**Level Required** ${rule.level}`);
-    reqs.push(`**Cost** ${rule.cost} Beli`);
+
+  // Prefer custom evolution requirements from card data
+  let requiredLevel, cost, requiredSaga;
+  if (card.evolution && card.evolution.nextId === next.name) {
+    requiredLevel = card.evolution.requiredLevel;
+    cost = card.evolution.cost;
+    requiredSaga = card.evolution.requiredSaga;
   }
+  // Fallback to matrix if not present
+  if (requiredLevel == null || cost == null) {
+    const rule = evoMatrix.find(row => row.from === card.rank && row.to === next.rank);
+    if (rule) {
+      if (requiredLevel == null) requiredLevel = rule.level;
+      if (cost == null) cost = rule.cost;
+    }
+  }
+  let reqs = [];
+  if (requiredLevel != null) reqs.push(`**Level Required** ${requiredLevel}`);
+  if (cost != null) reqs.push(`**Cost** ${cost} Beli`);
   if (next.rank) reqs.push(`**Next Rank** ${next.rank}`);
-  if (next.saga) reqs.push(`**Saga** ${next.saga}`);
-  
+  if (requiredSaga || next.saga) reqs.push(`**Saga** ${requiredSaga || next.saga}`);
+
   return [
     `**Upgrade to [${next.rank}] ${next.name}**`,
     '',

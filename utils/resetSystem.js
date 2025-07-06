@@ -302,7 +302,12 @@ class ResetSystem {
     forceResetUserPulls(user) {
         user.pulls = [];
         user.lastPull = 0;
-        if (user.pullData) {
+        if (!user.pullData) {
+            user.pullData = {
+                dailyPulls: 0,
+                lastReset: Date.now()
+            };
+        } else {
             user.pullData.dailyPulls = 0;
             user.pullData.lastReset = Date.now();
         }
