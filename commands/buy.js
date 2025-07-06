@@ -94,25 +94,18 @@ async function execute(message, args) {
     return message.reply(`You don't have enough Beli! You need ${item.price}, but you only have ${user.beli}.`);
   }
 
-  // --- Inventory always as object ---
-  if (!user.inventory || Array.isArray(user.inventory)) user.inventory = {};
+  // Ensure inventory is an array
+  if (!user.inventory) user.inventory = [];
 
   const normalizedItemName = normalize(item.name);
-  if (item.unique && user.inventory[normalizedItemName]) {
+  if (item.unique && user.inventory.includes(normalizedItemName)) {
     return message.reply(`You already own "${item.name}". This item can only be purchased once.`);
   }
 
   // Process purchase
   user.beli -= item.price;
 
-  // Add to inventory (object-based)
-  if (user.inventory[normalizedItemName]) {
-    user.inventory[normalizedItemName]++;
-  } else {
-    user.inventory[normalizedItemName] = 1;
-  }
-
-  // Cards are handled separately
+  // Handle different item types
   if (item.type === 'card') {
     const cardToAdd = {
       name: item.name,
@@ -123,6 +116,9 @@ async function execute(message, args) {
       locked: false
     };
     addCardWithTransformation(user, cardToAdd);
+  } else {
+    // Add the normalized item name to inventory array
+    user.inventory.push(normalizedItemName);
   }
 
   // Update quest progress for market transactions
