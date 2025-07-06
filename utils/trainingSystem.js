@@ -167,103 +167,117 @@ async function startTraining(userId, cardName) {
  * Stop training a card and return it with accumulated XP
  */
 async function stopTraining(userId, cardName) {
-    try {
-        const user = await User.findOne({ userId });
-        if (!user) {
-            return { success: false, message: 'User not found. Start your journey with `op start` first!' };
+    const MAX_RETRIES = 3;
+    let attempt = 0;
+    while (attempt < MAX_RETRIES) {
+        try {
+            const user = await User.findOne({ userId });
+            if (!user) {
+                return { success: false, message: 'User not found. Start your journey with `op start` first!' };
+            }
+
+            // Initialize arrays if needed
+            if (!user.training) user.training = [];
+            if (!user.cards) user.cards = [];
+
+            // Find the card in training
+            const trainingIndex = user.training.findIndex(trainingCard => 
+                normalize(trainingCard.cardName) === normalize(cardName)
+            );
+
+            if (trainingIndex === -1) {
+                return { success: false, message: `**${cardName}** is not currently in training.` };
+            }
+
+            const trainingCard = user.training[trainingIndex];
+            // Calculate total XP gained
+            const accumulatedXP = calculateTrainingXP(trainingCard.startTime);
+            const totalXP = trainingCard.experience + accumulatedXP;
+
+            // Remove from training
+            user.training.splice(trainingIndex, 1);
+
+            // Calculate new level from XP
+            const XP_PER_LEVEL = 100;
+            const newLevel = Math.floor(totalXP / XP_PER_LEVEL) + 1;
+
+            // Return card to collection with updated XP and level
+            const cardsPath = require('path').resolve('data', 'cards.json');
+            const allCards = JSON.parse(require('fs').readFileSync(cardsPath, 'utf8'));
+            let fixedName = trainingCard.name || trainingCard.cardName;
+            let fixedRank = trainingCard.rank;
+            // Always resolve from cards.json if possible
+            const def = allCards.find(c => c && c.name && normalize(c.name) === normalize(fixedName));
+            if (def) {
+              fixedName = def.name;
+              fixedRank = def.rank;
+            }
+            // Update timesUpgraded to be consistent with new level for legacy compatibility
+            const newTimesUpgraded = Math.max(0, newLevel - 1);
+            const returnedCard = {
+              name: fixedName,
+              rank: fixedRank,
+              level: newLevel,
+              experience: totalXP,
+              timesUpgraded: newTimesUpgraded, // Keep this consistent with level
+              locked: trainingCard.locked
+            };
+            user.cards.push(returnedCard);
+
+            // Add any duplicates that were collected during training back to collection
+            const duplicateCount = trainingCard.duplicates || 0;
+            for (let i = 0; i < duplicateCount; i++) {
+              // Only add duplicate if user does not already have a level 1, 0xp, unlocked version
+              const alreadyHas = user.cards.some(card =>
+                normalize(card.name) === normalize(fixedName) &&
+                card.level === 1 &&
+                card.experience === 0 &&
+                card.rank === fixedRank &&
+                !card.locked
+              );
+              if (!alreadyHas) {
+                const duplicateCard = {
+                  name: fixedName,
+                  rank: fixedRank,
+                  level: 1, // Duplicates start at level 1
+                  experience: 0,
+                  timesUpgraded: 0,
+                  locked: false
+                };
+                user.cards.push(duplicateCard);
+              }
+            }
+
+            // Mark arrays as modified and save with retry
+            user.markModified('training');
+            user.markModified('cards');
+            await user.save();
+
+            const trainingDuration = Date.now() - trainingCard.startTime;
+            const minutesTrained = Math.floor(trainingDuration / (1000 * 60));
+            const hoursTrained = Math.floor(minutesTrained / 60);
+            const remainingMinutes = minutesTrained % 60;
+
+            const duplicatesMessage = duplicateCount > 0 ? ` (+${duplicateCount} duplicate${duplicateCount > 1 ? 's' : ''} collected during training)` : '';
+            return { 
+                success: true, 
+                message: `**${fixedName}** has finished training!${duplicatesMessage}`,
+                card: returnedCard,
+                xpGained: accumulatedXP,
+                totalXP: totalXP,
+                duplicatesReturned: duplicateCount,
+                trainingTime: { hours: hoursTrained, minutes: remainingMinutes, total: minutesTrained }
+            };
+        } catch (error) {
+            if (error.name === 'VersionError') {
+                attempt++;
+                continue; // Retry with fresh user
+            }
+            console.error('Error stopping training:', error);
+            return { success: false, message: 'Failed to stop training. Please try again.' };
         }
-
-        // Initialize arrays if needed
-        if (!user.training) user.training = [];
-        if (!user.cards) user.cards = [];
-
-        // Find the card in training
-        const trainingIndex = user.training.findIndex(trainingCard => 
-            normalize(trainingCard.cardName) === normalize(cardName)
-        );
-
-        if (trainingIndex === -1) {
-            return { success: false, message: `**${cardName}** is not currently in training.` };
-        }
-
-        const trainingCard = user.training[trainingIndex];
-        
-        // Calculate total XP gained
-        const accumulatedXP = calculateTrainingXP(trainingCard.startTime);
-        const totalXP = trainingCard.experience + accumulatedXP;
-
-        // Remove from training
-        user.training.splice(trainingIndex, 1);
-
-
-        // Calculate new level from XP
-        const XP_PER_LEVEL = 100;
-        const newLevel = Math.floor(totalXP / XP_PER_LEVEL) + 1;
-
-        // Return card to collection with updated XP and level
-        const cardsPath = require('path').resolve('data', 'cards.json');
-        const allCards = JSON.parse(require('fs').readFileSync(cardsPath, 'utf8'));
-        let fixedName = trainingCard.name || trainingCard.cardName;
-        let fixedRank = trainingCard.rank;
-        // Always resolve from cards.json if possible
-        const def = allCards.find(c => c && c.name && normalize(c.name) === normalize(fixedName));
-        if (def) {
-          fixedName = def.name;
-          fixedRank = def.rank;
-        }
-        
-        // Update timesUpgraded to be consistent with new level for legacy compatibility
-        const newTimesUpgraded = Math.max(0, newLevel - 1);
-        
-        const returnedCard = {
-          name: fixedName,
-          rank: fixedRank,
-          level: newLevel,
-          experience: totalXP,
-          timesUpgraded: newTimesUpgraded, // Keep this consistent with level
-          locked: trainingCard.locked
-        };
-        user.cards.push(returnedCard);
-        
-        // Add any duplicates that were collected during training back to collection
-        const duplicateCount = trainingCard.duplicates || 0;
-        for (let i = 0; i < duplicateCount; i++) {
-          const duplicateCard = {
-            name: fixedName,
-            rank: fixedRank,
-            level: 1, // Duplicates start at level 1
-            experience: 0,
-            timesUpgraded: 0,
-            locked: false
-          };
-          user.cards.push(duplicateCard);
-        }
-
-        // Mark arrays as modified and save
-        user.markModified('training');
-        user.markModified('cards');
-        await user.save();
-
-        const trainingDuration = Date.now() - trainingCard.startTime;
-        const minutesTrained = Math.floor(trainingDuration / (1000 * 60));
-        const hoursTrained = Math.floor(minutesTrained / 60);
-        const remainingMinutes = minutesTrained % 60;
-
-        const duplicatesMessage = duplicateCount > 0 ? ` (+${duplicateCount} duplicate${duplicateCount > 1 ? 's' : ''} collected during training)` : '';
-        
-        return { 
-            success: true, 
-            message: `**${fixedName}** has finished training!${duplicatesMessage}`,
-            card: returnedCard,
-            xpGained: accumulatedXP,
-            totalXP: totalXP,
-            duplicatesReturned: duplicateCount,
-            trainingTime: { hours: hoursTrained, minutes: remainingMinutes, total: minutesTrained }
-        };
-    } catch (error) {
-        console.error('Error stopping training:', error);
-        return { success: false, message: 'Failed to stop training. Please try again.' };
     }
+    return { success: false, message: 'Failed to stop training after multiple attempts. Please try again.' };
 }
 
 /**
