@@ -90,14 +90,21 @@ async function execute(message, args) {
 
     // MIGRATION: Convert array inventory to object if needed
     if (Array.isArray(user.inventory)) {
-        const obj = {};
-        for (const item of user.inventory) {
-            const norm = normalize(item);
-            if (!obj[norm]) obj[norm] = 0;
-            obj[norm]++;
+        // If it's an array with a single object, unwrap it
+        if (user.inventory.length === 1 && typeof user.inventory[0] === 'object' && !Array.isArray(user.inventory[0])) {
+            user.inventory = user.inventory[0];
+            await user.save();
+        } else {
+            // Otherwise, convert array of strings to object
+            const obj = {};
+            for (const item of user.inventory) {
+                const norm = normalize(item);
+                if (!obj[norm]) obj[norm] = 0;
+                obj[norm]++;
+            }
+            user.inventory = obj;
+            await user.save();
         }
-        user.inventory = obj;
-        await user.save();
     }
 
     if (args.length < 2) {
