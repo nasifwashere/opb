@@ -129,8 +129,11 @@ async function execute(message, args) {
     }
     // Always use normalized shop item name as inventory key
     const inventoryKey = normalize(shopItem.name);
-    // Find the actual key in inventory that matches the normalized key
-    let actualInventoryKey = Object.keys(user.inventory).find(k => normalize(k) === inventoryKey);
+    // Find the actual key in inventory that matches the normalized key (robust fuzzy match)
+    let actualInventoryKey = Object.keys(user.inventory).find(k => {
+        const normK = normalize(k);
+        return normK === inventoryKey || normK.includes(inventoryKey) || inventoryKey.includes(normK);
+    });
     if (!actualInventoryKey || user.inventory[actualInventoryKey] < 1) {
         return message.reply(`You do not have any ${shopItem.name} in your inventory.`);
     }
