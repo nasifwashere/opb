@@ -1,6 +1,11 @@
 const { SlashCommandBuilder, EmbedBuilder  } = require('discord.js');
 const User = require('../db/models/User.js');
 const { loadShopData } = require('../utils/rewardSystem.js');
+const { normalizeInventory } = require('../utils/inventoryUtils.js');
+
+function normalize(str) {
+  return String(str || '').replace(/\s+/g, '').toLowerCase();
+}
 
 const USABLE_ITEMS = {
   'timecrystal': {
@@ -94,11 +99,11 @@ async function execute(message, args) {
     return normK === itemName || normK.includes(itemName) || itemName.includes(normK);
   });
   if (!actualInventoryKey || user.inventory[actualInventoryKey] < 1) {
-    const embed = new EmbedBuilder()
+    const notFoundEmbed = new EmbedBuilder()
       .setColor(0x2b2d31)
       .setDescription(`You don't have any ${shopItem.name}!`)
       .setFooter({ text: 'Item not found in inventory' });
-    return message.reply({ embeds: [embed] });
+    return message.reply({ embeds: [notFoundEmbed] });
   }
 
   // Apply item effect
@@ -147,13 +152,13 @@ async function execute(message, args) {
 
   await user.save();
 
-  const embed = new EmbedBuilder()
+  const usedEmbed = new EmbedBuilder()
     .setTitle(`Used ${shopItem.name}`)
     .setDescription(`${shopItem.description}\n\n${effectMessage}`)
     .setColor(0x2b2d31)
     .setFooter({ text: 'Item effect applied' });
 
-  return message.reply({ embeds: [embed] });
+  return message.reply({ embeds: [usedEmbed] });
 }
 
 module.exports = { data, execute };
