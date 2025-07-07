@@ -35,9 +35,9 @@ async function execute(message, args, client) {
     await user.save();
   }
 
-  // Check if user has Nami card
+  // Check if user has any Nami card (base or evolved forms)
   const hasNami = user.cards && user.cards.some(card => 
-    normalize(card.name) === normalize('Nami') && 
+    normalize(card.name).includes('nami') && 
     (!user.case || !user.case.find(c => normalize(c.name) === normalize(card.name))) &&
     (!user.training || !user.training.find(t => normalize(t.cardName) === normalize(card.name)))
   );
@@ -46,7 +46,7 @@ async function execute(message, args, client) {
     const embed = new EmbedBuilder()
       .setColor(0x2b2d31)
       .setTitle('<:namirich:1375662701702807632> Gambling Den')
-      .setDescription('You need **Nami** in your collection to access the gambling den!')
+      .setDescription('You need **Nami** (any form) in your collection to access the gambling den!')
       .setFooter({ text: 'Nami must not be locked away or training' });
     
     return message.reply({ embeds: [embed] });
