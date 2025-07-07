@@ -221,6 +221,14 @@ async function endDuel(messageId, client, reason, winner = null) {
                 winnerUser.wins = (winnerUser.wins || 0) + 1;
                 loserUser.losses = (loserUser.losses || 0) + 1;
 
+                // Update quest progress for battle win
+                try {
+                    const { updateQuestProgress } = require('./questSystem.js');
+                    await updateQuestProgress(winnerUser, 'battle_win', 1);
+                } catch (error) {
+                    console.error('Error updating quest progress in duel:', error);
+                }
+
                 // Check if this is a bounty target victory
                 if (winnerUser.bountyTarget?.isActive && winnerUser.bountyTarget.userId === loserUser.userId) {
                     isBountyTarget = true;

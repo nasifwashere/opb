@@ -174,8 +174,6 @@ async function execute(message, args) {
   // Transform all duplicates of the original card to the evolved form
   transformAllDuplicatesToEvolution(user, evolvedCard.name, evolvedCard);
 
-  await user.save();
-
   // Update quest progress for evolution
   try {
     const { updateQuestProgress } = require('../utils/questSystem.js');
@@ -183,6 +181,8 @@ async function execute(message, args) {
   } catch (error) {
     console.error('Error updating evolution quest progress:', error);
   }
+
+  await user.save();
 
   // Create success embed
   const transformMessage = duplicateCount > 1 ? `All ${duplicateCount} copies transformed!` : 'Card evolved!';

@@ -891,6 +891,15 @@ async function handleVictory(interaction, battleMessage, user, battleState) {
     // Mark the field as modified so Mongoose saves it
     user.markModified('sailsCompleted');
     
+    // Update quest progress for exploration and battle wins
+    try {
+        const { updateQuestProgress } = require('../utils/questSystem.js');
+        await updateQuestProgress(user, 'explore', 1);
+        await updateQuestProgress(user, 'battle_win', 1);
+    } catch (error) {
+        console.error('Error updating quest progress in sail:', error);
+    }
+    
     try {
         await saveUserWithRetry(user);
         console.log(`Successfully saved sail count ${newCount} for ${battleState.arcName}`);
