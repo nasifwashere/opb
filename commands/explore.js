@@ -1528,7 +1528,8 @@ async function handleBattleVictory(interaction, user, battleMessage, battleLog) 
         if (rewardsText) rewardsText += '\n';
         rewardsText += `+10,000,000 Bounty (East Blue Saga Complete!)`;
         rewardsText += '\n🌊 **Sailing Command Unlocked!**';
-        rewardsText += '\nUse `op sail` to explore the Grand Line!';
+        rewardsText += '\n⛵ You can now sail to the Grand Line and beyond!';
+        rewardsText += '\nUse `op sail` to start your next adventure!';
     }
     
     if (rewardsText) {

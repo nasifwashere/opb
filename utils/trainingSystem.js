@@ -111,6 +111,32 @@ async function startTraining(userId, cardName) {
             return { success: false, message: `**${card.name}** is already in training!` };
         }
 
+        // Check for training cooldown (5 hours after untraining)
+        if (user.trainingCooldowns && user.trainingCooldowns[normalize(card.name)]) {
+            const cooldownEnd = user.trainingCooldowns[normalize(card.name)];
+            const now = Date.now();
+            
+            if (now < cooldownEnd) {
+                const timeLeft = cooldownEnd - now;
+                const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
+                const minutesLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                
+                let timeText = '';
+                if (hoursLeft > 0) timeText += `${hoursLeft}h `;
+                if (minutesLeft > 0) timeText += `${minutesLeft}m`;
+                if (!timeText) timeText = 'less than 1m';
+                
+                return { 
+                    success: false, 
+                    message: `**${card.name}** was recently untrained and cannot be trained again for ${timeText.trim()}. This cooldown prevents training abuse.` 
+                };
+            } else {
+                // Cooldown expired, remove it
+                delete user.trainingCooldowns[normalize(card.name)];
+                user.markModified('trainingCooldowns');
+            }
+        }
+
         // Remove card from team if it's there
         removeFromTeam(user, card.name);
 
@@ -256,9 +282,14 @@ async function stopTraining(userId, cardName) {
               }
             }
 
+            // Add 5-hour cooldown before this card can be trained again
+            if (!user.trainingCooldowns) user.trainingCooldowns = {};
+            user.trainingCooldowns[normalize(fixedName)] = Date.now() + (5 * 60 * 60 * 1000); // 5 hours
+
             // Mark arrays as modified and save with retry
             user.markModified('training');
             user.markModified('cards');
+            user.markModified('trainingCooldowns');
             await user.save();
 
             const trainingDuration = Date.now() - trainingCard.startTime;
@@ -269,7 +300,7 @@ async function stopTraining(userId, cardName) {
             const duplicatesMessage = duplicateCount > 0 ? ` (+${duplicateCount} duplicate${duplicateCount > 1 ? 's' : ''} collected during training)` : '';
             return { 
                 success: true, 
-                message: `**${fixedName}** has finished training!${duplicatesMessage}`,
+                message: `**${fixedName}** has finished training!${duplicatesMessage}\n\n⏰ **Training Cooldown**: This card cannot be trained again for 5 hours.`,
                 card: returnedCard,
                 xpGained: accumulatedXP,
                 totalXP: totalXP,

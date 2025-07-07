@@ -54,6 +54,9 @@ const userSchema = new mongoose.Schema({
     accumulatedXP: { type: Number, default: 0 }
   }],
 
+  // Training cooldowns - prevents retraining for 5 hours after untraining
+  trainingCooldowns: { type: mongoose.Schema.Types.Mixed, default: {} },
+
   // Quest System - Fixed structure
   activeQuests: [{
     questId: { type: String, required: true },

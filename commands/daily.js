@@ -6,15 +6,68 @@ function normalize(str) {
     return String(str || '').replace(/\s+/g, '').toLowerCase();
 }
 
+// Enhanced daily rewards with valuable randomized items and better scaling
 const dailyRewards = [
-  { beli: 100, xp: 50, item: null },           // Day 1
-  { beli: 150, xp: 75, item: null },           // Day 2
-  { beli: 200, xp: 100, item: 'Basic Potion' }, // Day 3
-  { beli: 500, xp: 125, item: null },          // Day 4
-  { beli: 700, xp: 150, item: 'Normal Potion' }, // Day 5
-  { beli: 1000, xp: 250, item: 'Rusty Cutlass' },          // Day 6
-  { beli: 2000, xp: 1000, item: 'Max Potion' }  // Day 7 (Premium)
+  { 
+    beli: 500, 
+    xp: 100, 
+    items: ['Basic Potion', 'Energy Potion'], 
+    randomCount: 1,
+    bonusChance: 0.1 // 10% chance for bonus reward
+  }, // Day 1
+  { 
+    beli: 1000, 
+    xp: 200, 
+    items: ['Normal Potion', 'Basic Potion', 'Energy Drink'], 
+    randomCount: 1,
+    bonusChance: 0.15 
+  }, // Day 2
+  { 
+    beli: 2000, 
+    xp: 350, 
+    items: ['Max Potion', 'Normal Potion', 'Rusty Cutlass'], 
+    randomCount: 2,
+    bonusChance: 0.2 
+  }, // Day 3
+  { 
+    beli: 3500, 
+    xp: 500, 
+    items: ['Silver Cutlass', 'Max Potion', 'Energy Drink', 'Time Crystal'], 
+    randomCount: 2,
+    bonusChance: 0.25 
+  }, // Day 4
+  { 
+    beli: 6000, 
+    xp: 750, 
+    items: ['Golden Cutlass', 'Time Crystal', 'Max Potion', 'Reset Token'], 
+    randomCount: 3,
+    bonusChance: 0.3 
+  }, // Day 5
+  { 
+    beli: 10000, 
+    xp: 1200, 
+    items: ['Diamond Ring', 'Time Crystal', 'Reset Token', 'Energy Drink'], 
+    randomCount: 3,
+    bonusChance: 0.4,
+    guaranteedBounty: 50000 
+  }, // Day 6
+  { 
+    beli: 20000, 
+    xp: 2500, 
+    items: ['Legendary Sword', 'Time Crystal', 'Reset Token', 'Diamond Ring'], 
+    randomCount: 4,
+    bonusChance: 0.5,
+    guaranteedBounty: 150000 
+  }  // Day 7 (Premium)
 ];
+
+// Enhanced bonus reward pools for high streaks
+const bonusRewardPools = {
+  lowTier: ['Basic Potion', 'Normal Potion', 'Energy Potion'],
+  midTier: ['Max Potion', 'Energy Drink', 'Silver Cutlass', 'Time Crystal'],
+  highTier: ['Reset Token', 'Golden Cutlass', 'Diamond Ring'],
+  premiumTier: ['Legendary Sword', 'Mythical Blade', 'Phoenix Feather']
+};
 
 const data = new SlashCommandBuilder()
   .setName('daily')
@@ -103,8 +156,13 @@ async function execute(message, args) {
   const rewardIndex = (user.dailyReward.streak - 1) % 7;
   const reward = dailyRewards[rewardIndex];
 
-  // Apply rewards
+  // Apply base rewards
   user.beli = (user.beli || 0) + reward.beli;
+  
+  // Add guaranteed bounty for higher streaks
+  if (reward.guaranteedBounty) {
+    user.bounty = (user.bounty || 0) + reward.guaranteedBounty;
+  }
   
   // Award XP to user with new leveling system
   const { awardUserXP } = require('../utils/userLevelSystem.js');
@@ -113,9 +171,33 @@ async function execute(message, args) {
   // Distribute XP to team cards
   const levelUpChanges = distributeXPToTeam(user, reward.xp);
 
-  if (reward.item) {
-    if (!user.inventory) user.inventory = [];
-    user.inventory.push(normalize(reward.item));
+  // Randomized item rewards
+  if (!user.inventory) user.inventory = [];
+  const rewardedItems = [];
+  
+  if (reward.items && reward.randomCount) {
+    // Shuffle items and pick random count
+    const shuffled = [...reward.items].sort(() => 0.5 - Math.random());
+    const selectedItems = shuffled.slice(0, reward.randomCount);
+    
+    for (const item of selectedItems) {
+      user.inventory.push(normalize(item));
+      rewardedItems.push(item);
+    }
+  }
+  
+  // Bonus reward chance (increases with streak)
+  const bonusRoll = Math.random();
+  if (bonusRoll < reward.bonusChance) {
+    let bonusPool;
+    if (user.dailyReward.streak >= 7) bonusPool = bonusRewardPools.premiumTier;
+    else if (user.dailyReward.streak >= 5) bonusPool = bonusRewardPools.highTier;
+    else if (user.dailyReward.streak >= 3) bonusPool = bonusRewardPools.midTier;
+    else bonusPool = bonusRewardPools.lowTier;
+    
+    const bonusItem = bonusPool[Math.floor(Math.random() * bonusPool.length)];
+    user.inventory.push(normalize(bonusItem));
+    rewardedItems.push(`${bonusItem} (BONUS!)`);
   }
   
   // Check for additional daily item rewards from reward system
@@ -135,7 +217,7 @@ async function execute(message, args) {
   await user.save();
 
   // Build item display
-  let itemDisplay = reward.item || 'None';
+  let itemDisplay = rewardedItems.length > 0 ? rewardedItems.join('\n') : 'None';
   if (bonusItemReward) {
     try {
       const { formatItemReward } = require('../utils/rewardSystem.js');
@@ -151,17 +233,27 @@ async function execute(message, args) {
   }
 
   const embed = new EmbedBuilder()
-    .setTitle('Daily Reward Claimed')
-    .setDescription(`**Day ${user.dailyReward.streak}** reward collected!${user.dailyReward.streak === 7 ? '\n*Maximum streak achieved!*' : ''}`)
-    .addFields(
-      { name: 'Beli', value: `+${reward.beli}`, inline: true },
-      { name: 'XP', value: `+${reward.xp}`, inline: true },
-      { name: 'Items', value: itemDisplay, inline: true }
-    )
-    .setColor(0x2b2d31)
-    .setFooter({ 
-      text: `Streak: ${user.dailyReward.streak}/7 days • Next reward in 24 hours` 
-    });
+    .setTitle('🎁 Daily Reward Claimed')
+    .setDescription(`**Day ${user.dailyReward.streak}** reward collected!${user.dailyReward.streak === 7 ? '\n✨ *Maximum streak achieved! Premium rewards unlocked!*' : ''}`)
+    .setColor(user.dailyReward.streak >= 7 ? 0xe67e22 : user.dailyReward.streak >= 5 ? 0x9b59b6 : user.dailyReward.streak >= 3 ? 0x3498db : 0x2b2d31);
+
+  // Build reward fields
+  const rewardFields = [
+    { name: '💰 Beli', value: `+${reward.beli.toLocaleString()}`, inline: true },
+    { name: '⭐ XP', value: `+${reward.xp.toLocaleString()}`, inline: true }
+  ];
+  
+  if (reward.guaranteedBounty) {
+    rewardFields.push({ name: '🏴‍☠️ Bounty', value: `+${reward.guaranteedBounty.toLocaleString()}`, inline: true });
+  }
+  
+  rewardFields.push({ name: '🎒 Items', value: itemDisplay, inline: false });
+  
+  embed.addFields(rewardFields);
+  
+  embed.setFooter({ 
+    text: `Streak: ${user.dailyReward.streak}/7 days • Next reward in 24 hours • Higher streaks = Better rewards!` 
+  });
 
   // Add user level up notifications
   if (userLevelResult.leveledUp) {
