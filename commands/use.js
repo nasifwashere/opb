@@ -144,13 +144,9 @@ async function execute(message, args) {
       effectMessage = 'Your team gains a speed boost for 1 hour!';
       break;
     case 'reset_pulls': {
-      // Robustly reset all pull-related stats
-      if (!user.pullData) user.pullData = {};
-      user.pullData.dailyPulls = 0;
-      user.pullData.lastReset = Date.now();
-      user.pulls = [];
-      user.lastPull = 0;
-      await user.save();
+      // Use new per-user pull reset logic
+      const { resetUserPulls } = require('../utils/pullresets.js');
+      await resetUserPulls(user);
       // Reload user from DB to ensure fresh state
       user = await User.findOne({ userId: user.userId || user.id });
       const pullsRemaining = 5 - (user.pullData?.dailyPulls || 0);
