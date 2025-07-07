@@ -163,6 +163,14 @@ async function execute(message, args) {
     experience: userCard.experience || 0
   };
 
+  // Preserve equipped item if present
+  if (user.equipped && user.equipped[userCard.name]) {
+    const equippedItem = user.equipped[userCard.name];
+    // Remove from old card name, add to new evolved card name
+    delete user.equipped[userCard.name];
+    user.equipped[evolvedCard.name] = equippedItem;
+  }
+
   // Transform all duplicates of the original card to the evolved form
   transformAllDuplicatesToEvolution(user, evolvedCard.name, evolvedCard);
 
