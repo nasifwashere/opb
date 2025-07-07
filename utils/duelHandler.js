@@ -3,6 +3,9 @@ const User = require('../db/models/User.js');
 const { calculateDamage } = require('./battleSystem.js');
 const { createProfessionalTeamDisplay, createEnemyDisplay, createBattleLogDisplay } = require('./uiHelpers.js');
 
+// Turn timeout duration (2 minutes)
+const TURN_TIMEOUT = 2 * 60 * 1000;
+
 async function handleDuelAction(interaction, client) {
     try {
         const battleData = client.battles.get(interaction.message.id);
@@ -22,6 +25,9 @@ async function handleDuelAction(interaction, client) {
                 ephemeral: true 
             });
         }
+
+        // Clear the current turn timeout since player took action
+        clearTurnTimeout(battleData);
 
         await interaction.deferUpdate();
 
@@ -84,6 +90,9 @@ async function handleDuelAttack(interaction, battleData, client) {
     battleData.turn++;
     
     await updateDuelDisplay(interaction, battleData, client);
+    
+    // Set up timeout for the new current player
+    setupTurnTimeout(battleData, client);
 }
 
 async function handleDuelDefend(interaction, battleData, client) {
@@ -99,6 +108,9 @@ async function handleDuelDefend(interaction, battleData, client) {
     battleData.turn++;
     
     await updateDuelDisplay(interaction, battleData, client);
+    
+    // Set up timeout for the new current player
+    setupTurnTimeout(battleData, client);
 }
 
 async function handleDuelItems(interaction, battleData, client) {
@@ -123,7 +135,8 @@ async function updateDuelDisplay(interaction, battleData, client) {
     const embed = new EmbedBuilder()
         .setTitle('PvP Duel Battle')
         .setDescription(`**Turn ${turn}** • **${currentPlayer === player1.data.id ? player1.data.username : player2.data.username}'s Turn**`)
-        .setColor(0x2b2d31);
+        .setColor(0x2b2d31)
+        .setFooter({ text: '⏰ You have 2 minutes per turn or you forfeit!' });
 
     // Enhanced team displays using the same style as explore
     const team1Display = createProfessionalTeamDisplay(
@@ -192,6 +205,9 @@ async function endDuel(messageId, client, reason, winner = null) {
         const battleData = client.battles.get(messageId);
         if (!battleData) return;
 
+        // Clear any active timeout
+        clearTurnTimeout(battleData);
+
         const User = require('../db/models/User.js');
         const { player1, player2 } = battleData;
 
@@ -213,7 +229,7 @@ async function endDuel(messageId, client, reason, winner = null) {
             let bountyMessage = '';
             let isBountyTarget = false;
 
-            if (winner && reason !== 'timeout') {
+            if (winner) {
                 const winnerUser = winner.id === user1.userId ? user1 : user2;
                 const loserUser = winner.id === user1.userId ? user2 : user1;
 
@@ -285,7 +301,8 @@ async function endDuel(messageId, client, reason, winner = null) {
                 .setColor(winner ? 0x2ecc71 : 0x2b2d31);
 
             if (winner) {
-                finalEmbed.setDescription(`**${winner.username}** wins the duel!${bountyMessage}`);
+                const winType = reason === 'timeout' ? ' by timeout' : '';
+                finalEmbed.setDescription(`**${winner.username}** wins the duel${winType}!${bountyMessage}`);
             } else {
                 finalEmbed.setDescription('The duel has ended.');
             }
@@ -308,8 +325,47 @@ async function endDuel(messageId, client, reason, winner = null) {
     }
 }
 
+// Set up turn timeout for inactive players
+function setupTurnTimeout(battleData, client) {
+    // Clear any existing timeout
+    clearTurnTimeout(battleData);
+    
+    console.log(`[DUEL TIMEOUT] Setting up 2-minute timeout for ${getCurrentPlayerName(battleData)}`);
+    
+    battleData.turnTimeout = setTimeout(async () => {
+        console.log(`[DUEL TIMEOUT] Player ${getCurrentPlayerName(battleData)} timed out!`);
+        
+        // Determine winner (the player who DIDN'T timeout)
+        const { player1, player2, currentPlayer } = battleData;
+        const winner = currentPlayer === player1.data.id ? player2.data : player1.data;
+        const loser = currentPlayer === player1.data.id ? player1.data : player2.data;
+        
+        // Add timeout message to battle log
+        battleData.battleLog.push(`⏰ ${loser.username} failed to respond within 2 minutes and forfeits!`);
+        
+        // End the duel with timeout reason
+        await endDuel(battleData.messageId, client, 'timeout', winner);
+    }, TURN_TIMEOUT);
+}
+
+// Clear existing turn timeout
+function clearTurnTimeout(battleData) {
+    if (battleData.turnTimeout) {
+        clearTimeout(battleData.turnTimeout);
+        battleData.turnTimeout = null;
+    }
+}
+
+// Get current player name for logging
+function getCurrentPlayerName(battleData) {
+    const { player1, player2, currentPlayer } = battleData;
+    return currentPlayer === player1.data.id ? player1.data.username : player2.data.username;
+}
+
 module.exports = {
     handleDuelAction,
     updateDuelDisplay,
-    endDuel
+    endDuel,
+    setupTurnTimeout,
+    clearTurnTimeout
 };

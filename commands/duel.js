@@ -80,7 +80,7 @@ function createDuelEmbed(player1, player2, player1Team, player2Team, battleLog, 
   }
 
   if (!winner) {
-    embed.setFooter({ text: 'Use the buttons below to take action.' });
+    embed.setFooter({ text: 'Use the buttons below to take action. ⏰ You have 2 minutes per turn!' });
   }
 
   return embed;
@@ -345,10 +345,15 @@ async function startDuel(message, user, opponent, challenger, challenged, duelMe
       currentPlayer: challenger.id,
       turn: 1,
       battleLog: [`⚔️ Duel started: ${challenger.username} vs ${challenged.username}!`],
-      startTime: Date.now()
+      startTime: Date.now(),
+      turnTimeout: null // Will store the timeout for inactive players
     };
 
     client.battles.set(battleMessage.id, battleData);
+    
+    // Set up initial turn timeout for the starting player
+    const { setupTurnTimeout } = require('../utils/duelHandler.js');
+    setupTurnTimeout(battleData, client);
     
     // The actual battle interaction handling is done in index.js via duelHandler
     
