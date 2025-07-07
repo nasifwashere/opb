@@ -261,5 +261,6 @@ module.exports = {
   getActiveCard,
   healCard,
   resetTeamHP,
-  processTempBuffs
+  processTempBuffs,
+  findShopItem // Exported for use in other modules
 };
