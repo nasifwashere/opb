@@ -34,7 +34,6 @@ async function execute(message, args) {
   }
 
   const now = Date.now();
-  
   // Initialize bounty target if missing
   if (!user.bountyTarget) {
     user.bountyTarget = {
@@ -45,6 +44,19 @@ async function execute(message, args) {
       cooldownUntil: 0,
       isActive: false
     };
+  }
+
+  // If cooldown is over, clear old target so a new one can be assigned
+  if (user.bountyTarget.cooldownUntil > 0 && user.bountyTarget.cooldownUntil <= now) {
+    user.bountyTarget = {
+      userId: null,
+      username: null,
+      targetBounty: 0,
+      assignedAt: 0,
+      cooldownUntil: 0,
+      isActive: false
+    };
+    await user.save();
   }
 
   // Check if user has an active bounty target
@@ -69,14 +81,9 @@ async function execute(message, args) {
           value: `Next reroll available in ${formatTime(timeLeft)}`, 
           inline: false
         });
-      } else {
-        embed.addFields({
-          name: 'Reroll Available', 
-          value: 'You can get a new bounty target after defeating this one!', 
-          inline: false
-        });
+        return message.reply({ embeds: [embed] });
       }
-      return message.reply({ embeds: [embed] });
+      // If cooldown is over, the old target will have been cleared above, so this block won't run
     } else {
       // Target no longer exists, clear bounty
       user.bountyTarget.isActive = false;
