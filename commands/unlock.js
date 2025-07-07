@@ -5,12 +5,41 @@ function normalize(str) {
   return String(str || '').replace(/\s+/g, '').toLowerCase();
 }
 
+function fuzzyFindCard(cards, input) {
+  if (!cards || cards.length === 0) return null;
+  
+  const normInput = normalize(input);
+  
+  // First try exact match
+  let match = cards.find(card => normalize(card.name) === normInput);
+  if (match) return match;
+  
+  // Then try partial matches with scoring
+  let bestMatch = null;
+  let bestScore = 0;
+
+  for (const card of cards) {
+    const normName = normalize(card.name);
+    let score = 0;
+
+    if (normName.includes(normInput)) score = 2;
+    else if (normName.startsWith(normInput)) score = 1;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = card;
+    }
+  }
+
+  return bestMatch;
+}
+
 function findUserCard(user, cardName) {
-  return user.cards?.find(c => normalize(c.name) === normalize(cardName));
+  return fuzzyFindCard(user.cards, cardName);
 }
 
 function findCaseCard(user, cardName) {
-  return user.case?.find(c => normalize(c.name) === normalize(cardName));
+  return fuzzyFindCard(user.case, cardName);
 }
 
 const data = new SlashCommandBuilder()

@@ -292,7 +292,7 @@ async function execute(message, args) {
       .setColor(0x2b2d31)
       .setFooter({ text: 'Team updated' });
     
-    await message.reply({ embeds: [embed] });
+    return message.reply({ embeds: [embed] });
   }
 
   // Display team (default behavior)

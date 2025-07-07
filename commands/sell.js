@@ -49,16 +49,74 @@ function calculateItemSellValue(itemName) {
   return 10; // Default if not found
 }
 
+function fuzzyFindCard(cards, input) {
+  if (!cards || cards.length === 0) return null;
+  
+  const normInput = normalize(input);
+  
+  // First try exact match
+  let match = cards.find(card => normalize(card.name) === normInput);
+  if (match) return match;
+  
+  // Then try partial matches with scoring
+  let bestMatch = null;
+  let bestScore = 0;
+
+  for (const card of cards) {
+    const normName = normalize(card.name);
+    let score = 0;
+
+    if (normName.includes(normInput)) score = 2;
+    else if (normName.startsWith(normInput)) score = 1;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = card;
+    }
+  }
+
+  return bestMatch;
+}
+
+function fuzzyFindItem(items, input) {
+  if (!items || items.length === 0) return null;
+  
+  const normInput = normalize(input);
+  
+  // First try exact match
+  let match = items.find(item => normalize(item) === normInput);
+  if (match) return match;
+  
+  // Then try partial matches with scoring
+  let bestMatch = null;
+  let bestScore = 0;
+
+  for (const item of items) {
+    const normName = normalize(item);
+    let score = 0;
+
+    if (normName.includes(normInput)) score = 2;
+    else if (normName.startsWith(normInput)) score = 1;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = item;
+    }
+  }
+
+  return bestMatch;
+}
+
 function findCard(cardName) {
   return allCards.find(c => normalize(c.name) === normalize(cardName));
 }
 
 function findUserCard(user, cardName) {
-  return user.cards?.find(c => normalize(c.name) === normalize(cardName));
+  return fuzzyFindCard(user.cards, cardName);
 }
 
 function findUserItem(user, itemName) {
-  return user.inventory?.find(i => normalize(i) === normalize(itemName));
+  return fuzzyFindItem(user.inventory, itemName);
 }
 
 const data = new SlashCommandBuilder()

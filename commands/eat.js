@@ -11,6 +11,35 @@ function normalize(str) {
   return String(str || '').replace(/\s+/g, '').toLowerCase();
 }
 
+function fuzzyFindCard(cards, input) {
+  if (!cards || cards.length === 0) return null;
+  
+  const normInput = normalize(input);
+  
+  // First try exact match
+  let match = cards.find(card => normalize(card.name) === normInput);
+  if (match) return match;
+  
+  // Then try partial matches with scoring
+  let bestMatch = null;
+  let bestScore = 0;
+
+  for (const card of cards) {
+    const normName = normalize(card.name);
+    let score = 0;
+
+    if (normName.includes(normInput)) score = 2;
+    else if (normName.startsWith(normInput)) score = 1;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = card;
+    }
+  }
+
+  return bestMatch;
+}
+
 function findShopFruit(fruitName) {
   const normalized = normalize(fruitName);
   const allFruits = [
@@ -59,10 +88,10 @@ async function execute(message, args) {
   if (invIndex === -1) {
     return message.reply(`You do not have any ${shopFruit.name} in your inventory.`);
   }
-  // Find the card
-  const card = (user.cards || []).find(c => normalize(c.name) === normalize(cardName));
+  // Find the card with fuzzy matching
+  const card = fuzzyFindCard(user.cards || [], cardName);
   if (!card) {
-    return message.reply(`You don't own a card named **${cardName}**.`);
+    return message.reply(`You don't own a card named **${cardName}**. Try using partial names like "luffy" or "gear"!`);
   }
   // Check if card already ate a devil fruit
   if (card.eatenFruit) {

@@ -680,6 +680,9 @@ async function handleNarrative(message, user, stageData, currentLocation) {
         
         await saveUserWithRetry(user);
         
+        // Add footer with stage info
+        embed.setFooter({ text: `Stage ${user.stage} • Use 'op map' to see your progress` });
+        
         await message.reply({ embeds: [embed] });
     } catch (error) {
         console.error('Error in handleNarrative:', error);
@@ -742,6 +745,9 @@ async function handleChoice(message, user, stageData, currentLocation, client) {
             }
             
             await saveUserWithRetry(user);
+            
+            // Add footer with stage info
+            resultEmbed.setFooter({ text: `Stage ${user.stage} • Use 'op map' to see your progress` });
             
             await choiceMessage.edit({ embeds: [resultEmbed], components: [] });
         } catch (error) {
@@ -1554,6 +1560,9 @@ async function handleBattleVictory(interaction, user, battleMessage, battleLog) 
         user.recentLevelUps = [];
     }
     
+    // Add footer with stage info
+    victoryEmbed.setFooter({ text: `Stage ${user.stage} • Use 'op map' to see your progress` });
+    
     await battleMessage.edit({ embeds: [victoryEmbed], components: [] });
 }
 
@@ -1573,7 +1582,8 @@ async function handleBattleDefeat(interaction, user, battleMessage, battleLog) {
     const defeatEmbed = new EmbedBuilder()
         .setTitle('<:zorosad:1390838584369746022> Defeat!')
         .setDescription(battleLog + '\n\n**You were defeated!**')
-        .setColor(0xe74c3c);
+        .setColor(0xe74c3c)
+        .setFooter({ text: `Stage ${user.stage} • Use 'op map' to see your progress` });
     
     await battleMessage.edit({ embeds: [defeatEmbed], components: [] });
 }

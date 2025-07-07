@@ -310,8 +310,9 @@ async function execute(message) {
     if (addResult && addResult.attachedToTraining) {
         description += `\n\n🎯 **Attached to training card!**\nThis duplicate has been attached to **${addResult.trainingCardName}** currently in training.\nWhen training finishes, you'll receive both the trained card and this duplicate.`;
     }
-    // Fix footer for pulls remaining
-    let pullsLeftText = pullsRemaining === 0 ? '0 pulls remaining this reset' : `${pullsRemaining} pulls remaining this reset`;
+    // Fix footer for pulls remaining (calculate after the pull is made)
+    const pullsLeft = DAILY_PULL_LIMIT - user.pullData.dailyPulls;
+    let pullsLeftText = pullsLeft === 0 ? '0 pulls remaining this reset' : `${pullsLeft} pulls remaining this reset`;
     const footerText = addResult && addResult.attachedToTraining 
         ? `Pulled by ${message.author.username} • Attached to training card • ${pullsLeftText}`
         : `Pulled by ${message.author.username} • ${pullsLeftText}`;
