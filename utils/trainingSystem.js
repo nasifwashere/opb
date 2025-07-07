@@ -180,10 +180,18 @@ async function stopTraining(userId, cardName) {
             if (!user.training) user.training = [];
             if (!user.cards) user.cards = [];
 
-            // Find the card in training
-            const trainingIndex = user.training.findIndex(trainingCard => 
+            // Try exact match first
+            let trainingIndex = user.training.findIndex(trainingCard => 
                 normalize(trainingCard.cardName) === normalize(cardName)
             );
+
+            // If not found, use fuzzy matching
+            if (trainingIndex === -1) {
+                const match = fuzzyFindCard(user.training || [], cardName);
+                if (match) {
+                    trainingIndex = user.training.findIndex(trainingCard => trainingCard === match);
+                }
+            }
 
             if (trainingIndex === -1) {
                 return { success: false, message: `**${cardName}** is not currently in training.` };
