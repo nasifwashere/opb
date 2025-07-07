@@ -35,23 +35,26 @@ function cardEmbed(cardInstance, cardDef, ownerName, index, total, user, duplica
 
   const { calculateCardStats } = require('../utils/levelSystem.js');
   const level = cardInstance.level || (cardInstance.timesUpgraded >= 0 ? cardInstance.timesUpgraded + 1 : 1);
-  const stats = calculateCardStats(cardDef, level);
-
+  let stats = calculateCardStats(cardDef, level);
   let { power, health, speed } = stats;
 
-  // Ensure stats are valid numbers
-  power = (isNaN(power) || power === null || power === undefined) ? 10 : Math.floor(Number(power));
-  health = (isNaN(health) || health === null || health === undefined) ? 50 : Math.floor(Number(health));
-  speed = (isNaN(speed) || speed === null || speed === undefined) ? 30 : Math.floor(Number(speed));
-
-          // Equipment bonuses are now handled by the new equipment system
-        let boostText = '';
-        let equippedItem = user && user.equipped && user.equipped[cardDef.name];
-        
-        if (equippedItem) {
-            // Equipment bonuses are calculated in the display - this is just for compatibility
-            boostText = `\n**${equippedItem} equipped!**`;
-        }
+  // Apply equipment bonuses
+  let equippedItem = user && user.equipped && user.equipped[cardDef.name];
+  let boostText = '';
+  if (equippedItem) {
+    // Use shop system for stat boosts
+    const { findShopItem } = require('../utils/battleSystem.js');
+    const equipmentData = findShopItem(equippedItem);
+    if (equipmentData && equipmentData.statBoost) {
+      const boosts = equipmentData.statBoost;
+      if (boosts.power) power = Math.ceil(power * (1 + boosts.power / 100));
+      if (boosts.health) health = Math.ceil(health * (1 + boosts.health / 100));
+      if (boosts.speed) speed = Math.ceil(speed * (1 + boosts.speed / 100));
+      boostText = `\n**${equippedItem} equipped!**`;
+    } else {
+      boostText = `\n**${equippedItem} equipped!**`;
+    }
+  }
 
   const rankMultipliers = {
     'C': 0.08,
@@ -223,11 +226,19 @@ async function execute(message, args) {
       let normCard = normalize(currentCardDef.name);
       let equippedItem = user && user.equipped && user.equipped[normCard];
       let boostText = '';
-
-              if (equippedItem) {
-            // Equipment bonuses are handled by the new system in mycard.js and team.js
-            boostText = `\n**Equipment**: ${equippedItem}`;
+      if (equippedItem) {
+        const { findShopItem } = require('../utils/battleSystem.js');
+        const equipmentData = findShopItem(equippedItem);
+        if (equipmentData && equipmentData.statBoost) {
+          const boosts = equipmentData.statBoost;
+          if (boosts.power) power = Math.ceil(power * (1 + boosts.power / 100));
+          if (boosts.health) health = Math.ceil(health * (1 + boosts.health / 100));
+          if (boosts.speed) speed = Math.ceil(speed * (1 + boosts.speed / 100));
+          boostText = `\n**Equipment**: ${equippedItem}`;
+        } else {
+          boostText = `\n**Equipment**: ${equippedItem}`;
         }
+      }
 
       const rankMultipliers = {
         'C': 0.08,

@@ -50,7 +50,6 @@ async function execute(message, args) {
   // Check if user has an active bounty target
   if (user.bountyTarget.isActive && user.bountyTarget.userId) {
     const targetUser = await User.findOne({ userId: user.bountyTarget.userId });
-    
     if (targetUser) {
       const embed = new EmbedBuilder()
         .setTitle('<:zorolaugh:1390838553889476719> Active Bounty Target')
@@ -73,17 +72,22 @@ async function execute(message, args) {
       } else {
         embed.addFields({
           name: 'Reroll Available', 
-          value: 'You can get a new bounty target!', 
+          value: 'You can get a new bounty target after defeating this one!', 
           inline: false
         });
       }
-
       return message.reply({ embeds: [embed] });
     } else {
       // Target no longer exists, clear bounty
       user.bountyTarget.isActive = false;
       await user.save();
     }
+  }
+
+  // Only assign a new target if no active target (or target was cleared above)
+  if (user.bountyTarget.isActive && user.bountyTarget.userId) {
+    // Still have an active target, don't assign a new one
+    return message.reply('You already have an active bounty target. Defeat them before getting a new one!');
   }
 
   // Check cooldown

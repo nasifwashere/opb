@@ -307,37 +307,24 @@ async function execute(message, args) {
       // Find card definition
       const cardDef = allCards.find(c => normalize(c.name) === normalize(userCard.name));
       if (cardDef) {
-        // Prioritize level field, fallback to timesUpgraded + 1 for legacy cards, minimum level 1
         const level = userCard.level >= 1 ? userCard.level : (userCard.timesUpgraded ? userCard.timesUpgraded + 1 : 1);
-        const stats = calculateCardStats(cardDef, level);
-
-        // Apply equipment bonuses using new system
+        let stats = calculateCardStats(cardDef, level);
         let { power, health, speed } = stats;
-
-        // Check for equipped items
+        // Apply equipment bonuses using new system
         const equipped = user.equipped;
         if (equipped) {
           const equippedItem = equipped[cardDef.name];
-          
           if (equippedItem) {
+            const { findShopItem } = require('../utils/battleSystem.js');
             const equipmentData = findShopItem(equippedItem);
             if (equipmentData && equipmentData.statBoost) {
               const boosts = equipmentData.statBoost;
-              
-              // Apply percentage boosts
-              if (boosts.power) {
-                power = Math.ceil(power * (1 + boosts.power / 100));
-              }
-              if (boosts.health) {
-                health = Math.ceil(health * (1 + boosts.health / 100));
-              }
-              if (boosts.speed) {
-                speed = Math.ceil(speed * (1 + boosts.speed / 100));
-              }
+              if (boosts.power) power = Math.ceil(power * (1 + boosts.power / 100));
+              if (boosts.health) health = Math.ceil(health * (1 + boosts.health / 100));
+              if (boosts.speed) speed = Math.ceil(speed * (1 + boosts.speed / 100));
             }
           }
         }
-
         const cardData = {
           ...userCard,
           displayName: userCard.name,
