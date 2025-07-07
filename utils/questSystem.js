@@ -9,7 +9,7 @@ const path = require('path');
 const questsPath = path.resolve('data', 'quests.json');
 
 // Configuration for quest logging - set to false to reduce spam
-const ENABLE_QUEST_LOGGING = true; // Enabled for debugging quest duplication issue
+const ENABLE_QUEST_LOGGING = false; // Disabled after fixing quest duplication issue
 
 // Silent logging function that only logs when debugging is enabled
 function questLog(message) {
