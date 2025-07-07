@@ -343,6 +343,8 @@ function addToInventory(user, item) {
     if (!user.inventory) user.inventory = [];
     const normItem = normalizeItemName(item);
     user.inventory.push(normItem);
+    // Mark inventory as modified so Mongoose saves the changes
+    user.markModified('inventory');
 }
 
 async function addXP(user, amount) {
@@ -522,6 +524,8 @@ function useInventoryItem(user, itemName) {
     
     // Remove item from inventory
     user.inventory.splice(itemIndex, 1);
+    // Mark inventory as modified so Mongoose saves the changes
+    user.markModified('inventory');
     
     // Return item effects
     const itemEffects = {
