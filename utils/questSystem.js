@@ -9,7 +9,7 @@ const path = require('path');
 const questsPath = path.resolve('data', 'quests.json');
 
 // Configuration for quest logging - set to false to reduce spam
-const ENABLE_QUEST_LOGGING = false; // Disabled after debugging confirmed working
+const ENABLE_QUEST_LOGGING = true; // Enabled for debugging quest duplication issue
 
 // Silent logging function that only logs when debugging is enabled
 function questLog(message) {
@@ -171,37 +171,12 @@ async function updateQuestProgress(user, actionType, amount = 1) {
                     questLog(`[QUEST] Updated ${quest.questId}: ${requirement.type} ${activeQuest.progress[requirement.type]}/${requirement.target}`);
                 }
                 
-                // Special handling for specific quest types
+                // Special handling for specific quest types that need custom logic
                 if (requirement.type === 'team_full' && actionType === 'team_change') {
                     if (user.team && user.team.length >= 3) {
                         activeQuest.progress['team_full'] = 1;
                         hasMatchingRequirement = true;
                     }
-                }
-                
-                if (requirement.type === 'saga_complete' && actionType === 'saga_complete') {
-                    activeQuest.progress['saga_complete'] = (activeQuest.progress['saga_complete'] || 0) + amount;
-                    hasMatchingRequirement = true;
-                }
-                
-                if (requirement.type === 'battle_win' && actionType === 'battle_win') {
-                    activeQuest.progress['battle_win'] = (activeQuest.progress['battle_win'] || 0) + amount;
-                    hasMatchingRequirement = true;
-                }
-                
-                if (requirement.type === 'pull' && actionType === 'pull') {
-                    activeQuest.progress['pull'] = (activeQuest.progress['pull'] || 0) + amount;
-                    hasMatchingRequirement = true;
-                }
-                
-                if (requirement.type === 'level_up' && actionType === 'level_up') {
-                    activeQuest.progress['level_up'] = (activeQuest.progress['level_up'] || 0) + amount;
-                    hasMatchingRequirement = true;
-                }
-                
-                if (requirement.type === 'explore' && actionType === 'explore') {
-                    activeQuest.progress['explore'] = (activeQuest.progress['explore'] || 0) + amount;
-                    hasMatchingRequirement = true;
                 }
                 
                 // Check if this requirement is completed

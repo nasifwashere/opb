@@ -66,8 +66,11 @@ async function execute(message, args, client) {
 
   if (timeSinceLastGamble >= cooldownTime) {
     // Reset gambling opportunities
+    console.log(`[GAMBLE DEBUG] Resetting gambling data for user ${userId}`);
     user.gamblingData.remainingGambles = 3;
     user.gamblingData.lastGamble = Date.now();
+    await user.save(); // Save the reset to prevent inconsistency
+    console.log(`[GAMBLE DEBUG] Reset complete: ${user.gamblingData.remainingGambles}/3 gambles`);
   }
 
   if (user.gamblingData.remainingGambles <= 0) {
@@ -134,7 +137,10 @@ async function execute(message, args, client) {
 
     // Get fresh user data
     const freshUser = await User.findOne({ userId });
+    console.log(`[GAMBLE DEBUG] Fresh user gambles: ${freshUser?.gamblingData?.remainingGambles || 'undefined'}/3`);
+    
     if (!freshUser || freshUser.gamblingData.remainingGambles <= 0) {
+      console.log(`[GAMBLE DEBUG] No gambles remaining for user ${userId}`);
       await interaction.editReply({
         embeds: [new EmbedBuilder()
           .setColor(0x2b2d31)
