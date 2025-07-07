@@ -144,33 +144,17 @@ async function execute(message, args) {
       effectMessage = 'Your team gains a speed boost for 1 hour!';
       break;
     case 'reset_pulls': {
-      // Force reset all pull-related stats using resetSystem
-      const resetSystem = require('../utils/resetSystem.js');
-      if (typeof resetSystem.forceResetUserPulls === 'function') {
-        await resetSystem.forceResetUserPulls(user); // Always await and let it save the user
-        // Reload user from DB to ensure fresh state
-        user = await require('../db/models/User.js').findOne({ userId: user.userId || user.id });
-        console.log(`[DEBUG] Reset token used by ${userId}, pulls reset.`);
-      } else {
-        // Fallback: manual reset
-        if (!user.pullData) {
-          user.pullData = {
-            dailyPulls: 0,
-            lastReset: Date.now()
-          };
-        } else {
-          user.pullData.dailyPulls = 0;
-          user.pullData.lastReset = Date.now();
-        }
-        if (user.pulls) {
-          user.pulls = [];
-        }
-        user.lastPull = 0;
-        await user.save(); // Persist fallback reset
-        // Reload user from DB to ensure fresh state
-        user = await require('../db/models/User.js').findOne({ userId: user.userId || user.id });
-      }
-      effectMessage = 'Your pull statistics have been reset! You can now pull cards again.';
+      // Robustly reset all pull-related stats
+      if (!user.pullData) user.pullData = {};
+      user.pullData.dailyPulls = 0;
+      user.pullData.lastReset = Date.now();
+      user.pulls = [];
+      user.lastPull = 0;
+      await user.save();
+      // Reload user from DB to ensure fresh state
+      user = await User.findOne({ userId: user.userId || user.id });
+      const pullsRemaining = 5 - (user.pullData?.dailyPulls || 0);
+      effectMessage = `Your pull statistics have been reset! You can now pull cards again. Pulls remaining: **${pullsRemaining}/5**.`;
       break;
     }
   }
