@@ -207,14 +207,41 @@ async function execute(message) {
     // Calculate pulls remaining at the start
     const pullsRemaining = DAILY_PULL_LIMIT - user.pullData.dailyPulls;
 
-    // Check daily pull limit
+    // Check pull limit
     if (user.pullData.dailyPulls >= DAILY_PULL_LIMIT) {
+        // Calculate time left until next reset
+        let nextResetTime;
+        if (global.nextPullReset) {
+            nextResetTime = global.nextPullReset.getTime();
+        } else {
+            const pullResetInterval = 5 * 60 * 60 * 1000; // 5 hours
+            const lastReset = user.pullData?.lastReset || user.lastPull || 0;
+            nextResetTime = lastReset + pullResetInterval;
+        }
+        const now = Date.now();
+        let msLeft = nextResetTime - now;
+        if (msLeft < 0) msLeft = 0;
+        // Format time left
+        function prettyTime(ms) {
+            if (ms <= 0) return "Ready";
+            let seconds = Math.floor(ms / 1000);
+            let minutes = Math.floor(seconds / 60);
+            let hours = Math.floor(minutes / 60);
+            seconds = seconds % 60;
+            minutes = minutes % 60;
+            hours = hours % 24;
+            let out = [];
+            if (hours > 0) out.push(`${hours}h`);
+            if (minutes > 0) out.push(`${minutes}m`);
+            if (out.length === 0) out.push(`${seconds}s`);
+            return out.join(" ");
+        }
         return message.reply({
             embeds: [new EmbedBuilder()
-                .setColor(0xff6b6b)
-                .setTitle('Daily Pull Limit Reached!')
-                .setDescription(`You've used all **${DAILY_PULL_LIMIT}** of your daily pulls!\n\n⏰ **Next reset:** Check \`op timers\` for reset time\n\n**Pulls used:** ${user.pullData.dailyPulls}/${DAILY_PULL_LIMIT} (0 remaining)`)
-                .setFooter({ text: 'Pulls reset every 5 hours globally' })
+                .setColor(0x14532d) // dark green
+                .setTitle('Pull Limit Reached')
+                .setDescription(`You've reached the pull limit for this reset!\n\n⏰ **Next reset:** ${prettyTime(msLeft)}`)
+                .setFooter({ text: `Pulls reset in ${prettyTime(msLeft)}` })
             ]
         });
     }
@@ -283,9 +310,11 @@ async function execute(message) {
     if (addResult && addResult.attachedToTraining) {
         description += `\n\n🎯 **Attached to training card!**\nThis duplicate has been attached to **${addResult.trainingCardName}** currently in training.\nWhen training finishes, you'll receive both the trained card and this duplicate.`;
     }
+    // Fix footer for pulls remaining
+    let pullsLeftText = pullsRemaining === 0 ? '0 pulls remaining this reset' : `${pullsRemaining} pulls remaining this reset`;
     const footerText = addResult && addResult.attachedToTraining 
-        ? `Pulled by ${message.author.username} • Attached to training card • ${pullsRemaining} pulls remaining today`
-        : `Pulled by ${message.author.username} • ${pullsRemaining} pulls remaining today`;
+        ? `Pulled by ${message.author.username} • Attached to training card • ${pullsLeftText}`
+        : `Pulled by ${message.author.username} • ${pullsLeftText}`;
     const embed = new EmbedBuilder()
         .setColor(rankSet.color)
         .setTitle(`**${card.name}**`)
