@@ -345,6 +345,40 @@
       "uses": 1
     },
     {
+      "name": "Time Crystal",
+      "price": 500,
+      "description": "Instantly removes all exploration cooldowns",
+      "type": "consumable",
+      "available": true,
+      "category": "utility",
+      "rarity": "uncommon",
+      "uses": 1,
+      "effect": "clear_explore_cooldowns"
+    },
+    {
+      "name": "Energy Potion",
+      "price": 300,
+      "description": "Removes defeat cooldown",
+      "type": "consumable",
+      "available": true,
+      "category": "utility",
+      "rarity": "common",
+      "uses": 1,
+      "effect": "clear_defeat_cooldown"
+    },
+    {
+      "name": "Energy Drink",
+      "price": 750,
+      "description": "Temporary speed boost for your team",
+      "type": "consumable",
+      "available": true,
+      "category": "utility",
+      "rarity": "uncommon",
+      "uses": 1,
+      "effect": "speed_boost",
+      "duration": 3600000
+    },
+    {
       "name": "Reset Token",
       "price": 1000,
       "description": "Resets your pull statistics and gives you a fresh start",
@@ -352,7 +386,8 @@
       "available": true,
       "category": "utility",
       "rarity": "rare",
-      "uses": 1
+      "uses": 1,
+      "effect": "reset_pulls"
     }
   ],
   "cards": [],

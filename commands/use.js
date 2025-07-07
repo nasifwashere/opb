@@ -136,9 +136,10 @@ async function execute(message, args) {
       break;
     case 'speed_boost':
       if (!user.activeBoosts) user.activeBoosts = [];
+      const duration = shopItem.duration || USABLE_ITEMS['energydrink'].duration;
       user.activeBoosts.push({
         type: 'speed_boost',
-        expiresAt: now + shopItem.duration,
+        expiresAt: now + duration,
         multiplier: 1.5
       });
       effectMessage = 'Your team gains a speed boost for 1 hour!';
