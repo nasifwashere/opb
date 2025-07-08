@@ -93,9 +93,12 @@ async function execute(message, args, client) {
             await message.reply(response);
         }
 
-        // Start the reset timer if not already running
-        if (!client.resetTimer) {
-            startResetTimer(client);
+        // Reload config and timers in resetSystem if available
+        if (client.resetSystem && typeof client.resetSystem.loadConfig === 'function') {
+            await client.resetSystem.loadConfig();
+            if (typeof client.resetSystem.startResetTimers === 'function') {
+                client.resetSystem.startResetTimers();
+            }
         }
 
     } catch (error) {
@@ -104,52 +107,4 @@ async function execute(message, args, client) {
     }
 }
 
-function startResetTimer(client) {
-    // Use global synchronized reset time
-    const nextReset = global.nextPullReset;
-    const now = new Date();
-    const timeUntilReset = nextReset - now;
-
-    console.log(`Next pull reset in ${timeUntilReset / 1000 / 60} minutes`);
-
-    client.resetTimer = setTimeout(async () => {
-        await sendResetNotification(client);
-        // Update global reset time for next reset
-        global.nextPullReset = new Date(global.nextPullReset.getTime() + 5 * 60 * 60 * 1000);
-        // Set up next reset (5 hours later)
-        client.resetTimer = setInterval(() => {
-            sendResetNotification(client);
-            global.nextPullReset = new Date(global.nextPullReset.getTime() + 5 * 60 * 60 * 1000);
-        }, 5 * 60 * 60 * 1000); // 5 hours
-    }, timeUntilReset);
-}
-
-async function sendResetNotification(client) {
-    try {
-        const configData = await fs.readFile(CONFIG_PATH, 'utf8');
-        const config = JSON.parse(configData);
-
-        if (!config.resetChannelId) return;
-
-        const channel = client.channels.cache.get(config.resetChannelId);
-        if (!channel) return;
-
-        const embed = new EmbedBuilder()
-            .setTitle('🔄 Pull Reset!')
-            .setDescription('Your daily pulls have been reset! Use `op pull` to get new cards!')
-            .setColor(0x00ff00)
-            .setTimestamp();
-
-        await channel.send({ 
-            content: '<@&1389619213492158464>', 
-            embeds: [embed] 
-        });
-
-        console.log('Reset notification sent');
-
-    } catch (error) {
-        console.error('Error sending reset notification:', error);
-    }
-}
-
-module.exports = { data, textData, execute, startResetTimer };
+module.exports = { data, textData, execute };
