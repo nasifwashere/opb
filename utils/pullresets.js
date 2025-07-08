@@ -10,13 +10,11 @@ const resetSystem = require('./resetSystem.js');
  */
 async function resetUserPulls(user) {
   if (!user.pullData) user.pullData = {};
-  // Ensure lastReset is at least the global lastPullReset
-  const globalLastPullReset = resetSystem.config?.lastPullReset || 0;
   const now = Date.now();
   user.pullData.dailyPulls = 0;
-  user.pullData.lastReset = Math.max(now, globalLastPullReset);
+  user.pullData.lastReset = now;
   user.pulls = [];
-  user.lastPull = Math.max(now, globalLastPullReset);
+  user.lastPull = now;
   await user.save();
 }
 

@@ -2,7 +2,7 @@
   "potions": [
     {
       "name": "Basic Potion",
-      "price": 50,
+      "price": 200,
       "description": "Restores 10% HP to a card during battle",
       "type": "potion",
       "available": true,
@@ -12,7 +12,7 @@
     },
     {
       "name": "Normal Potion",
-      "price": 100,
+      "price": 500,
       "description": "Restores 20% HP to a card during battle",
       "type": "potion",
       "available": true,
@@ -22,7 +22,7 @@
     },
     {
       "name": "Max Potion",
-      "price": 200,
+      "price": 2000,
       "description": "Restores 30% HP to a card during battle",
       "type": "potion",
       "available": true,
@@ -86,7 +86,7 @@
     },
     {
       "name": "Wado Ichimonji",
-      "price": 5000,
+      "price": 3500,
       "description": "Zoro's katana that boosts fighting stats by 15%",
       "type": "equipment",
       "subtype": "sword",
@@ -293,7 +293,7 @@
     },
     {
       "name": "Napoleon",
-      "price": 30000,
+      "price": 40000,
       "description": "Big Mom's sword that boosts all stats by 30%",
       "type": "equipment",
       "subtype": "sword",
@@ -336,7 +336,7 @@
   "items": [
     {
       "name": "Raid Ticket",
-      "price": 1000,
+      "price": 10000,
       "description": "Allows crew captains to start raids against powerful bosses",
       "type": "consumable",
       "available": true,

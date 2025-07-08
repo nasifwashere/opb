@@ -177,23 +177,28 @@ async function execute(message) {
     
     // Always reload user from DB to ensure latest state (fixes reset token issue)
     user = await User.findOne({ userId });
-    
+
     let needsSave = false;
-    
+
     // Set default saga if missing
     if (!user.saga) {
         user.saga = "East Blue";
         needsSave = true;
     }
-    
-    // Check if user needs individual reset (fallback in case global reset missed them)
+
+    // Get the most recent reset time (global or per-user)
     const resetSystem = require('../utils/resetSystem.js');
-    if (resetSystem.shouldResetUserPulls(user)) {
+    const globalLastPullReset = resetSystem.config?.lastPullReset || 0;
+    const userLastReset = user.pullData?.lastReset || 0;
+    const mostRecentReset = Math.max(globalLastPullReset, userLastReset);
+
+    // Only reset pulls if both are in the past
+    if (user.pullData.dailyPulls > 0 && user.pullData.lastReset < mostRecentReset) {
         user.pullData.dailyPulls = 0;
-        user.pullData.lastReset = Date.now();
+        user.pullData.lastReset = mostRecentReset;
         needsSave = true;
     }
-    
+
     // Save any pending changes before checking limits
     if (needsSave) {
         try {
@@ -203,21 +208,15 @@ async function execute(message) {
             return message.reply('There was an error processing your request. Please try again.');
         }
     }
-    
+
     // Calculate pulls remaining at the start
     const pullsRemaining = DAILY_PULL_LIMIT - user.pullData.dailyPulls;
 
     // Check pull limit
     if (user.pullData.dailyPulls >= DAILY_PULL_LIMIT) {
         // Calculate time left until next reset
-        let nextResetTime;
-        if (global.nextPullReset) {
-            nextResetTime = global.nextPullReset.getTime();
-        } else {
-            const pullResetInterval = 5 * 60 * 60 * 1000; // 5 hours
-            const lastReset = user.pullData?.lastReset || user.lastPull || 0;
-            nextResetTime = lastReset + pullResetInterval;
-        }
+        const pullResetInterval = 5 * 60 * 60 * 1000; // 5 hours
+        const nextResetTime = mostRecentReset + pullResetInterval;
         const now = Date.now();
         let msLeft = nextResetTime - now;
         if (msLeft < 0) msLeft = 0;
