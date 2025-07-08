@@ -99,10 +99,17 @@ async function execute(message, args) {
   }
 
   // Find the card in user's collection
-  const userCard = findUserCard(user, cardName);
-  if (!userCard) {
+  // Instead of just one, get all matching cards
+  const matchingCards = user.cards.filter(c => normalize(c.name) === normalize(cardName));
+  if (!matchingCards || matchingCards.length === 0) {
     return message.reply(`Please state a valid card name. You don't own "${cardName}". Try using partial names like "luffy" or "gear"!`);
   }
+  // Pick the one with the highest level
+  const userCard = matchingCards.reduce((prev, curr) => {
+    const prevLevel = prev.level || prev.timesUpgraded + 1 || 1;
+    const currLevel = curr.level || curr.timesUpgraded + 1 || 1;
+    return currLevel > prevLevel ? curr : prev;
+  });
 
   // Find the card definition
   const cardDef = findCard(userCard.name);
@@ -153,7 +160,8 @@ async function execute(message, args) {
   const duplicateCount = user.cards.filter(c => normalize(c.name) === normalize(userCard.name)).length;
 
   // Update the first card to evolved form, preserving level and experience
-  const cardIndex = user.cards.findIndex(c => normalize(c.name) === normalize(userCard.name));
+  // Find the index of the card we actually used
+  const cardIndex = user.cards.findIndex(c => c === userCard);
   user.cards[cardIndex] = {
     name: evolvedCard.name,
     rank: evolvedCard.rank,
