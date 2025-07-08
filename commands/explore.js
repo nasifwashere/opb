@@ -600,7 +600,7 @@ async function execute(message, args, client) {
                     user.completedSagas.push('East Blue');
                     await saveUserWithRetry(user);
                 }
-                return message.reply('Congratulations! You have completed all available locations in the East Blue saga! More adventures await in future updates! use `op sail` to explore the grand line!');
+                return message.reply('Congratulations! You have completed all available locations in the East Blue saga! More adventures await in future updates, use `op sail` to sail infinitely through grand line.');
             }
             
             // IMPORTANT: Actually advance the stage and save progress

@@ -380,7 +380,7 @@
     },
     {
       "name": "Reset Token",
-      "price": 1000,
+      "price": 2500,
       "description": "Resets your pull statistics and gives you a fresh start",
       "type": "consumable",
       "available": true,

@@ -239,15 +239,15 @@ async function execute(message, args) {
 
   // Build reward fields
   const rewardFields = [
-    { name: '💰 Beli', value: `+${reward.beli.toLocaleString()}`, inline: true },
-    { name: '⭐ XP', value: `+${reward.xp.toLocaleString()}`, inline: true }
+    { name: 'Beli', value: `+${reward.beli.toLocaleString()}`, inline: true },
+    { name: 'XP', value: `+${reward.xp.toLocaleString()}`, inline: true }
   ];
   
   if (reward.guaranteedBounty) {
-    rewardFields.push({ name: '🏴‍☠️ Bounty', value: `+${reward.guaranteedBounty.toLocaleString()}`, inline: true });
+    rewardFields.push({ name: 'Bounty', value: `+${reward.guaranteedBounty.toLocaleString()}`, inline: true });
   }
   
-  rewardFields.push({ name: '🎒 Items', value: itemDisplay, inline: false });
+  rewardFields.push({ name: 'Items', value: itemDisplay, inline: false });
   
   embed.addFields(rewardFields);
   
