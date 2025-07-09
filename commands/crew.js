@@ -8,9 +8,6 @@ const data = new SlashCommandBuilder()
 
 const MAX_CREW_SIZE = 10;
 
-// Store for crew data (in a real implementation, this would be in the database)
-const crews = new Map();
-
 // Load all crews from DB on startup (after mongoose is connected)
 function loadCrewsFromDB() {
   Crew.find({}).then(allCrews => {
@@ -76,22 +73,12 @@ async function handleCreateCrew(message, user, args) {
     const crewId = `crew_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     // Create crew data
-    const crewData = {
-        id: crewId,
-        name: crewName,
-        captain: user.userId,
-        members: [user.userId],
-        createdAt: new Date(),
-        invites: new Map()
-    };
-    crews.set(crewId, crewData);
-    // Persist to DB
     await Crew.create({
       id: crewId,
       name: crewName,
       captain: user.userId,
       members: [user.userId],
-      createdAt: crewData.createdAt,
+      createdAt: new Date(),
       invites: {},
     });
 
@@ -128,18 +115,13 @@ async function handleInviteUser(message, user, args) {
         return message.reply('Only the crew captain can invite new members.');
     }
 
-    const crew = crews.get(user.crewId);
+    const crew = await Crew.findOne({ id: user.crewId });
     if (!crew) {
-        // Try to rebuild crew data from database
-        const rebuilt = await rebuildCrewData(user.crewId);
-        if (rebuilt) {
-            // Retry invite logic once after successful rebuild
-            const crewRetry = crews.get(user.crewId);
-            if (crewRetry) {
-                return await handleInviteUser(message, user, args);
-            }
-        }
-        return message.reply('Crew data not found. Please try again.');
+        // Crew data not found, reset user crew status
+        user.crewId = null;
+        user.crewRole = null;
+        await user.save();
+        return message.reply('Crew data not found. Your crew status has been reset.');
     }
 
     const mentionedUser = message.mentions.users.first();
@@ -176,18 +158,11 @@ async function handleInviteUser(message, user, args) {
     }
 
     // Check if already invited
-    if (crew.invites.has(mentionedUser.id)) {
+    if (crew.invites && crew.invites[mentionedUser.id]) {
         return message.reply('This user already has a pending invite to your crew!');
     }
 
     // Store invite
-    crew.invites.set(mentionedUser.id, {
-        invitedBy: user.userId,
-        invitedAt: Date.now(),
-        crewId: crew.id,
-        crewName: crew.name
-    });
-    // Persist invite to DB
     await Crew.updateOne({ id: crew.id }, { $set: { [`invites.${mentionedUser.id}`]: {
       invitedBy: user.userId,
       invitedAt: Date.now(),
@@ -216,13 +191,11 @@ async function handleInviteUser(message, user, args) {
         await mentionedUser.send({ embeds: [inviteEmbed] });
         // Set expiry
         setTimeout(async () => {
-            crew.invites.delete(mentionedUser.id);
             await Crew.updateOne({ id: crew.id }, { $unset: { [`invites.${mentionedUser.id}`]: "" } });
         }, 24 * 60 * 60 * 1000);
 
         return message.reply(`<:check:1390838766821965955> Crew invitation sent to ${mentionedUser.username}!`);
     } catch (error) {
-        crew.invites.delete(mentionedUser.id);
         await Crew.updateOne({ id: crew.id }, { $unset: { [`invites.${mentionedUser.id}`]: "" } });
         return message.reply('Failed to send crew invitation. The user may have DMs disabled.');
     }
@@ -233,9 +206,9 @@ async function handleLeaveCrew(message, user) {
         return message.reply('You are not in a crew!');
     }
 
-    const crew = crews.get(user.crewId);
+    const crew = await Crew.findOne({ id: user.crewId });
     if (!crew) {
-        // Clean up corrupted crew data
+        // Crew data not found, reset user crew status
         user.crewId = null;
         user.crewRole = null;
         await user.save();
@@ -250,11 +223,9 @@ async function handleLeaveCrew(message, user) {
     }
 
     // Remove from crew
-    crew.members = crew.members.filter(id => id !== user.userId);
     await Crew.updateOne({ id: crew.id }, { $pull: { members: user.userId } });
     // If captain leaves and they're the only member, disband crew
     if (isCaptain && crew.members.length === 0) {
-        crews.delete(crew.id);
         await Crew.deleteOne({ id: crew.id });
 
         // Update user
@@ -303,13 +274,12 @@ async function handleKickMember(message, user, args) {
         return message.reply('You cannot kick yourself! Use `op crew leave` instead.');
     }
 
-    const crew = crews.get(user.crewId);
+    const crew = await Crew.findOne({ id: user.crewId });
     if (!crew || !crew.members.includes(mentionedUser.id)) {
         return message.reply('This user is not in your crew!');
     }
 
     // Remove from crew
-    crew.members = crew.members.filter(id => id !== mentionedUser.id);
     await Crew.updateOne({ id: crew.id }, { $pull: { members: mentionedUser.id } });
 
     // Update kicked user
@@ -343,11 +313,13 @@ async function showCrewInfo(message, user) {
         return message.reply({ embeds: [embed] });
     }
 
-    const crew = crews.get(user.crewId);
+    const crew = await Crew.findOne({ id: user.crewId });
     if (!crew) {
-        // Try to rebuild crew data
-        await rebuildCrewData(user.crewId);
-        return message.reply('Crew data not found. Please contact an administrator.');
+        // Crew data not found, reset user crew status
+        user.crewId = null;
+        user.crewRole = null;
+        await user.save();
+        return message.reply('Crew data not found. Your crew status has been reset.');
     }
 
     // Get all crew members with their bounties
@@ -389,21 +361,6 @@ async function showCrewInfo(message, user) {
         .setFooter({ text: `Created ${crew.createdAt.toLocaleDateString()}` });
 
     return message.reply({ embeds: [embed] });
-}
-
-async function rebuildCrewData(crewId) {
-    const crewDoc = await Crew.findOne({ id: crewId });
-    if (!crewDoc) return false;
-    const crewData = {
-        id: crewDoc.id,
-        name: crewDoc.name,
-        captain: crewDoc.captain,
-        members: crewDoc.members,
-        createdAt: crewDoc.createdAt,
-        invites: new Map(Object.entries(crewDoc.invites || {})),
-    };
-    crews.set(crewId, crewData);
-    return true;
 }
 
 // Handle accept/decline commands
