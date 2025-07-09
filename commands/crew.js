@@ -70,6 +70,7 @@ async function handleCreateCrew(message, user, args) {
     // Update user
     user.crewId = crewId;
     user.crewRole = 'captain';
+    user.crewName = crewName; // Store crew name for persistence
     await user.save();
 
     const embed = new EmbedBuilder()
@@ -358,16 +359,16 @@ async function rebuildCrewData(crewId) {
     
     const captain = members.find(m => m.crewRole === 'captain');
     if (!captain) return false;
-    
+    // Use the captain's crewName if available, else fallback
+    const crewName = captain.crewName || `Crew_${crewId.slice(-8)}`;
     const crewData = {
         id: crewId,
-        name: `Crew_${crewId.slice(-8)}`, // Fallback name
+        name: crewName,
         captain: captain.userId,
         members: members.map(m => m.userId),
         createdAt: new Date(),
         invites: new Map()
     };
-    
     crews.set(crewId, crewData);
     return true;
 }

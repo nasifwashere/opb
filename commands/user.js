@@ -74,7 +74,8 @@ async function execute(message, args, client) {
         });
         if (crewMember) {
           const roleText = user.crewRole === 'captain' ? 'Captain' : 'Member';
-          crewInfo = `Crew ${user.crewId.slice(-8)} (${roleText})`;
+          const crewName = crewMember.crewName || `Crew ${user.crewId.slice(-8)}`;
+          crewInfo = `${crewName} (${roleText})`;
         } else {
           crewInfo = 'Independent Pirate';
         }
