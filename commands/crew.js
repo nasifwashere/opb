@@ -408,5 +408,5 @@ async function handleCrewResponse(message, user, accept) {
     return message.reply(`<:check:1390838766821965955> You joined **${inviteCrew.name}**! Welcome aboard, pirate!`);
 }
 
-// Export the crews map so raids can access it
-module.exports = { data, execute, crews, handleCrewResponse, MAX_CREW_SIZE };
+// Remove crews from exports, only export what is defined
+module.exports = { data, execute, handleCrewResponse, MAX_CREW_SIZE };

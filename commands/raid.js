@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const User = require('../db/models/User.js');
-const { crews } = require('./crew.js');
+const Crew = require('../db/models/Crew.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -133,7 +133,7 @@ async function handleStartRaid(message, user, bossName) {
     }
 
     // Get crew data
-    const crew = crews.get(user.crewId);
+    const crew = await Crew.findById(user.crewId);
     if (!crew) {
         return message.reply('Crew data not found!');
     }
