@@ -309,8 +309,8 @@ async function startRaidBattle(raid, client) {
                         username: user.username,
                         card: {
                             name: card.name,
-                            hp: card.health,
-                            maxHp: card.health,
+                            hp: card.health, // Fix: use health for hp
+                            maxHp: card.health, // Fix: use health for maxHp
                             attack: card.power,
                             speed: card.speed
                         }
@@ -348,12 +348,14 @@ async function runRaidBattleTurns(raid, client) {
             totalPlayerDmg += dmg;
             turnLog.push(`**${p.username}** did a damage of **${dmg}** to Boss **${boss.name}**`);
         }
-        // Boss attacks each player
-        for (const p of players) {
-            if (p.card.hp <= 0) continue;
-            const dmg = Math.max(1, boss.attack - Math.floor(p.card.hp / 20));
-            p.card.hp = Math.max(0, p.card.hp - dmg);
-            turnLog.push(`Boss **${boss.name}** did a damage of **${dmg}** to **${p.username}**`);
+        // Boss attacks ONE random alive player
+        const alivePlayers = players.filter(p => p.card.hp > 0);
+        if (alivePlayers.length > 0 && boss.hp > 0) {
+            const targetIdx = Math.floor(Math.random() * alivePlayers.length);
+            const target = alivePlayers[targetIdx];
+            const dmg = Math.max(1, boss.attack - Math.floor(target.card.hp / 20));
+            target.card.hp = Math.max(0, target.card.hp - dmg);
+            turnLog.push(`Boss **${boss.name}** did a damage of **${dmg}** to **${target.username}**`);
         }
         battleLog.push(...turnLog);
         // Update embed after each turn
