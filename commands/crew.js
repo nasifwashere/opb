@@ -102,7 +102,14 @@ async function handleInviteUser(message, user, args) {
     const crew = crews.get(user.crewId);
     if (!crew) {
         // Try to rebuild crew data from database
-        await rebuildCrewData(user.crewId);
+        const rebuilt = await rebuildCrewData(user.crewId);
+        if (rebuilt) {
+            // Retry invite logic once after successful rebuild
+            const crewRetry = crews.get(user.crewId);
+            if (crewRetry) {
+                return await handleInviteUser(message, user, args);
+            }
+        }
         return message.reply('Crew data not found. Please try again.');
     }
 
