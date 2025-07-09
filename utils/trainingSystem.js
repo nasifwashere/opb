@@ -508,6 +508,7 @@ module.exports = {
     getTrainingStatus,
     autoUntrainExpiredCards,
     isCardInTraining,
+    fuzzyFindCard,
     MAX_TRAINING_CARDS,
     MAX_TRAINING_TIME
 };
