@@ -463,4 +463,11 @@ async function showRaidHelp(message) {
     return message.reply({ embeds: [embed] });
 }
 
+// Update the raid lobby message (placeholder for now)
+async function updateRaidMessage(raid) {
+    // In a real implementation, this would update the original raid lobby message with the current participants, etc.
+    // For now, this is a no-op to prevent errors.
+    return;
+}
+
 module.exports = { data, execute, activeRaids, EAST_BLUE_BOSSES };
