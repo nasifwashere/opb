@@ -237,7 +237,7 @@ async function execute(message) {
         }
         return message.reply({
             embeds: [new EmbedBuilder()
-                .setColor(0x14532d) // dark green
+                .setColor(0xff775c) // light red
                 .setTitle('Pull Limit Reached')
                 .setDescription(`You've reached the pull limit for this reset!\n\n⏰ **Next reset:** ${prettyTime(msLeft)}`)
                 .setFooter({ text: `Pulls reset in ${prettyTime(msLeft)}` })
