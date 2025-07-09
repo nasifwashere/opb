@@ -264,7 +264,8 @@ client.on('messageCreate', async message => {
     const args = messageContent.slice(3).trim().split(/ +/); // Remove "op " (3 characters)
     const commandName = args.shift().toLowerCase();
     
-    const command = client.commands.get(commandName);
+    const command = client.commands.get(commandName)
+        || Array.from(client.commands.values()).find(cmd => Array.isArray(cmd.data?.aliases) && cmd.data.aliases.includes(commandName));
     if (!command) return;
     
     try {
