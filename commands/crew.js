@@ -8,6 +8,9 @@ const data = new SlashCommandBuilder()
 
 const MAX_CREW_SIZE = 10;
 
+// In-memory crews map
+const crews = new Map();
+
 // Load all crews from DB on startup (after mongoose is connected)
 function loadCrewsFromDB() {
   Crew.find({}).then(allCrews => {
@@ -409,4 +412,4 @@ async function handleCrewResponse(message, user, accept) {
 }
 
 // Remove crews from exports, only export what is defined
-module.exports = { data, execute, handleCrewResponse, MAX_CREW_SIZE };
+module.exports = { data, execute, handleCrewResponse, MAX_CREW_SIZE, crews, loadCrewsFromDB };
