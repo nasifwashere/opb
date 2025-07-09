@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 const User = require('../db/models/User.js');
 const Crew = require('../db/models/Crew.js');
 const { getBaseCardStats } = require('../utils/cardStats.js');
+const { calculateBattleStats } = require('../utils/battleSystem.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -294,30 +295,24 @@ async function startRaidBattle(raid, client) {
         raid.started = true;
         raid.turn = 1;
         raid.battleLog = [];
-        // Get all participants' battle cards
+        // Get all participants' battle cards using the same logic as duels/sailing
         const battleParticipants = [];
         for (const participant of raid.participants) {
             const user = await User.findOne({ userId: participant.userId });
             if (user && user.team && user.team.length > 0) {
-                const cardName = user.team[0];
-                const userCard = user.cards.find(c => c.name === cardName);
-                const baseStats = getBaseCardStats(cardName);
-                if (userCard && baseStats) {
-                    // Use base stats, then apply upgrades/level
-                    const level = userCard.level || 1;
-                    const timesUpgraded = userCard.timesUpgraded || 0;
-                    const hp = Math.floor((baseStats.hp + (level * 2)) * (1 + timesUpgraded * 0.1));
-                    const attack = Math.floor((baseStats.power + (level * 1.5)) * (1 + timesUpgraded * 0.1));
-                    const speed = Math.floor((baseStats.speed + (level * 1)) * (1 + timesUpgraded * 0.05));
+                const teamStats = calculateBattleStats(user);
+                if (teamStats && teamStats.length > 0) {
+                    // Use the first card in the team for the raid
+                    const card = teamStats[0];
                     battleParticipants.push({
                         userId: user.userId,
                         username: user.username,
                         card: {
-                            name: userCard.name,
-                            hp,
-                            maxHp: hp,
-                            attack,
-                            speed
+                            name: card.name,
+                            hp: card.health,
+                            maxHp: card.health,
+                            attack: card.power,
+                            speed: card.speed
                         }
                     });
                 }
@@ -442,17 +437,37 @@ async function announceRaidResult(raid, won, client) {
         const boss = raid.boss;
         let text = '';
         if (won) {
+            // Cap Beli at 10,000
+            const cappedBeli = Math.min(boss.rewards.beli, 10000);
+            // Filter out devil fruits/fragments
+            const filteredItems = (boss.rewards.items || []).filter(item => !/devil fruit|fragment/i.test(item));
             text = `Raid Victory!\n\nYour crew defeated **${boss.name}**!\n`;
             text += `Rewards:\n`;
             text += `• Bounty: ${boss.rewards.bounty.toLocaleString()}\n`;
-            text += `• Beli: ${boss.rewards.beli.toLocaleString()}\n`;
-            text += `• Items: ${boss.rewards.items.join(', ')}\n`;
+            text += `• Beli: ${cappedBeli.toLocaleString()}\n`;
+            text += `• Items: ${filteredItems.length > 0 ? filteredItems.join(', ') : 'None'}\n`;
             text += `• XP: ${boss.rewards.xp}`;
+            // Actually grant rewards to all participants
+            for (const p of raid.battleParticipants) {
+                const user = await User.findOne({ userId: p.userId });
+                if (user) {
+                    user.bounty = (user.bounty || 0) + boss.rewards.bounty;
+                    user.beli = (user.beli || 0) + cappedBeli;
+                    user.xp = (user.xp || 0) + boss.rewards.xp;
+                    // Add items to inventory
+                    if (filteredItems.length > 0) {
+                        user.inventory = user.inventory || [];
+                        for (const item of filteredItems) {
+                            user.inventory.push(item);
+                        }
+                    }
+                    await user.save();
+                }
+            }
         } else {
             text = `Raid Failed.\n\nYour crew was defeated by **${boss.name}**.`;
         }
         await channel.send(text);
-        // TODO: Actually grant rewards to users here if not already handled
     } catch (e) {
         console.error('Failed to announce raid result:', e);
     }

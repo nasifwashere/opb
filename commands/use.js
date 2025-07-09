@@ -35,6 +35,9 @@ const USABLE_ITEMS = {
   }
 };
 
+// Add raidticket to non-usable items
+const NON_USABLE_ITEMS = ['raidticket'];
+
 const data = new SlashCommandBuilder()
   .setName('use')
   .setDescription('Use consumable items from your inventory.');
@@ -81,7 +84,11 @@ async function execute(message, args) {
     }
   });
 
-  const itemName = args.join(' ').trim().toLowerCase().replace(/\s+/g, '');
+  const itemName = args.join(' ').trim().toLowerCase();
+  if (NON_USABLE_ITEMS.includes(itemName)) {
+    return message.reply('This item cannot be used directly. Use it by starting a raid.');
+  }
+
   const shopItem = allShopItems.find(i => i.name.toLowerCase().replace(/\s+/g, '') === itemName);
   if (!shopItem) {
     const embed = new EmbedBuilder()
