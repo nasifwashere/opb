@@ -170,7 +170,10 @@ const connectDB = async () => {
 };
 
 // Initialize database connection
-connectDB();
+connectDB().then(() => {
+    const { loadCrewsFromDB } = require('./commands/crew.js');
+    loadCrewsFromDB();
+});
 
 client.once('ready', async () => {
     console.log(`🚀 Ready! Logged in as ${client.user.tag}`);

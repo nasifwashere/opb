@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const User = require('../db/models/User.js');
+const Crew = require('../db/models/Crew.js');
 
 const data = new SlashCommandBuilder()
     .setName('crew')
@@ -9,6 +10,25 @@ const MAX_CREW_SIZE = 10;
 
 // Store for crew data (in a real implementation, this would be in the database)
 const crews = new Map();
+
+// Load all crews from DB on startup (after mongoose is connected)
+function loadCrewsFromDB() {
+  Crew.find({}).then(allCrews => {
+    for (const crewDoc of allCrews) {
+      crews.set(crewDoc.id, {
+        id: crewDoc.id,
+        name: crewDoc.name,
+        captain: crewDoc.captain,
+        members: crewDoc.members,
+        createdAt: crewDoc.createdAt,
+        invites: new Map(Object.entries(crewDoc.invites || {})),
+      });
+    }
+  }).catch(e => console.error('Crew DB load error:', e));
+}
+
+// Export loader for index.js to call after DB connect
+module.exports.loadCrewsFromDB = loadCrewsFromDB;
 
 async function execute(message, args) {
     const userId = message.author.id;
@@ -62,10 +82,18 @@ async function handleCreateCrew(message, user, args) {
         captain: user.userId,
         members: [user.userId],
         createdAt: new Date(),
-        invites: new Map() // pending invites
+        invites: new Map()
     };
-
     crews.set(crewId, crewData);
+    // Persist to DB
+    await Crew.create({
+      id: crewId,
+      name: crewName,
+      captain: user.userId,
+      members: [user.userId],
+      createdAt: crewData.createdAt,
+      invites: {},
+    });
 
     // Update user
     user.crewId = crewId;
@@ -159,6 +187,13 @@ async function handleInviteUser(message, user, args) {
         crewId: crew.id,
         crewName: crew.name
     });
+    // Persist invite to DB
+    await Crew.updateOne({ id: crew.id }, { $set: { [`invites.${mentionedUser.id}`]: {
+      invitedBy: user.userId,
+      invitedAt: Date.now(),
+      crewId: crew.id,
+      crewName: crew.name
+    } } });
 
     // Send invite embed
     const inviteEmbed = new EmbedBuilder()
@@ -179,15 +214,16 @@ async function handleInviteUser(message, user, args) {
 
     try {
         await mentionedUser.send({ embeds: [inviteEmbed] });
-        
         // Set expiry
-        setTimeout(() => {
+        setTimeout(async () => {
             crew.invites.delete(mentionedUser.id);
+            await Crew.updateOne({ id: crew.id }, { $unset: { [`invites.${mentionedUser.id}`]: "" } });
         }, 24 * 60 * 60 * 1000);
 
         return message.reply(`<:check:1390838766821965955> Crew invitation sent to ${mentionedUser.username}!`);
     } catch (error) {
         crew.invites.delete(mentionedUser.id);
+        await Crew.updateOne({ id: crew.id }, { $unset: { [`invites.${mentionedUser.id}`]: "" } });
         return message.reply('Failed to send crew invitation. The user may have DMs disabled.');
     }
 }
@@ -215,16 +251,17 @@ async function handleLeaveCrew(message, user) {
 
     // Remove from crew
     crew.members = crew.members.filter(id => id !== user.userId);
-    
+    await Crew.updateOne({ id: crew.id }, { $pull: { members: user.userId } });
     // If captain leaves and they're the only member, disband crew
     if (isCaptain && crew.members.length === 0) {
         crews.delete(crew.id);
-        
+        await Crew.deleteOne({ id: crew.id });
+
         // Update user
         user.crewId = null;
         user.crewRole = null;
         await user.save();
-        
+
         const embed = new EmbedBuilder()
             .setTitle('Crew Disbanded')
             .setDescription(`**${crewName}** has been disbanded`)
@@ -273,6 +310,7 @@ async function handleKickMember(message, user, args) {
 
     // Remove from crew
     crew.members = crew.members.filter(id => id !== mentionedUser.id);
+    await Crew.updateOne({ id: crew.id }, { $pull: { members: mentionedUser.id } });
 
     // Update kicked user
     const kickedUser = await User.findOne({ userId: mentionedUser.id });
@@ -354,20 +392,15 @@ async function showCrewInfo(message, user) {
 }
 
 async function rebuildCrewData(crewId) {
-    const members = await User.find({ crewId });
-    if (members.length === 0) return false;
-    
-    const captain = members.find(m => m.crewRole === 'captain');
-    if (!captain) return false;
-    // Use the captain's crewName if available, else fallback
-    const crewName = captain.crewName || `Crew_${crewId.slice(-8)}`;
+    const crewDoc = await Crew.findOne({ id: crewId });
+    if (!crewDoc) return false;
     const crewData = {
-        id: crewId,
-        name: crewName,
-        captain: captain.userId,
-        members: members.map(m => m.userId),
-        createdAt: new Date(),
-        invites: new Map()
+        id: crewDoc.id,
+        name: crewDoc.name,
+        captain: crewDoc.captain,
+        members: crewDoc.members,
+        createdAt: crewDoc.createdAt,
+        invites: new Map(Object.entries(crewDoc.invites || {})),
     };
     crews.set(crewId, crewData);
     return true;
@@ -397,6 +430,7 @@ async function handleCrewResponse(message, user, accept) {
     
     // Remove invite
     inviteCrew.invites.delete(user.userId);
+    await Crew.updateOne({ id: inviteCrew.id }, { $unset: { [`invites.${user.userId}`]: "" } });
     
     if (!accept) {
         return message.reply('You declined the crew invitation.');
@@ -409,6 +443,7 @@ async function handleCrewResponse(message, user, accept) {
     
     // Add to crew
     inviteCrew.members.push(user.userId);
+    await Crew.updateOne({ id: inviteCrew.id }, { $push: { members: user.userId } });
     user.crewId = inviteCrew.id;
     user.crewRole = 'member';
     await user.save();
