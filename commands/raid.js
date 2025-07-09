@@ -309,8 +309,8 @@ async function startRaidBattle(raid, client) {
                         username: user.username,
                         card: {
                             name: card.name,
-                            hp: card.health, // Fix: use health for hp
-                            maxHp: card.health, // Fix: use health for maxHp
+                            hp: typeof card.hp !== 'undefined' ? card.hp : (typeof card.health !== 'undefined' ? card.health : 1),
+                            maxHp: typeof card.maxHp !== 'undefined' ? card.maxHp : (typeof card.health !== 'undefined' ? card.health : 1),
                             attack: card.power,
                             speed: card.speed
                         }
