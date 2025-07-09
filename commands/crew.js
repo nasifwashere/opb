@@ -165,13 +165,32 @@ async function handleInviteUser(message, user, args) {
         return message.reply('This user already has a pending invite to your crew!');
     }
 
-    // Store invite
+    // Store invite in DB
     await Crew.updateOne({ id: crew.id }, { $set: { [`invites.${mentionedUser.id}`]: {
       invitedBy: user.userId,
       invitedAt: Date.now(),
       crewId: crew.id,
       crewName: crew.name
     } } });
+    // Store invite in memory
+    if (!crews.has(crew.id)) {
+      crews.set(crew.id, {
+        id: crew.id,
+        name: crew.name,
+        captain: crew.captain,
+        members: crew.members,
+        createdAt: crew.createdAt,
+        invites: new Map(),
+      });
+    }
+    const crewObj = crews.get(crew.id);
+    if (!crewObj.invites) crewObj.invites = new Map();
+    crewObj.invites.set(mentionedUser.id, {
+      invitedBy: user.userId,
+      invitedAt: Date.now(),
+      crewId: crew.id,
+      crewName: crew.name
+    });
 
     // Send invite embed
     const inviteEmbed = new EmbedBuilder()
