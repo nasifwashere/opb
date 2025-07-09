@@ -133,7 +133,7 @@ async function handleStartRaid(message, user, bossName) {
     }
 
     // Get crew data
-    const crew = await Crew.findById(user.crewId);
+    const crew = await Crew.findOne({ id: user.crewId });
     if (!crew) {
         return message.reply('Crew data not found!');
     }
