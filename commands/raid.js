@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const User = require('../db/models/User.js');
 const Crew = require('../db/models/Crew.js');
+const { getBaseCardStats } = require('../utils/cardStats.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -299,17 +300,24 @@ async function startRaidBattle(raid, client) {
             const user = await User.findOne({ userId: participant.userId });
             if (user && user.team && user.team.length > 0) {
                 const cardName = user.team[0];
-                const card = user.cards.find(c => c.name === cardName);
-                if (card) {
+                const userCard = user.cards.find(c => c.name === cardName);
+                const baseStats = getBaseCardStats(cardName);
+                if (userCard && baseStats) {
+                    // Use base stats, then apply upgrades/level
+                    const level = userCard.level || 1;
+                    const timesUpgraded = userCard.timesUpgraded || 0;
+                    const hp = Math.floor((baseStats.hp + (level * 2)) * (1 + timesUpgraded * 0.1));
+                    const attack = Math.floor((baseStats.power + (level * 1.5)) * (1 + timesUpgraded * 0.1));
+                    const speed = Math.floor((baseStats.speed + (level * 1)) * (1 + timesUpgraded * 0.05));
                     battleParticipants.push({
                         userId: user.userId,
                         username: user.username,
                         card: {
-                            name: card.name,
-                            hp: calculateCardHP(card),
-                            maxHp: calculateCardHP(card),
-                            attack: calculateCardAttack(card),
-                            speed: calculateCardSpeed(card)
+                            name: userCard.name,
+                            hp,
+                            maxHp: hp,
+                            attack,
+                            speed
                         }
                     });
                 }
@@ -363,6 +371,12 @@ async function runRaidBattleTurns(raid, client) {
     }
     // Final update
     await updateRaidBattleMessage(raid, boss, players, battleLog, turn, true, client);
+    // Announce result and rewards
+    if (boss.hp <= 0) {
+        await announceRaidResult(raid, true, client);
+    } else {
+        await announceRaidResult(raid, false, client);
+    }
 }
 
 async function updateRaidBattleMessage(raid, boss, players, battleLog, turn, finished = false, client) {
@@ -420,16 +434,28 @@ async function raidMessageEdit(raid, embed, client) {
     }
 }
 
-function calculateCardHP(card) {
-    return Math.floor((50 + (card.level || 1) * 10) * (1 + (card.timesUpgraded || 0) * 0.1));
-}
-
-function calculateCardAttack(card) {
-    return Math.floor((20 + (card.level || 1) * 5) * (1 + (card.timesUpgraded || 0) * 0.1));
-}
-
-function calculateCardSpeed(card) {
-    return Math.floor((30 + (card.level || 1) * 3) * (1 + (card.timesUpgraded || 0) * 0.05));
+// Announce raid result and rewards
+async function announceRaidResult(raid, won, client) {
+    try {
+        const channel = await client.channels.fetch(raid.channelId);
+        if (!channel) return;
+        const boss = raid.boss;
+        let text = '';
+        if (won) {
+            text = `Raid Victory!\n\nYour crew defeated **${boss.name}**!\n`;
+            text += `Rewards:\n`;
+            text += `• Bounty: ${boss.rewards.bounty.toLocaleString()}\n`;
+            text += `• Beli: ${boss.rewards.beli.toLocaleString()}\n`;
+            text += `• Items: ${boss.rewards.items.join(', ')}\n`;
+            text += `• XP: ${boss.rewards.xp}`;
+        } else {
+            text = `Raid Failed.\n\nYour crew was defeated by **${boss.name}**.`;
+        }
+        await channel.send(text);
+        // TODO: Actually grant rewards to users here if not already handled
+    } catch (e) {
+        console.error('Failed to announce raid result:', e);
+    }
 }
 
 async function showRaidHelp(message) {
