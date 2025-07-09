@@ -97,6 +97,7 @@ function groupItemsByCategory(inventory) {
 const data = new SlashCommandBuilder()
     .setName('inventory')
     .setDescription('View your inventory and items');
+data.aliases = ['inv'];
 
 async function execute(message, args) {
     const userId = message.author.id;

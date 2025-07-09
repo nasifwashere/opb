@@ -109,7 +109,18 @@ function createLeaderboardButtons(currentType, page, hasNext) {
 
 const data = new SlashCommandBuilder()
   .setName('leaderboard')
-  .setDescription('View top players in various categories.');
+  .setDescription('View top players in various categories.')
+  .addStringOption(option =>
+    option.setName('type')
+      .setDescription('The type of leaderboard to view')
+      .addChoices(
+        { name: 'Richest Pirates', value: 'beli' },
+        { name: 'Battle Champions', value: 'wins' },
+        { name: 'Most Wanted', value: 'bounty' }
+      )
+  );
+
+data.aliases = ['lb'];
 
 async function execute(message, args, client) {
     const userId = message.author.id;

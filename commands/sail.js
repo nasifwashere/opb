@@ -29,7 +29,8 @@ function getBountyForRank(rank) {
 
 const data = {
     name: 'sail',
-    description: 'Infinite grind mode: Sail an arc for endless rewards!'
+    description: 'Infinite grind mode: Sail an arc for endless rewards!',
+    aliases: ['s']
 };
 
 function getRandomInt(min, max) {

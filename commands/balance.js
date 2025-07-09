@@ -5,6 +5,8 @@ const data = new SlashCommandBuilder()
   .setName('balance')
   .setDescription('Show your current Beli balance.');
 
+data.aliases = ['bal'];
+
 async function execute(message, args) {
   const userId = message.author.id;
   const username = message.author.username;
