@@ -274,17 +274,14 @@ async function handleForceStartRaid(message, user) {
 
 async function startRaidBattle(raid) {
     try {
-        // Mark raid as started
         raid.started = true;
         raid.turn = 1;
         raid.battleLog = [];
-
         // Get all participants' battle cards
         const battleParticipants = [];
         for (const participant of raid.participants) {
             const user = await User.findOne({ userId: participant.userId });
             if (user && user.team && user.team.length > 0) {
-                // Use first card from team for now (in full implementation, they'd select)
                 const cardName = user.team[0];
                 const card = user.cards.find(c => c.name === cardName);
                 if (card) {
@@ -302,36 +299,104 @@ async function startRaidBattle(raid) {
                 }
             }
         }
-
         if (battleParticipants.length === 0) {
-            // No valid participants, cancel raid
             activeRaids.delete(raid.id);
             return;
         }
-
         raid.battleParticipants = battleParticipants;
-
-        await updateRaidBattleMessage(raid);
+        // Start the battle loop
+        await runRaidBattleTurns(raid);
     } catch (error) {
         console.error('Error starting raid battle:', error);
     }
 }
 
-async function updateRaidMessage(raid) {
+async function runRaidBattleTurns(raid) {
+    // Reset boss HP each time
+    raid.boss.hp = raid.boss.maxHp;
+    let boss = raid.boss;
+    let players = raid.battleParticipants;
+    let turn = 1;
+    let battleLog = [];
+    while (boss.hp > 0 && players.some(p => p.card.hp > 0)) {
+        let turnLog = [];
+        // Players attack boss
+        let totalPlayerDmg = 0;
+        for (const p of players) {
+            if (p.card.hp <= 0) continue;
+            const dmg = Math.max(1, p.card.attack - Math.floor(boss.defense / 4));
+            boss.hp = Math.max(0, boss.hp - dmg);
+            totalPlayerDmg += dmg;
+            turnLog.push(`**${p.username}** did a damage of **${dmg}** to Boss **${boss.name}**`);
+        }
+        // Boss attacks each player
+        for (const p of players) {
+            if (p.card.hp <= 0) continue;
+            const dmg = Math.max(1, boss.attack - Math.floor(p.card.hp / 20));
+            p.card.hp = Math.max(0, p.card.hp - dmg);
+            turnLog.push(`Boss **${boss.name}** did a damage of **${dmg}** to **${p.username}**`);
+        }
+        battleLog.push(...turnLog);
+        // Update embed after each turn
+        await updateRaidBattleMessage(raid, boss, players, battleLog, turn);
+        // End if boss or all players are dead
+        if (boss.hp <= 0 || players.every(p => p.card.hp <= 0)) break;
+        turn++;
+        // Wait 2 seconds between turns for dramatic effect
+        await new Promise(res => setTimeout(res, 2000));
+    }
+    // Final update
+    await updateRaidBattleMessage(raid, boss, players, battleLog, turn, true);
+}
+
+async function updateRaidBattleMessage(raid, boss, players, battleLog, turn, finished = false) {
     try {
-        // Implementation would update the raid message
-        console.log(`Updating raid ${raid.id} with ${raid.participants.length} participants`);
+        // Compose battle log (last 5 turns)
+        const logText = battleLog.slice(-10).join('\n');
+        // Boss stats
+        const bossStats = `\uD83D\uDC80 **Boss**\n${boss.name}\n\u2764\uFE0F ${boss.hp}/${boss.maxHp} | \u2694\uFE0F ${boss.attack} | \uD83D\uDDE1\uFE0F ${boss.defense} | \uD83D\uDCAA ${boss.speed}`;
+        // Player stats
+        const playerStats = players.map(p =>
+            `**${p.username}**\n${p.card.name}\n\u2764\uFE0F ${p.card.hp}/${p.card.maxHp} | \u2694\uFE0F ${p.card.attack} | \uD83D\uDCAA ${p.card.speed}`
+        ).join('\n\n');
+        // Result
+        let resultText = '';
+        if (finished) {
+            if (boss.hp <= 0) {
+                resultText = `\n\n<:skull:1390846865968205985> **Boss Defeated!**`;
+            } else {
+                resultText = `\n\n<:skull:1390846865968205985> **Raid Failed!**`;
+            }
+        }
+        // Build embed
+        const embed = new EmbedBuilder()
+            .setTitle(`${boss.name}'s Boss Raid`)
+            .setDescription(`**Battle Phase**\n${logText}${resultText}`)
+            .addFields(
+                { name: 'Boss', value: bossStats, inline: false },
+                { name: 'Raid Team', value: playerStats, inline: false }
+            )
+            .setColor(0xdc143c)
+            .setThumbnail(boss.image || null);
+        // Update or send message
+        // (In production, update the original message. Here, just send a new one for demo)
+        await raid.channelId && raid.messageId && raidMessageEdit(raid, embed);
     } catch (error) {
-        console.error('Error updating raid message:', error);
+        console.error('Error updating raid battle message:', error);
     }
 }
 
-async function updateRaidBattleMessage(raid) {
+// Helper to update the original raid message if possible
+async function raidMessageEdit(raid, embed) {
     try {
-        // Implementation would show battle interface
-        console.log(`Starting raid battle for ${raid.id}`);
-    } catch (error) {
-        console.error('Error updating raid battle message:', error);
+        const channel = await globalThis.client.channels.fetch(raid.channelId);
+        if (!channel) return;
+        const msg = await channel.messages.fetch(raid.messageId);
+        if (msg) await msg.edit({ embeds: [embed] });
+    } catch (e) {
+        // fallback: just send a new message
+        const channel = await globalThis.client.channels.fetch(raid.channelId);
+        if (channel) await channel.send({ embeds: [embed] });
     }
 }
 
