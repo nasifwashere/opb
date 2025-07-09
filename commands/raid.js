@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 const User = require('../db/models/User.js');
 const Crew = require('../db/models/Crew.js');
 const { getBaseCardStats } = require('../utils/cardStats.js');
-const { calculateBattleStats } = require('../utils/battleSystem.js');
+const { calculateBattleStats, calculateDamage } = require('../utils/battleSystem.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -343,7 +343,8 @@ async function runRaidBattleTurns(raid, client) {
         let totalPlayerDmg = 0;
         for (const p of players) {
             if (p.card.hp <= 0) continue;
-            const dmg = Math.max(1, p.card.attack - Math.floor(boss.defense / 4));
+            // Use battle logic for damage calculation
+            const dmg = calculateDamage(p.card, boss, 'normal');
             boss.hp = Math.max(0, boss.hp - dmg);
             totalPlayerDmg += dmg;
             turnLog.push(`**${p.username}** did a damage of **${dmg}** to Boss **${boss.name}**`);
