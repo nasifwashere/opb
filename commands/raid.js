@@ -200,21 +200,37 @@ async function handleAddToRaid(message, user, args) {
         return message.reply('The raid has already started!');
     }
 
-    // Check if user is already in raid (by userId)
+    // If a user mention is provided, add that user (captain only)
+    const mentionedUser = message.mentions.users.first();
+    if (mentionedUser) {
+        // Only captain can add others
+        if (user.crewRole !== 'captain') {
+            return message.reply('Only the crew captain can add members to the raid.');
+        }
+        // Check if mentioned user is in the crew
+        const targetUser = await User.findOne({ userId: mentionedUser.id });
+        if (!targetUser || targetUser.crewId !== raid.crewId) {
+            return message.reply('That user is not a member of your crew!');
+        }
+        // Check if already in raid
+        if (raid.participants.some(p => p.userId === mentionedUser.id)) {
+            return message.reply('That user is already in this raid!');
+        }
+        // Add mentioned user
+        raid.participants.push({ userId: mentionedUser.id, selectedCard: null, ready: false });
+        await updateRaidMessage(raid);
+        return message.reply(`Added ${mentionedUser.username} to the raid!`);
+    }
+
+    // Default: add self
     if (raid.participants.some(p => p.userId === user.userId)) {
         return message.reply('You are already in this raid!');
     }
-
-    // Check if user has crew permissions
     if (!user.crewId || user.crewId !== raid.crewId) {
         return message.reply('Only crew members can join this raid!');
     }
-
-    // Add user to raid
     raid.participants.push({ userId: user.userId, selectedCard: null, ready: false });
-
     await updateRaidMessage(raid);
-
     return message.reply('You joined the raid! Select your card for battle.');
 }
 
