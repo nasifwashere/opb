@@ -101,13 +101,13 @@ async function execute(message, args, client) {
         default:
             // Handle boss name for starting raid
             if (args.length > 0) {
-                return await handleStartRaid(message, user, args.join(' '));
+                return await handleStartRaid(message, user, args.join(' '), client);
             }
             return await showRaidHelp(message);
     }
 }
 
-async function handleStartRaid(message, user, bossName) {
+async function handleStartRaid(message, user, bossName, client) {
     // Check if user is captain
     if (!user.crewId || user.crewRole !== 'captain') {
         return message.reply('Only crew captains can start raids!');
@@ -182,7 +182,7 @@ async function handleStartRaid(message, user, bossName) {
     setTimeout(async () => {
         const currentRaid = activeRaids.get(raidId);
         if (currentRaid && !currentRaid.started) {
-            await startRaidBattle(currentRaid);
+            await startRaidBattle(currentRaid, client);
         }
     }, 5 * 60 * 1000);
 
@@ -268,7 +268,7 @@ async function handleForceStartRaid(message, user, client) {
         return message.reply('The raid has already started!');
     }
 
-    await startRaidBattle(raid, message.client || message.guild?.client || message._client || message.client || client);
+    await startRaidBattle(raid, client);
     return message.reply('Raid battle started!');
 }
 
@@ -305,7 +305,7 @@ async function startRaidBattle(raid, client) {
         }
         raid.battleParticipants = battleParticipants;
         // Start the battle loop
-        await runRaidBattleTurns(raid);
+        await runRaidBattleTurns(raid, client);
     } catch (error) {
         console.error('Error starting raid battle:', error);
     }
