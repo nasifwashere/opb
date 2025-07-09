@@ -102,18 +102,24 @@ function getEvolutionRequirements(card) {
 
 // Build info embed
 function infoEmbed(card, ownedCount, userCard) {
+  // Parse PHS (Power/Health/Speed)
+  let [power, health, speed] = (card.phs || '').split('/').map(s => parseInt(s.trim(), 10));
+  if (isNaN(power)) power = 0;
+  if (isNaN(health)) health = 0;
+  if (isNaN(speed)) speed = 0;
   let level = userCard?.level || userCard?.timesUpgraded + 1 || 1;
   if (!level) level = 1;
   const lockStatus = userCard?.locked ? ' 🔒' : '';
-  
+
   const embed = new EmbedBuilder()
     .setTitle(`[${card.rank}] ${card.name}${lockStatus}`)
     .setDescription(card.shortDesc)
     .setColor(0x2b2d31)
     .addFields(
-      { name: 'Level', value: `${level}`, inline: true },
-      { name: 'Owned', value: ownedCount === 0 ? 'Not owned' : `${ownedCount}`, inline: true },
-      { name: 'Stats', value: attackRange(card.phs, card.rank), inline: false }
+      { name: 'Power', value: `${power}`, inline: true },
+      { name: 'Health', value: `${health}`, inline: true },
+      { name: 'Speed', value: `${speed}`, inline: true },
+      { name: 'Attack', value: attackRange(card.phs, card.rank), inline: false }
     )
     .setFooter({ text: `Card Information • ${card.rank} Rank` });
 
