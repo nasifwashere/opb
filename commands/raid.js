@@ -200,8 +200,8 @@ async function handleAddToRaid(message, user, args) {
         return message.reply('The raid has already started!');
     }
 
-    // Check if user is already in raid
-    if (raid.participants.find(p => p.userId === user.userId)) {
+    // Check if user is already in raid (by userId)
+    if (raid.participants.some(p => p.userId === user.userId)) {
         return message.reply('You are already in this raid!');
     }
 
@@ -215,7 +215,7 @@ async function handleAddToRaid(message, user, args) {
 
     await updateRaidMessage(raid);
 
-    return message.reply('<:check:1390838766821965955> You joined the raid! Select your card for battle.');
+    return message.reply('You joined the raid! Select your card for battle.');
 }
 
 async function handleLeaveRaid(message, user) {
