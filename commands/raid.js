@@ -20,7 +20,7 @@ const EAST_BLUE_BOSSES = {
         attack: 85,
         defense: 60,
         speed: 75,
-        image: 'https://files.catbox.moe/n4x2q8.webp',
+        image: 'https://files.catbox.moe/p3cyod.png',
         rewards: {
             bounty: 100000,
             beli: 5000,
@@ -160,19 +160,19 @@ async function handleStartRaid(message, user, bossName, client) {
     activeRaids.set(raidId, raid);
 
     const embed = new EmbedBuilder()
-        .setTitle('🏴‍☠️ Raid Started!')
+        .setTitle('Raid Started')
         .setDescription([
-            `**Captain ${user.username}** has started a raid against **${boss.name}**!`,
+            `Captain **${user.username}** has started a raid against **${boss.name}**!`,
             '',
-            `**Raid starts in:** 5 minutes`,
-            `**Boss:** ${boss.name} (${boss.hp} HP)`,
-            `**Participants:** 1`,
+            `Raid starts in: 5 minutes`,
+            `Boss: ${boss.name} (${boss.hp} HP)` ,
+            `Participants: 1`,
             '',
             'Crew members can join with `op raid add @member`',
             'Select your card for battle and get ready!'
         ].join('\n'))
         .setThumbnail(boss.image)
-        .setColor(0xdc143c)
+        .setColor(0x23272a)
         .setFooter({ text: `Raid ID: ${raidId}` });
 
     const raidMessage = await message.reply({ embeds: [embed] });
@@ -354,29 +354,29 @@ async function updateRaidBattleMessage(raid, boss, players, battleLog, turn, fin
         // Compose battle log (last 5 turns)
         const logText = battleLog.slice(-10).join('\n');
         // Boss stats
-        const bossStats = `\uD83D\uDC80 **Boss**\n${boss.name}\n\u2764\uFE0F ${boss.hp}/${boss.maxHp} | \u2694\uFE0F ${boss.attack} | \uD83D\uDDE1\uFE0F ${boss.defense} | \uD83D\uDCAA ${boss.speed}`;
+        const bossStats = `Boss\n${boss.name}\nHP: ${boss.hp}/${boss.maxHp} | ATK: ${boss.attack} | DEF: ${boss.defense} | SPD: ${boss.speed}`;
         // Player stats
         const playerStats = players.map(p =>
-            `**${p.username}**\n${p.card.name}\n\u2764\uFE0F ${p.card.hp}/${p.card.maxHp} | \u2694\uFE0F ${p.card.attack} | \uD83D\uDCAA ${p.card.speed}`
+            `**${p.username}**\n${p.card.name}\nHP: ${p.card.hp}/${p.card.maxHp} | ATK: ${p.card.attack} | SPD: ${p.card.speed}`
         ).join('\n\n');
         // Result
         let resultText = '';
         if (finished) {
             if (boss.hp <= 0) {
-                resultText = `\n\n<:skull:1390846865968205985> **Boss Defeated!**`;
+                resultText = `\n\nBoss Defeated!`;
             } else {
-                resultText = `\n\n<:skull:1390846865968205985> **Raid Failed!**`;
+                resultText = `\n\nRaid Failed!`;
             }
         }
         // Build embed
         const embed = new EmbedBuilder()
-            .setTitle(`${boss.name}'s Boss Raid`)
-            .setDescription(`**Battle Phase**\n${logText}${resultText}`)
+            .setTitle(`${boss.name} Raid`)
+            .setDescription(`Battle Phase\n${logText}${resultText}`)
             .addFields(
                 { name: 'Boss', value: bossStats, inline: false },
                 { name: 'Raid Team', value: playerStats, inline: false }
             )
-            .setColor(0xdc143c)
+            .setColor(0x23272a)
             .setThumbnail(boss.image || null);
         // Update or send message
         // (In production, update the original message. Here, just send a new one for demo)
@@ -418,7 +418,7 @@ function calculateCardSpeed(card) {
 
 async function showRaidHelp(message) {
     const embed = new EmbedBuilder()
-        .setTitle('🏴‍☠️ Raid System')
+        .setTitle('Raid System')
         .setDescription([
             'Fight powerful bosses with your crew!',
             '',
@@ -441,7 +441,7 @@ async function showRaidHelp(message) {
             '• Only crew members can join raids',
             '• Raids auto-start after 5 minutes'
         ].join('\n'))
-        .setColor(0xdc143c)
+        .setColor(0x23272a)
         .setFooter({ text: 'Raid System Help' });
 
     return message.reply({ embeds: [embed] });
