@@ -79,7 +79,7 @@ function normalize(str) {
     return String(str || '').replace(/\s+/g, '').toLowerCase();
 }
 
-async function execute(message, args) {
+async function execute(message, args, client) {
     const userId = message.author.id;
     let user = await User.findOne({ userId });
 
@@ -95,7 +95,7 @@ async function execute(message, args) {
         case 'leave':
             return await handleLeaveRaid(message, user);
         case 'start':
-            return await handleForceStartRaid(message, user);
+            return await handleForceStartRaid(message, user, client);
         case 'cancel':
             return await handleCancelRaid(message, user);
         default:
@@ -258,7 +258,7 @@ async function handleCancelRaid(message, user) {
     return message.reply('Raid cancelled.');
 }
 
-async function handleForceStartRaid(message, user) {
+async function handleForceStartRaid(message, user, client) {
     const raid = Array.from(activeRaids.values()).find(r => r.captain === user.userId);
     if (!raid) {
         return message.reply('You are not the captain of any active raid!');
@@ -268,11 +268,11 @@ async function handleForceStartRaid(message, user) {
         return message.reply('The raid has already started!');
     }
 
-    await startRaidBattle(raid);
+    await startRaidBattle(raid, message.client || message.guild?.client || message._client || message.client || client);
     return message.reply('Raid battle started!');
 }
 
-async function startRaidBattle(raid) {
+async function startRaidBattle(raid, client) {
     try {
         raid.started = true;
         raid.turn = 1;
@@ -311,7 +311,7 @@ async function startRaidBattle(raid) {
     }
 }
 
-async function runRaidBattleTurns(raid) {
+async function runRaidBattleTurns(raid, client) {
     // Reset boss HP each time
     raid.boss.hp = raid.boss.maxHp;
     let boss = raid.boss;
@@ -338,7 +338,7 @@ async function runRaidBattleTurns(raid) {
         }
         battleLog.push(...turnLog);
         // Update embed after each turn
-        await updateRaidBattleMessage(raid, boss, players, battleLog, turn);
+        await updateRaidBattleMessage(raid, boss, players, battleLog, turn, false, client);
         // End if boss or all players are dead
         if (boss.hp <= 0 || players.every(p => p.card.hp <= 0)) break;
         turn++;
@@ -346,10 +346,10 @@ async function runRaidBattleTurns(raid) {
         await new Promise(res => setTimeout(res, 2000));
     }
     // Final update
-    await updateRaidBattleMessage(raid, boss, players, battleLog, turn, true);
+    await updateRaidBattleMessage(raid, boss, players, battleLog, turn, true, client);
 }
 
-async function updateRaidBattleMessage(raid, boss, players, battleLog, turn, finished = false) {
+async function updateRaidBattleMessage(raid, boss, players, battleLog, turn, finished = false, client) {
     try {
         // Compose battle log (last 5 turns)
         const logText = battleLog.slice(-10).join('\n');
@@ -380,23 +380,27 @@ async function updateRaidBattleMessage(raid, boss, players, battleLog, turn, fin
             .setThumbnail(boss.image || null);
         // Update or send message
         // (In production, update the original message. Here, just send a new one for demo)
-        await raid.channelId && raid.messageId && raidMessageEdit(raid, embed);
+        await raid.channelId && raid.messageId && raidMessageEdit(raid, embed, client);
     } catch (error) {
         console.error('Error updating raid battle message:', error);
     }
 }
 
 // Helper to update the original raid message if possible
-async function raidMessageEdit(raid, embed) {
+async function raidMessageEdit(raid, embed, client) {
     try {
-        const channel = await globalThis.client.channels.fetch(raid.channelId);
+        const channel = await client.channels.fetch(raid.channelId);
         if (!channel) return;
         const msg = await channel.messages.fetch(raid.messageId);
         if (msg) await msg.edit({ embeds: [embed] });
     } catch (e) {
         // fallback: just send a new message
-        const channel = await globalThis.client.channels.fetch(raid.channelId);
-        if (channel) await channel.send({ embeds: [embed] });
+        try {
+            const channel = await client.channels.fetch(raid.channelId);
+            if (channel) await channel.send({ embeds: [embed] });
+        } catch (err) {
+            console.error('Failed to send fallback raid message:', err);
+        }
     }
 }
 
