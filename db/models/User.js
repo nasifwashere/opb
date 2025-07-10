@@ -145,7 +145,8 @@ const userSchema = new mongoose.Schema({
   settings: {
     autoTeam: { type: Boolean, default: false },
     notifications: { type: Boolean, default: true },
-    publicProfile: { type: Boolean, default: true }
+    publicProfile: { type: Boolean, default: true },
+    duplicateCardHandling: { type: String, enum: ['autolevel', 'autosell'], default: 'autolevel' } // How to handle duplicate cards
   },
 
   // Administrative

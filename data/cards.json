@@ -702,5 +702,519 @@
     "image": "https://files.catbox.moe/49nuo9.webp",
     "evolvesFrom": null,
     "saga": "East Blue"
+  },
+  {
+    "name": "Laboon",
+    "shortDesc": "A giant whale who waits for his friends.",
+    "phs": "60 / 40 / 30",
+    "rank": "C",
+    "image": "https://files.catbox.moe/laboon.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Crocus",
+    "shortDesc": "Lighthouse keeper and doctor.",
+    "phs": "55 / 60 / 50",
+    "rank": "C",
+    "image": "https://files.catbox.moe/crocus.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Mr. 9",
+    "shortDesc": "Baroque Works agent.",
+    "phs": "65 / 55 / 45",
+    "rank": "C",
+    "image": "https://files.catbox.moe/mr9.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Miss Wednesday",
+    "shortDesc": "Baroque Works agent (Vivi)",
+    "phs": "60 / 60 / 60",
+    "rank": "C",
+    "image": "https://files.catbox.moe/misswednesday.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta",
+    "evolution": {
+      "nextId": "Miss Wednesday (Princess Vivi)",
+      "requiredLevel": 10,
+      "cost": 200,
+      "requiredSaga": "Arabasta",
+      "image": "https://files.catbox.moe/vivi.png"
+    }
+  },
+  {
+    "name": "Miss Wednesday (Princess Vivi)",
+    "shortDesc": "Princess of Alabasta.",
+    "phs": "90 / 80 / 80",
+    "rank": "B",
+    "image": "https://files.catbox.moe/vivi.png",
+    "evolvesFrom": "Miss Wednesday",
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Igram",
+    "shortDesc": "Royal guard of Alabasta.",
+    "phs": "60 / 65 / 55",
+    "rank": "C",
+    "image": "https://files.catbox.moe/igram.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Miss Monday",
+    "shortDesc": "Baroque Works agent.",
+    "phs": "70 / 50 / 40",
+    "rank": "C",
+    "image": "https://files.catbox.moe/missmonday.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Mr. 5",
+    "shortDesc": "Explosive Baroque Works agent.",
+    "phs": "80 / 60 / 60",
+    "rank": "B",
+    "image": "https://files.catbox.moe/mr5.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Miss Valentine",
+    "shortDesc": "Baroque Works agent.",
+    "phs": "70 / 70 / 60",
+    "rank": "B",
+    "image": "https://files.catbox.moe/missvalentine.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Dorry",
+    "shortDesc": "Giant warrior of Elbaf.",
+    "phs": "120 / 80 / 60",
+    "rank": "A",
+    "image": "https://files.catbox.moe/dorry.png",
+    "evolvesFrom": null,
+    "saga": "Elbaf",
+    "evolution": {
+      "nextId": "Dorry (Elbaf Legend)",
+      "requiredLevel": 20,
+      "cost": 1000,
+      "requiredSaga": "Elbaf",
+      "image": "https://files.catbox.moe/dorrylegend.png"
+    }
+  },
+  {
+    "name": "Dorry (Elbaf Legend)",
+    "shortDesc": "Legendary giant of Elbaf.",
+    "phs": "160 / 120 / 80",
+    "rank": "S",
+    "image": "https://files.catbox.moe/dorrylegend.png",
+    "evolvesFrom": "Dorry",
+    "saga": "Elbaf"
+  },
+  {
+    "name": "Brogy",
+    "shortDesc": "Giant warrior of Elbaf.",
+    "phs": "120 / 80 / 60",
+    "rank": "A",
+    "image": "https://files.catbox.moe/brogy.png",
+    "evolvesFrom": null,
+    "saga": "Elbaf",
+    "evolution": {
+      "nextId": "Brogy (Elbaf Legend)",
+      "requiredLevel": 20,
+      "cost": 1000,
+      "requiredSaga": "Elbaf",
+      "image": "https://files.catbox.moe/brogylegend.png"
+    }
+  },
+  {
+    "name": "Brogy (Elbaf Legend)",
+    "shortDesc": "Legendary giant of Elbaf.",
+    "phs": "160 / 120 / 80",
+    "rank": "S",
+    "image": "https://files.catbox.moe/brogylegend.png",
+    "evolvesFrom": "Brogy",
+    "saga": "Elbaf"
+  },
+  {
+    "name": "Mr. 3",
+    "shortDesc": "Baroque Works agent (Galdino).",
+    "phs": "85 / 70 / 70",
+    "rank": "B",
+    "image": "https://files.catbox.moe/mr3.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Miss Goldenweek",
+    "shortDesc": "Baroque Works agent.",
+    "phs": "70 / 80 / 70",
+    "rank": "B",
+    "image": "https://files.catbox.moe/missgoldenweek.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Galdino",
+    "shortDesc": "Baroque Works agent (Mr. 3).",
+    "phs": "90 / 80 / 80",
+    "rank": "A",
+    "image": "https://files.catbox.moe/galdino.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Wapol",
+    "shortDesc": "King of Drum Island.",
+    "phs": "100 / 80 / 70",
+    "rank": "A",
+    "image": "https://files.catbox.moe/wapol.png",
+    "evolvesFrom": null,
+    "saga": "Drum Island",
+    "evolution": {
+      "nextId": "Wapol (Metal)",
+      "requiredLevel": 25,
+      "cost": 1500,
+      "requiredSaga": "Drum Island",
+      "image": "https://files.catbox.moe/wapolmetal.png"
+    }
+  },
+  {
+    "name": "Wapol (Metal)",
+    "shortDesc": "Wapol after eating the Baku Baku no Mi.",
+    "phs": "140 / 120 / 100",
+    "rank": "S",
+    "image": "https://files.catbox.moe/wapolmetal.png",
+    "evolvesFrom": "Wapol",
+    "saga": "Drum Island"
+  },
+  {
+    "name": "Chess",
+    "shortDesc": "Wapol's subordinate.",
+    "phs": "70 / 60 / 60",
+    "rank": "C",
+    "image": "https://files.catbox.moe/chess.png",
+    "evolvesFrom": null,
+    "saga": "Drum Island"
+  },
+  {
+    "name": "Kuromarimo",
+    "shortDesc": "Wapol's subordinate.",
+    "phs": "75 / 65 / 65",
+    "rank": "C",
+    "image": "https://files.catbox.moe/kuromarimo.png",
+    "evolvesFrom": null,
+    "saga": "Drum Island"
+  },
+  {
+    "name": "Dr. Kureha",
+    "shortDesc": "Doctor of Drum Island.",
+    "phs": "90 / 100 / 90",
+    "rank": "B",
+    "image": "https://files.catbox.moe/kureha.png",
+    "evolvesFrom": null,
+    "saga": "Drum Island"
+  },
+  {
+    "name": "Tony Tony Chopper",
+    "shortDesc": "Reindeer doctor.",
+    "phs": "80 / 80 / 80",
+    "rank": "B",
+    "image": "https://files.catbox.moe/chopper.png",
+    "evolvesFrom": null,
+    "saga": "Drum Island",
+    "evolution": {
+      "nextId": "Tony Tony Chopper (Heavy Point)",
+      "requiredLevel": 10,
+      "cost": 300,
+      "requiredSaga": "Drum Island",
+      "image": "https://files.catbox.moe/chopperheavy.png"
+    }
+  },
+  {
+    "name": "Tony Tony Chopper (Heavy Point)",
+    "shortDesc": "Chopper's transformation.",
+    "phs": "120 / 120 / 100",
+    "rank": "A",
+    "image": "https://files.catbox.moe/chopperheavy.png",
+    "evolvesFrom": "Tony Tony Chopper",
+    "saga": "Drum Island",
+    "evolution": {
+      "nextId": "Tony Tony Chopper (Monster Point)",
+      "requiredLevel": 30,
+      "cost": 2000,
+      "requiredSaga": "Drum Island",
+      "image": "https://files.catbox.moe/choppermonster.png"
+    }
+  },
+  {
+    "name": "Tony Tony Chopper (Monster Point)",
+    "shortDesc": "Chopper's ultimate form.",
+    "phs": "180 / 180 / 150",
+    "rank": "S",
+    "image": "https://files.catbox.moe/choppermonster.png",
+    "evolvesFrom": "Tony Tony Chopper (Heavy Point)",
+    "saga": "Drum Island"
+  },
+  {
+    "name": "Hiriluk",
+    "shortDesc": "Doctor who inspired Chopper.",
+    "phs": "60 / 60 / 60",
+    "rank": "C",
+    "image": "https://files.catbox.moe/hiriluk.png",
+    "evolvesFrom": null,
+    "saga": "Drum Island"
+  },
+  {
+    "name": "Dr. Blamenco",
+    "shortDesc": "Doctor of Drum Island.",
+    "phs": "70 / 70 / 70",
+    "rank": "C",
+    "image": "https://files.catbox.moe/blamenco.png",
+    "evolvesFrom": null,
+    "saga": "Drum Island"
+  },
+  {
+    "name": "Dalton",
+    "shortDesc": "Protector of Drum Island.",
+    "phs": "100 / 90 / 90",
+    "rank": "B",
+    "image": "https://files.catbox.moe/dalton.png",
+    "evolvesFrom": null,
+    "saga": "Drum Island"
+  },
+  {
+    "name": "Nefertari Cobra",
+    "shortDesc": "King of Alabasta.",
+    "phs": "110 / 100 / 100",
+    "rank": "A",
+    "image": "https://files.catbox.moe/cobra.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta",
+    "evolution": {
+      "nextId": "Nefertari Cobra (King)",
+      "requiredLevel": 20,
+      "cost": 1200,
+      "requiredSaga": "Arabasta",
+      "image": "https://files.catbox.moe/cobraking.png"
+    }
+  },
+  {
+    "name": "Nefertari Cobra (King)",
+    "shortDesc": "King of Alabasta (evolved).",
+    "phs": "150 / 130 / 120",
+    "rank": "S",
+    "image": "https://files.catbox.moe/cobraking.png",
+    "evolvesFrom": "Nefertari Cobra",
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Toto",
+    "shortDesc": "Old man of Yuba.",
+    "phs": "50 / 50 / 50",
+    "rank": "C",
+    "image": "https://files.catbox.moe/toto.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Koza",
+    "shortDesc": "Leader of the rebel army.",
+    "phs": "90 / 90 / 80",
+    "rank": "B",
+    "image": "https://files.catbox.moe/koza.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Chaka",
+    "shortDesc": "Royal guard jackal.",
+    "phs": "100 / 100 / 90",
+    "rank": "A",
+    "image": "https://files.catbox.moe/chaka.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Pell",
+    "shortDesc": "Royal guard falcon.",
+    "phs": "110 / 110 / 100",
+    "rank": "A",
+    "image": "https://files.catbox.moe/pell.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta",
+    "evolution": {
+      "nextId": "Pell (Guardian)",
+      "requiredLevel": 20,
+      "cost": 1200,
+      "requiredSaga": "Arabasta",
+      "image": "https://files.catbox.moe/pellguardian.png"
+    }
+  },
+  {
+    "name": "Pell (Guardian)",
+    "shortDesc": "Guardian of Alabasta.",
+    "phs": "150 / 130 / 120",
+    "rank": "S",
+    "image": "https://files.catbox.moe/pellguardian.png",
+    "evolvesFrom": "Pell",
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Mr. 2 Bon Clay",
+    "shortDesc": "Baroque Works agent.",
+    "phs": "100 / 100 / 90",
+    "rank": "A",
+    "image": "https://files.catbox.moe/bonclay.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta",
+    "evolution": {
+      "nextId": "Mr. 2 Bon Clay (Sacrifice)",
+      "requiredLevel": 25,
+      "cost": 1500,
+      "requiredSaga": "Arabasta",
+      "image": "https://files.catbox.moe/bonclaysacrifice.png"
+    }
+  },
+  {
+    "name": "Mr. 2 Bon Clay (Sacrifice)",
+    "shortDesc": "Bon Clay's ultimate act.",
+    "phs": "160 / 120 / 120",
+    "rank": "S",
+    "image": "https://files.catbox.moe/bonclaysacrifice.png",
+    "evolvesFrom": "Mr. 2 Bon Clay",
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Mr. 4",
+    "shortDesc": "Baroque Works agent.",
+    "phs": "90 / 90 / 80",
+    "rank": "B",
+    "image": "https://files.catbox.moe/mr4.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Miss Merry Christmas",
+    "shortDesc": "Baroque Works agent.",
+    "phs": "80 / 80 / 70",
+    "rank": "B",
+    "image": "https://files.catbox.moe/missmerrychristmas.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Lasso",
+    "shortDesc": "Gun-dog of Baroque Works.",
+    "phs": "70 / 70 / 60",
+    "rank": "C",
+    "image": "https://files.catbox.moe/lasso.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Miss Doublefinger",
+    "shortDesc": "Baroque Works agent.",
+    "phs": "90 / 90 / 80",
+    "rank": "B",
+    "image": "https://files.catbox.moe/missdoublefinger.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Mr. 1",
+    "shortDesc": "Baroque Works agent.",
+    "phs": "110 / 110 / 100",
+    "rank": "A",
+    "image": "https://files.catbox.moe/mr1.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta",
+    "evolution": {
+      "nextId": "Mr. 1 (Daz Bonez)",
+      "requiredLevel": 20,
+      "cost": 1200,
+      "requiredSaga": "Arabasta",
+      "image": "https://files.catbox.moe/dazbonez.png"
+    }
+  },
+  {
+    "name": "Mr. 1 (Daz Bonez)",
+    "shortDesc": "Daz Bonez, the blade man.",
+    "phs": "150 / 130 / 120",
+    "rank": "S",
+    "image": "https://files.catbox.moe/dazbonez.png",
+    "evolvesFrom": "Mr. 1",
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Nico Robin",
+    "shortDesc": "Baroque Works agent, archaeologist.",
+    "phs": "120 / 120 / 110",
+    "rank": "A",
+    "image": "https://files.catbox.moe/robin.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta",
+    "evolution": {
+      "nextId": "Nico Robin (Straw Hat)",
+      "requiredLevel": 20,
+      "cost": 1200,
+      "requiredSaga": "Arabasta",
+      "image": "https://files.catbox.moe/robinsh.png"
+    }
+  },
+  {
+    "name": "Nico Robin (Straw Hat)",
+    "shortDesc": "Robin joins the Straw Hats.",
+    "phs": "160 / 140 / 130",
+    "rank": "S",
+    "image": "https://files.catbox.moe/robinsh.png",
+    "evolvesFrom": "Nico Robin",
+    "saga": "Arabasta",
+    "evolution": {
+      "nextId": "Nico Robin (Ohara)",
+      "requiredLevel": 50,
+      "cost": 5000,
+      "requiredSaga": "Arabasta",
+      "image": "https://files.catbox.moe/robinohara.png"
+    }
+  },
+  {
+    "name": "Nico Robin (Ohara)",
+    "shortDesc": "Robin's true past revealed.",
+    "phs": "200 / 180 / 170",
+    "rank": "UR",
+    "image": "https://files.catbox.moe/robinohara.png",
+    "evolvesFrom": "Nico Robin (Straw Hat)",
+    "saga": "Arabasta"
+  },
+  {
+    "name": "Crocodile",
+    "shortDesc": "Warlord of the Sea.",
+    "phs": "180 / 180 / 170",
+    "rank": "S",
+    "image": "https://files.catbox.moe/crocodile.png",
+    "evolvesFrom": null,
+    "saga": "Arabasta",
+    "evolution": {
+      "nextId": "Crocodile (Desert King)",
+      "requiredLevel": 40,
+      "cost": 5000,
+      "requiredSaga": "Arabasta",
+      "image": "https://files.catbox.moe/crocodileking.png"
+    }
+  },
+  {
+    "name": "Crocodile (Desert King)",
+    "shortDesc": "Crocodile's ultimate form.",
+    "phs": "250 / 220 / 200",
+    "rank": "UR",
+    "image": "https://files.catbox.moe/crocodileking.png",
+    "evolvesFrom": "Crocodile",
+    "saga": "Arabasta"
   }
 ]

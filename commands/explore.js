@@ -309,6 +309,60 @@ const LOCATIONS = {
             desc: "With Arlong defeated, you've completed the East Blue saga! The Grand Line awaits - Alabasta arc is now unlocked!",
             reward: { type: "saga_unlock", saga: "Alabasta" }
         }
+    ],
+    'REVERSE MOUNTAIN': [
+        {
+            type: "narrative",
+            title: "Setting Sail for the Grand Line!",
+            desc: "With East Blue behind you, your crew sails into the Grand Line. The seas are wild, the weather is insane, and the adventure truly begins!",
+            reward: { type: "xp", amount: 100 }
+        },
+        {
+            type: "narrative",
+            title: "Reverse Mountain",
+            desc: "You approach the legendary Reverse Mountain. The ship is nearly destroyed by the raging currents, but you make it through—barely!",
+            reward: { type: "item", name: "Basic Potion" } // replaced Grand Line Map with Basic Potion
+        },
+        {
+            type: "filler",
+            title: "A Whale Appears!",
+            desc: "A gigantic whale blocks your path. The crew panics as the ship is swallowed whole! (You find a random C chest in the whale's belly.)",
+            reward: { type: "chest", rank: "C" }
+        },
+        {
+            type: "boss",
+            title: "Laboon, the Lonely Whale",
+            desc: "Laboon attacks! (500 HP, 1-5 ATK. You cannot win this fight—midway through, Laboon swallows the ship and the battle ends.)",
+            enemy: { name: "Laboon", hp: 500, atk: [1, 5], spd: 10, rank: "C", forceInterrupt: true },
+            reward: { type: "narrative", desc: "Laboon swallows the ship mid-fight! The battle ends abruptly as you find yourself inside the whale." },
+            loseCooldown: 10 * 60 * 1000
+        },
+        {
+            type: "narrative",
+            title: "Inside Laboon",
+            desc: "You meet Crocus, the quirky lighthouse keeper and doctor. He explains Laboon's story and offers you a Normal Potion.",
+            reward: { type: "item", name: "Normal Potion" } // replaced Healing Potion with Normal Potion
+        },
+        {
+            type: "filler",
+            title: "Baroque Works Encounter",
+            desc: "You meet two strange people: Mr. 9 and Miss Wednesday (Vivi in disguise). They try to steal Laboon's food! (You get 50 Beli and a funny story.)",
+            reward: { type: "beli", amount: 50 }
+        },
+        {
+            type: "enemy",
+            title: "Fight Mr. 9",
+            desc: "Mr. 9 challenges you to a duel! (100 HP, 10-20 ATK)",
+            enemy: { name: "Mr. 9", hp: 100, atk: [10, 20], spd: 30, rank: "C" },
+            reward: { type: "card", name: "Miss Wednesday", rank: "C" },
+            loseCooldown: 10 * 60 * 1000
+        },
+        {
+            type: "narrative",
+            title: "Vivi Revealed & Log Pose Gift",
+            desc: "Miss Wednesday reveals herself as Princess Vivi! Grateful for your help, she gives you a Normal Potion and teaches you how to use the Log Pose. Use `/revisit <arc name>` to revisit completed arcs.",
+            reward: { type: "item", name: "Normal Potion" } // replaced Log Pose with Normal Potion
+        }
     ]
 };
 
@@ -318,7 +372,8 @@ const LOCATION_COOLDOWNS = {
     'ORANGE TOWN': 3 * 60 * 1000, // 3 minutes
     'SYRUP VILLAGE': 4 * 60 * 1000, // 4 minutes
     'BARATIE': 5 * 60 * 1000, // 5 minutes
-    'ARLONG PARK': 6 * 60 * 1000 // 6 minutes
+    'ARLONG PARK': 6 * 60 * 1000, // 6 minutes
+    'REVERSE MOUNTAIN': 7 * 60 * 1000 // 7 minutes
 };
 
 const DEFEAT_COOLDOWN = 5 * 60 * 1000; // 5 minutes on defeat
@@ -466,6 +521,7 @@ function getCurrentLocation(stage) {
     if (stage < 29) return 'SYRUP VILLAGE';
     if (stage < 34) return 'BARATIE';
     if (stage < 43) return 'ARLONG PARK';
+    if (stage < 51) return 'REVERSE MOUNTAIN';
     return 'COMPLETED';
 }
 
@@ -476,6 +532,7 @@ function getLocalStage(globalStage) {
     if (globalStage < 29) return globalStage - 24;
     if (globalStage < 34) return globalStage - 29;
     if (globalStage < 43) return globalStage - 34;
+    if (globalStage < 51) return globalStage - 43;
     return 0;
 }
 
@@ -486,7 +543,8 @@ function getNextLocation(currentLocation) {
         'ORANGE TOWN',
         'SYRUP VILLAGE',
         'BARATIE',
-        'ARLONG PARK'
+        'ARLONG PARK',
+        'REVERSE MOUNTAIN'
     ];
     
     const currentIndex = locationOrder.indexOf(currentLocation);
@@ -644,6 +702,9 @@ async function execute(message, args, client) {
             await handleChoice(message, user, stageData, currentLocation, client);
         } else if (stageData.type === 'enemy' || stageData.type === 'boss' || stageData.type === 'multi_enemy') {
             await handleBattle(message, user, stageData, currentLocation, client);
+        } else if (stageData.type === 'filler') {
+            // Treat filler as a narrative with a reward
+            await handleNarrative(message, user, stageData, currentLocation);
         } else {
             console.error(`Unknown stage type: ${stageData.type}`);
             return message.reply('An error occurred with the stage type. Please try again or contact support.');
@@ -1033,6 +1094,24 @@ async function handleBattleAttack(interaction, user, battleMessage) {
                 content: 'No enemies to attack!', 
                 ephemeral: true 
             });
+        }
+
+        // LABOON FIGHT SPECIAL INTERRUPTION
+        if (targetEnemy.forceInterrupt) {
+            // End the battle, show special message, advance stage
+            currentUser.exploreStates.inBossFight = false;
+            currentUser.exploreStates.battleState = null;
+            currentUser.exploreStates.currentStage = null;
+            // Advance stage and set cooldown
+            currentUser.lastExplore = new Date();
+            currentUser.stage++;
+            await saveUserWithRetry(currentUser);
+            const embed = new EmbedBuilder()
+                .setTitle('Laboon ate your ship!')
+                .setDescription('The gigantic whale Laboon swallows your ship whole! The battle ends abruptly as you find yourself inside the whale.')
+                .setColor(0x3498db)
+                .setFooter({ text: `Stage ${currentUser.stage} • Use 'op map' to see your progress` });
+            return await interaction.followUp({ embeds: [embed], ephemeral: false });
         }
 
         // Calculate damage using the proper battle system
@@ -1616,7 +1695,13 @@ async function applyReward(user, reward) {
             timesUpgraded: 0,
             locked: false
         };
-        addCardWithTransformation(user, cardToAdd);
+        const addResult = addCardWithTransformation(user, cardToAdd);
+        if (addResult && addResult.autosold) {
+            // Optionally, you could send a message to the user if context allows
+            // e.g., log or queue a notification
+        } else if (addResult && addResult.autoleveled) {
+            // Optionally, you could send a message to the user if context allows
+        }
     } else if (reward.type === 'multiple') {
         for (const subReward of reward.rewards) {
             await applyReward(user, subReward);

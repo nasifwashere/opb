@@ -152,11 +152,10 @@ function transformAllDuplicatesToEvolution(user, evolvedCardName, evolvedCardDef
  */
 function addCardWithTransformation(user, cardToAdd) {
   if (!user.cards) user.cards = [];
-  
+
   // Check if this card (or any card in its evolution chain) is currently in training
   if (user.training && user.training.length > 0) {
     const evolutionChain = getEvolutionChain(cardToAdd.name);
-    
     // Find if any card in the evolution chain is in training
     const trainingCard = user.training.find(trainingCard => {
       const trainingChain = getEvolutionChain(trainingCard.cardName);
@@ -166,18 +165,13 @@ function addCardWithTransformation(user, cardToAdd) {
         )
       );
     });
-    
     if (trainingCard) {
       // Add as duplicate to the training card instead of collection
       if (!trainingCard.duplicates) {
         trainingCard.duplicates = 0;
       }
       trainingCard.duplicates += 1;
-      
-      // Mark training as modified so it saves properly
       user.markModified('training');
-      
-      console.log(`Added duplicate of ${cardToAdd.name} to training card ${trainingCard.cardName} (${trainingCard.duplicates} duplicates)`);
       return { 
         attachedToTraining: true, 
         trainingCardName: trainingCard.cardName,
@@ -185,10 +179,34 @@ function addCardWithTransformation(user, cardToAdd) {
       };
     }
   }
-  
+
+  // Check for duplicate in main collection (any evolution form)
+  const evolutionChain = getEvolutionChain(cardToAdd.name);
+  const ownedCard = user.cards.find(c => evolutionChain.some(chainCard => normalize(c.name) === normalize(chainCard)));
+  const userSetting = (user.settings && user.settings.duplicateCardHandling) || 'autolevel';
+
+  if (ownedCard) {
+    if (userSetting === 'autosell') {
+      // Auto-sell logic (simple version: return a result, actual sell logic handled elsewhere)
+      return { autosold: true, card: cardToAdd };
+    } else {
+      // Autolevel: add XP to the owned card based on the rank of the pulled card
+      let xpToAdd = 0;
+      switch ((cardToAdd.rank || '').toUpperCase()) {
+        case 'C': xpToAdd = 50; break;
+        case 'B': xpToAdd = 100; break;
+        case 'A': xpToAdd = 200; break;
+        case 'S': xpToAdd = 500; break;
+        default: xpToAdd = 0;
+      }
+      ownedCard.experience = (ownedCard.experience || 0) + xpToAdd;
+      user.markModified('cards');
+      return { autoxp: true, card: ownedCard, xpAdded: xpToAdd };
+    }
+  }
+
   // Transform the card if user owns higher evolution
   const transformedCard = transformCardToEvolution(user, cardToAdd);
-  
   user.cards.push(transformedCard);
   return { attachedToTraining: false, addedCard: transformedCard };
 }

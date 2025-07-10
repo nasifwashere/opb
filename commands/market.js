@@ -285,7 +285,12 @@ async function handleMarketBuy(message, user, args) {
             timesUpgraded: 0,
             locked: false
         };
-        addCardWithTransformation(user, cardToAdd);
+        const addResult = addCardWithTransformation(user, cardToAdd);
+        if (addResult && addResult.autosold) {
+            // Optionally, notify user of auto-sell
+        } else if (addResult && addResult.autoleveled) {
+            // Optionally, notify user of auto-level
+        }
     } else {
         if (!user.inventory) user.inventory = [];
         user.inventory.push(normalize(listing.itemName));

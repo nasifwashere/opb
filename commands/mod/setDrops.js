@@ -140,6 +140,10 @@ async function dropRandomCard(client) {
             embed.setImage(randomCard.image);
         }
 
+        // Show saga in drop embed
+        const sagaText = randomCard.saga ? `**Saga:** ${randomCard.saga}` : '';
+        embed.setFooter({ text: sagaText });
+
         const rankSettings = {
             C: { rankImage: "https://files.catbox.moe/7xzfbe.png" },
             B: { rankImage: "https://files.catbox.moe/d0oebp.png" },
@@ -197,26 +201,47 @@ async function dropRandomCard(client) {
 async function claimDrop(interaction, card, client) {
     try {
         await interaction.deferUpdate();
-
         let user = await User.findOne({ userId: interaction.user.id });
-
         if (!user) {
             return interaction.followUp({ 
                 content: '\u274c You need to start your journey first with `op start`!', 
                 ephemeral: true 
             });
         }
+        // --- SAGA RESTRICTION LOGIC ---
+        // Only allow claim if user has reached the required saga
+        // For Arabasta, require user.saga === 'Arabasta' or further
+        const sagaOrder = [
+            'East Blue', 'Alabasta', 'Drum Island', 'Arabasta', 'Jaya', 'Skypiea', 'Water 7', 'Enies Lobby', 'Thriller Bark', 'Sabaody', 'Impel Down', 'Marineford', 'Fishman Island', 'Punk Hazard', 'Dressrosa', 'Zou', 'Whole Cake', 'Wano', 'Final Saga'
+        ];
+        const userSagaIndex = sagaOrder.indexOf(user.saga);
+        const cardSagaIndex = sagaOrder.indexOf(card.saga);
+        if (card.saga && userSagaIndex < cardSagaIndex) {
+            // DM user why they can't claim
+            try {
+                await interaction.user.send(`You can not get this card because you have not reached the **${card.saga}** arc yet.`);
+            } catch (dmError) {
+                // ignore
+            }
+            return;
+        }
 
         // Add card to user's collection using transformation system
         if (!user.cards) user.cards = [];
         const { addCardWithTransformation } = require('../../utils/cardTransformationSystem.js');
-        addCardWithTransformation(user, {
+        const addResult = addCardWithTransformation(user, {
             name: card.name,
             rank: card.rank,
             level: 1,
             experience: 0,
             timesUpgraded: 0
         });
+        if (addResult && addResult.autosold) {
+            // Optionally, notify user of auto-sell
+        } else if (addResult && addResult.autoxp) {
+            // Optionally, notify user of XP gain
+            // You could add a message here if you want to inform the user
+        }
 
         await user.save();
 
@@ -230,15 +255,17 @@ async function claimDrop(interaction, card, client) {
 
         // Send DM to the user
         try {
+            let dropMsg = `You successfully claimed **[${card.rank}] ${card.name}** from the drop!\n\n${card.shortDesc}`;
+            if (addResult && addResult.autoxp && addResult.xpAdded > 0) {
+                dropMsg += `\n\n✨ **Duplicate card converted to XP!** You already owned this card, so your main card gained **+${addResult.xpAdded} XP**.`;
+            }
             const dmEmbed = new EmbedBuilder()
                 .setTitle('You Got a Drop!')
-                .setDescription(`You successfully claimed **[${card.rank}] ${card.name}** from the drop!\n\n${card.shortDesc}`)
+                .setDescription(dropMsg)
                 .setColor(getRankColor(card.rank));
-
             if (card.image && card.image !== "placeholder") {
                 dmEmbed.setImage(card.image);
             }
-
             await interaction.user.send({ embeds: [dmEmbed] });
         } catch (dmError) {
             console.log('Could not send DM to user');

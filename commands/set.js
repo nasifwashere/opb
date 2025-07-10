@@ -19,6 +19,12 @@ const validSettings = {
     description: 'Bot language preference',
     type: 'choice',
     values: ['en', 'japanese', 'spanish', 'french']
+  },
+  duplicatecardhandling: {
+    name: 'Duplicate Card Handling',
+    description: 'How to handle duplicate cards: autolevel (default) or autosell',
+    type: 'choice',
+    values: ['autolevel', 'autosell']
   }
 };
 
@@ -58,6 +64,7 @@ function getSettingKey(settingName) {
     case 'notifications': return 'notifications';
     case 'duelaccept': return 'duelAccept';
     case 'language': return 'language';
+    case 'duplicatecardhandling': return 'duplicateCardHandling';
     default: return null;
   }
 }

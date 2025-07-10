@@ -6,11 +6,11 @@ const fs = require('fs');
 
 // --- Rank settings and weights ---
 const rankSettings = {
-    C: { color: 0x2ecc40, rankName: "C", rankImage: "https://files.catbox.moe/80exn1.png" },
-    B: { color: 0x3498db, rankName: "B", rankImage: "https://files.catbox.moe/ta2g9o.png" },
-    A: { color: 0x9b59b6, rankName: "A", rankImage: "https://files.catbox.moe/hcyso9.png" },
-    S: { color: 0xe67e22, rankName: "S", rankImage: "https://files.catbox.moe/niidag.png" },
-    UR: { color: 0xe74c3c, rankName: "UR", rankImage: "https://via.placeholder.com/32x32/e74c3c/ffffff?text=UR" }
+    C: { color: 0x2ecc40, rankName: "C", rankImage: "https://files.catbox.moe/7xzfbe.png" },
+    B: { color: 0x3498db, rankName: "B", rankImage: "https://files.catbox.moe/d0oebp.png" },
+    A: { color: 0x9b59b6, rankName: "A", rankImage: "https://files.catbox.moe/qlntg7.png" },
+    S: { color: 0xe67e22, rankName: "S", rankImage: "https://files.catbox.moe/9iq0m3.png" },
+    UR: { color: 0xe74c3c, rankName: "UR", rankImage: "https://files.catbox.moe/70hwjn.png" }
 };
 
 const rankWeights = [
@@ -52,15 +52,18 @@ function weightedRandomRank() {
     return rankWeights[rankWeights.length - 1].rank;
 }
 
-function loadCardsForSaga(saga = "East Blue") {
+function loadCardsForSaga(userSaga) {
     const cardsPath = path.resolve('data', 'cards.json');
-    
     if (!fs.existsSync(cardsPath)) {
         throw new Error("cards.json file not found!");
     }
-    
     const allCards = JSON.parse(fs.readFileSync(cardsPath, 'utf8'));
-    return allCards;
+    // Only allow cards from sagas the user has reached or earlier
+    const sagaOrder = [
+        'East Blue', 'Alabasta', 'Drum Island', 'Arabasta', 'Jaya', 'Skypiea', 'Water 7', 'Enies Lobby', 'Thriller Bark', 'Sabaody', 'Impel Down', 'Marineford', 'Fishman Island', 'Punk Hazard', 'Dressrosa', 'Zou', 'Whole Cake', 'Wano', 'Final Saga'
+    ];
+    const userSagaIndex = sagaOrder.indexOf(userSaga);
+    return allCards.filter(card => !card.evolvesFrom && sagaOrder.indexOf(card.saga) <= userSagaIndex);
 }
 
 // Only pick cards that are NOT evolved forms (i.e., only cards without evolvesFrom)
@@ -278,7 +281,6 @@ async function execute(message) {
         locked: false
     };
     const addResult = addCardWithTransformation(user, cardToAdd);
-    
     // Save user data with retry mechanism
     try {
         await saveUserWithRetry(user);
@@ -286,18 +288,13 @@ async function execute(message) {
         console.error('Error saving pull data:', error);
         return message.reply('There was an error saving your pull. Please try again.');
     }
-    
     // Update quest progress and save user
     await silentUpdateQuestProgress(user, 'pull', 1);
-    
-    // Quest system doesn't save automatically, so we need to save here
     try {
         await saveUserWithRetry(user);
     } catch (error) {
         console.error('Error saving quest progress:', error);
-        // Don't fail the pull if quest saving fails
     }
-    
     // Prepare evolution text
     let evolutionText = "";
     if (card.evolvesFrom) {
@@ -308,6 +305,10 @@ async function execute(message) {
     let description = `${card.shortDesc}\nPHS: ${card.phs}${evolutionText ? `\n${evolutionText}` : ""}`;
     if (addResult && addResult.attachedToTraining) {
         description += `\n\n🎯 **Attached to training card!**\nThis duplicate has been attached to **${addResult.trainingCardName}** currently in training.\nWhen training finishes, you'll receive both the trained card and this duplicate.`;
+    } else if (addResult && addResult.autosold) {
+        description += `\n\n**Duplicate card auto-sold!** You already owned this card, so it was automatically sold.`;
+    } else if (addResult && addResult.autoxp) {
+        description += `\n\n✨ **Duplicate card converted to XP!** You already owned this card, so your main card gained **+${addResult.xpAdded} XP**.`;
     }
     // Fix footer for pulls remaining (calculate after the pull is made)
     const pullsLeft = DAILY_PULL_LIMIT - user.pullData.dailyPulls;

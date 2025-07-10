@@ -116,10 +116,18 @@ async function execute(message, args) {
       timesUpgraded: 0,
       locked: false
     };
-    addCardWithTransformation(user, cardToAdd);
+    const addResult = addCardWithTransformation(user, cardToAdd);
+    let buyMessage = `<:check:1390838766821965955> You bought **${item.name}** for **${item.price} Beli**.`;
+    if (addResult && addResult.autosold) {
+      buyMessage += `\n **Duplicate card auto-sold!** You already owned this card, so it was automatically sold.`;
+    } else if (addResult && addResult.autoleveled) {
+      buyMessage += `\n **Duplicate card auto-leveled!** You already owned this card, so its level was increased.`;
+    }
+    await message.reply(buyMessage);
   } else {
     // Add the normalized item name to inventory array
     user.inventory.push(normalizedItemName);
+    await message.reply(`<:check:1390838766821965955> You bought **${item.name}** for **${item.price} Beli**.`);
   }
 
   // Do NOT update quest progress for market transactions here (shop purchases should not count)

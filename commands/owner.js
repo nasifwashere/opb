@@ -219,6 +219,9 @@ async function handleOwnerCommand(message, args, client) {
       case 'toggle-saga':
         return await handleToggleSagaCommand(message, args);
       
+      case 'back':
+        return await handleBackCommand(message, args);
+      
       default:
         return message.reply('Unknown owner command. Use `op owner` to see available commands.');
     }
@@ -316,7 +319,7 @@ async function handleGiveCommand(message, args) {
       timesUpgraded: 0,
       locked: false
     };
-    addCardWithTransformation(user, cardToAdd);
+    const addResult = addCardWithTransformation(user, cardToAdd);
     user.markModified('cards');
     try {
       await saveUserWithRetry(user);
@@ -327,8 +330,14 @@ async function handleGiveCommand(message, args) {
       } catch (questError) {
         console.log(`[OWNER] Quest progress update failed for ${targetUser.id}:`, questError);
       }
+      let replyMsg = `<:check:1390838766821965955> Gave ${cardDef.name} (${cardDef.rank}) to ${targetUser.username}`;
+      if (addResult && addResult.autosold) {
+        replyMsg += `\n **Duplicate card auto-sold!** User already owned this card, so it was automatically sold.`;
+      } else if (addResult && addResult.autoleveled) {
+        replyMsg += `\n **Duplicate card auto-leveled!** User already owned this card, so its level was increased.`;
+      }
       console.log(`[OWNER] Successfully gave ${cardDef.name} (${cardDef.rank}) to ${targetUser.username} (${targetUser.id})`);
-      return message.reply(`<:check:1390838766821965955> Gave ${cardDef.name} (${cardDef.rank}) to ${targetUser.username}`);
+      return message.reply(replyMsg);
     } catch (error) {
       console.error(`[OWNER] Error saving card for user ${targetUser.id}:`, error);
       return message.reply(`Error giving card to ${targetUser.username}. Please try again.`);
@@ -611,6 +620,24 @@ async function handleToggleSagaCommand(message, args) {
     .setFooter({ text: `Changed by ${message.author.username}` });
 
   return message.reply({ embeds: [embed] });
+}
+
+async function handleBackCommand(message, args) {
+  if (args.length < 2) {
+    return message.reply('Usage: `op owner back <number>`');
+  }
+  const amount = parseInt(args[1]);
+  if (isNaN(amount) || amount <= 0) {
+    return message.reply('Please specify a valid positive number.');
+  }
+  const userId = message.author.id;
+  let user = await User.findOne({ userId });
+  if (!user) {
+    return message.reply('User not found.');
+  }
+  user.stage = Math.max(0, (user.stage || 0) - amount);
+  await saveUserWithRetry(user);
+  return message.reply(`<:check:1390838766821965955> Set your explore stage back by ${amount}. New stage: ${user.stage}`);
 }
 
 function formatUptime(seconds) {
